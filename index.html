@@ -209,6 +209,9 @@ td.inc { color: var(--good); }
 .padd input { flex: 1; min-width: 0; background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
 .pactions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .pactions + .pactions { margin-top: 10px; }
+.cloud-row { border-top: 0; padding-top: 0; margin-bottom: 10px; }
+.profile summary .cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; margin-left: -4px; }
+.cloud-dot.ok { background: var(--good); } .cloud-dot.busy { background: var(--brass); } .cloud-dot.err { background: var(--over); }
 .small-btn.danger { color: var(--over); }
 .tabs button { background: none; border: 0; border-radius: 999px; padding: 7px 18px; font-weight: 500; color: var(--ink-soft); }
 .tabs button[aria-selected="true"] { background: var(--ink); color: var(--card); }
@@ -433,13 +436,17 @@ td.paid { color: var(--ink-soft); }
     <button role="tab" id="tabSummary" aria-selected="false">Summary</button>
   </nav>
   <details class="profile" id="profileMenu">
-    <summary><span class="avatar" id="pAvatar"></span><span id="pName"></span><span class="caret">▾</span></summary>
+    <summary><span class="avatar" id="pAvatar"></span><span class="cloud-dot" id="cloudDot" aria-hidden="true"></span><span id="pName"></span><span class="caret">▾</span></summary>
     <div class="pmenu">
       <p class="pmenu-title">Profiles on this device</p>
       <div id="pList"></div>
       <div class="padd">
         <input id="pNew" type="text" maxlength="24" placeholder="Name, e.g. Maria" aria-label="New profile name">
         <button class="small-btn" id="pAdd">Add profile</button>
+      </div>
+      <div class="pactions cloud-row" id="cloudRow">
+        <span class="pbackup" id="cloudStatus">Cloud sync is not set up</span>
+        <button class="small-btn" id="cloudBtn" hidden>Sign in with Google</button>
       </div>
       <div id="pActions">
       <div class="pactions">
@@ -706,7 +713,7 @@ td.paid { color: var(--ink-soft); }
     return { current: "main", list: [{ id: "main", name: "Me", color: "#2F6B4F" }] };
   })();
   if (!profiles.list.some(function (p) { return p.id === profiles.current; })) profiles.current = profiles.list[0].id;
-  function saveProfiles() { try { localStorage.setItem(PKEY, JSON.stringify(profiles)); } catch (e) {} }
+  function saveProfiles() { try { localStorage.setItem(PKEY, JSON.stringify(profiles)); } catch (e) {} if (typeof cloudSaveProfiles === "function") cloudSaveProfiles(); }
   // Locks were removed from the tracker. Any profile still marked locked whose data is no longer
   // encrypted (for example after restoring a backup) is unlocked here, for every profile.
   (function () {
@@ -748,6 +755,7 @@ td.paid { color: var(--ink-soft); }
     if (p && p.locked) return; // still holds encrypted data from an older version: never overwrite it
     try { localStorage.setItem(KEY, JSON.stringify(state)); }
     catch (e) { toast("Couldn't save — browser storage is unavailable"); }
+    if (typeof cloudQueue === "function") cloudQueue();
   }
 
   // ---------- Opening data locked by an older version (decrypt only) ----------
@@ -2277,6 +2285,7 @@ td.paid { color: var(--ink-soft); }
     editorOpen.el.remove();
     if (editorOpen.returnFocus && editorOpen.returnFocus.focus) editorOpen.returnFocus.focus();
     editorOpen = null;
+    if (typeof cloudApplyDeferred === "function") cloudApplyDeferred();
   }
   // fields: {key, label, type: text|number|date|select|checkbox|note, value, options:[[v,l]], step, full, showIf(vals)}
   function openEditor(cfg) {
@@ -3110,6 +3119,192 @@ td.paid { color: var(--ink-soft); }
     renderDebtsPage();
   });
 
+  // =====================================================================
+  // Cloud sync with Firebase (Google sign-in + Firestore)
+  // Paste your Firebase web config between the braces below to switch it on.
+  // While it's null the tracker works exactly as before, on this device only.
+  // =====================================================================
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC-zCBjVr0PePZj5fB6zR4RO6yK159mnBI",
+    authDomain: "budget-tracker-67807.firebaseapp.com",
+    projectId: "budget-tracker-67807",
+    storageBucket: "budget-tracker-67807.firebasestorage.app",
+    messagingSenderId: "202600003301",
+    appId: "1:202600003301:web:d06be5f0e13a778a14060c"
+  }; /* e.g. { apiKey: "...", authDomain: "...", projectId: "...", appId: "..." } */
+  var FB_VERSION = "10.12.2";
+  var LINKKEY = "budget-tracker-cloud-linked";
+  var cloud = { on: false, user: null, db: null, unsubProfile: null, unsubUser: null, timer: null, deferred: null, status: "off" };
+  cloud.device = (function () { try { var d = localStorage.getItem("budget-tracker-device"); if (!d) { d = uid(); localStorage.setItem("budget-tracker-device", d); } return d; } catch (e) { return uid(); } })();
+
+  function cloudSetStatus(st, text) {
+    cloud.status = st;
+    var dot = $("cloudDot"); dot.className = "cloud-dot" + (st === "ok" ? " ok" : st === "busy" ? " busy" : st === "err" ? " err" : "");
+    var who = cloud.user ? (cloud.user.email || cloud.user.displayName || "your Google account") : "";
+    var msg = text || (st === "off" ? "Cloud sync is not set up" : st === "out" ? "Not signed in · data stays on this device" : st === "busy" ? "Syncing…" : st === "err" ? "Sync problem · changes are kept on this device" : "Synced with " + who);
+    $("cloudStatus").textContent = msg;
+    $("cloudBtn").hidden = st === "off";
+    $("cloudBtn").textContent = cloud.user ? "Sign out" : "Sign in with Google";
+  }
+  function loadFirebaseSdk() {
+    if (window.firebase && window.firebase.firestore && window.firebase.auth) return Promise.resolve();
+    var base = "https://www.gstatic.com/firebasejs/" + FB_VERSION + "/";
+    return ["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"].reduce(function (p, f) {
+      return p.then(function () { return new Promise(function (res, rej) { var sc = document.createElement("script"); sc.src = base + f; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); }); });
+    }, Promise.resolve());
+  }
+  function userRef() { return cloud.db.collection("users").doc(cloud.user.uid); }
+  function profRef(id) { return userRef().collection("profiles").doc(id); }
+  function profileString(id) { if (id === profiles.current) return JSON.stringify(state); try { return localStorage.getItem(keyFor(id)) || ""; } catch (e) { return ""; } }
+  function hasLocalData(id) { try { var d = JSON.parse(profileString(id) || "null"); return !!(d && ((d.tx && d.tx.length) || (d.bills && d.bills.length) || (d.loans && d.loans.length) || (d.cards && d.cards.length))); } catch (e) { return false; } }
+  function profilesMeta() { return profiles.list.map(function (p) { return { id: p.id, name: p.name, color: p.color }; }); }
+
+  function cloudInit() {
+    if (!FIREBASE_CONFIG) { cloudSetStatus("off"); return; }
+    cloudSetStatus("busy", "Connecting…");
+    loadFirebaseSdk().then(function () {
+      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      cloud.db = firebase.firestore();
+      try { var ep = cloud.db.enablePersistence({ synchronizeTabs: true }); if (ep && ep.catch) ep.catch(function () {}); } catch (e) {}
+      cloud.on = true;
+      firebase.auth().onAuthStateChanged(cloudOnAuth);
+    }).catch(function () { cloudSetStatus("err", "Couldn't reach Firebase · working on this device only"); });
+  }
+  function cloudSignIn() {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(function (e) {
+      if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) return firebase.auth().signInWithRedirect(provider);
+      if (e && e.code !== "auth/popup-closed-by-user") toast("Sign-in didn't work: " + (e.message || e.code || "unknown error"));
+    });
+  }
+  $("cloudBtn").onclick = function () {
+    if (!cloud.on) return;
+    if (cloud.user) {
+      if (!confirm("Sign out? Your budget stays on this device, but changes here won't sync until you sign in again.")) return;
+      cloudFlush(); firebase.auth().signOut();
+    } else cloudSignIn();
+  };
+  function cloudDetach() {
+    if (cloud.unsubProfile) { cloud.unsubProfile(); cloud.unsubProfile = null; }
+    if (cloud.unsubUser) { cloud.unsubUser(); cloud.unsubUser = null; }
+  }
+  function cloudOnAuth(u) {
+    cloudDetach(); cloud.user = u || null;
+    if (!u) { cloudSetStatus("out"); return; }
+    cloudSetStatus("busy", "Checking your cloud data…");
+    userRef().get().then(function (snap) {
+      var remote = snap.exists ? snap.data() : null;
+      var hasRemote = !!(remote && remote.profiles && remote.profiles.length);
+      var linked = false; try { linked = localStorage.getItem(LINKKEY) === u.uid; } catch (e) {}
+      var localHas = profiles.list.some(function (p) { return hasLocalData(p.id); });
+      if (!hasRemote) return cloudUploadAll().then(function () { toast("Your budget is now saved to your Google account"); });
+      if (linked || !localHas) return cloudDownloadAll(remote);
+      var useCloud = confirm("Your Google account already has budget data, and this device has some too.\n\n" +
+        "OK = use the cloud data here (this device's data is saved as a backup file first)\n" +
+        "Cancel = replace the cloud data with this device's data");
+      if (useCloud) { profiles.list.forEach(function (p) { if (hasLocalData(p.id)) backupProfileString(p, profileString(p.id), "before-cloud"); }); return cloudDownloadAll(remote); }
+      return cloudDownloadBackups(remote).then(cloudUploadAll);
+    }).then(function () {
+      try { localStorage.setItem(LINKKEY, u.uid); } catch (e) {}
+      cloudWatchUser(); cloudWatchProfile(); cloudSetStatus("ok");
+    }).catch(function (e) { console.error(e); cloudSetStatus("err", "Couldn't sync: " + ((e && e.message) || "check your connection") + ". Changes are kept on this device."); });
+  }
+  function backupProfileString(p, str, tag) {
+    if (!str) return;
+    var nd = new Date();
+    download("budget-backup-" + p.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "-" + tag + "-" + today() + "_" + pad(nd.getHours()) + "-" + pad(nd.getMinutes()) + ".json", str, "application/json");
+  }
+  function cloudDownloadBackups(remote) {
+    // before this device replaces the cloud, save what the cloud had
+    return Promise.all(remote.profiles.map(function (m) {
+      return profRef(m.id).get().then(function (ps) { if (ps.exists && ps.data().data) backupProfileString(m, ps.data().data, "cloud-before-replace"); });
+    }));
+  }
+  function cloudUploadAll() {
+    var batch = profiles.list.map(function (p) {
+      var str = profileString(p.id);
+      return str ? profRef(p.id).set({ data: str, updatedAt: Date.now(), by: cloud.device }) : Promise.resolve();
+    });
+    return Promise.all(batch).then(function () { return userRef().set({ profiles: profilesMeta(), updatedAt: Date.now() }, { merge: true }); });
+  }
+  function cloudDownloadAll(remote) {
+    return Promise.all(remote.profiles.map(function (m) {
+      return profRef(m.id).get().then(function (ps) {
+        if (ps.exists && ps.data().data) { try { localStorage.setItem(keyFor(m.id), ps.data().data); } catch (e) {} }
+      });
+    })).then(function () {
+      var keep = profiles.current;
+      profiles.list = remote.profiles.map(function (m) { return { id: m.id, name: m.name, color: m.color }; });
+      if (!profiles.list.some(function (p) { return p.id === keep; })) profiles.current = profiles.list[0].id;
+      try { localStorage.setItem(PKEY, JSON.stringify(profiles)); } catch (e) {}
+      KEY = keyFor(profiles.current); state = migrate(load());
+      cloudRefreshUI();
+    });
+  }
+  function cloudRefreshUI() {
+    renderProfiles(); defaultDate(); renderRate(); updatePreview(); renderBackupNag();
+    if (currentTab === "summary") renderSummary(); else render();
+  }
+  function cloudWatchUser() {
+    if (cloud.unsubUser) cloud.unsubUser();
+    cloud.unsubUser = userRef().onSnapshot(function (snap) {
+      if (!snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+      var d = snap.data(); if (!d.profiles || !d.profiles.length) return;
+      var same = JSON.stringify(d.profiles) === JSON.stringify(profilesMeta()); if (same) return;
+      var keep = profiles.current;
+      profiles.list = d.profiles.map(function (m) { return { id: m.id, name: m.name, color: m.color }; });
+      if (!profiles.list.some(function (p) { return p.id === keep; })) { profiles.current = profiles.list[0].id; KEY = keyFor(profiles.current); state = migrate(load()); cloudWatchProfile(); }
+      try { localStorage.setItem(PKEY, JSON.stringify(profiles)); } catch (e) {}
+      renderProfiles();
+    });
+  }
+  function cloudWatchProfile() {
+    if (!cloud || !cloud.on || !cloud.user) return;
+    if (cloud.unsubProfile) cloud.unsubProfile();
+    var id = profiles.current;
+    cloud.unsubProfile = profRef(id).onSnapshot(function (snap) {
+      if (!snap.exists || (snap.metadata && snap.metadata.hasPendingWrites)) return;
+      var d = snap.data(); if (!d || !d.data || d.by === cloud.device) return;
+      if (d.data === JSON.stringify(state)) return;
+      if (id !== profiles.current) return;
+      if (editorOpen) { cloud.deferred = d.data; return; }   // don't change things under an open form
+      cloudApplyRemote(d.data);
+    }, function () { cloudSetStatus("err"); });
+  }
+  function cloudApplyRemote(str) {
+    try { localStorage.setItem(KEY, str); state = migrate(JSON.parse(str)); } catch (e) { return; }
+    cloudRefreshUI(); toast("Updated from your other device");
+  }
+  function cloudApplyDeferred() { if (cloud && cloud.deferred) { var s2 = cloud.deferred; cloud.deferred = null; cloudApplyRemote(s2); } }
+  function cloudQueue() {
+    if (!cloud || !cloud.on || !cloud.user) return;
+    cloudSetStatus("busy", "Saving…");
+    clearTimeout(cloud.timer);
+    var id = profiles.current;
+    cloud.timer = setTimeout(function () { cloudPush(id); }, 1200);
+    cloud.pendingId = id;
+  }
+  function cloudFlush() { if (cloud && cloud.timer) { clearTimeout(cloud.timer); cloud.timer = null; cloudPush(cloud.pendingId || profiles.current); } }
+  function cloudPush(id) {
+    cloud.timer = null;
+    if (!cloud.on || !cloud.user) return;
+    var str = profileString(id);
+    if (str.length > 900000) toast("Heads up: this profile is getting large for cloud sync. Export older years and ask me about archiving.");
+    profRef(id).set({ data: str, updatedAt: Date.now(), by: cloud.device })
+      .then(function () { cloudSetStatus("ok"); })
+      .catch(function () { cloudSetStatus("err"); });
+  }
+  function cloudSaveProfiles() {
+    if (!cloud || !cloud.on || !cloud.user) return;
+    userRef().set({ profiles: profilesMeta(), updatedAt: Date.now() }, { merge: true }).catch(function () { cloudSetStatus("err"); });
+  }
+  function cloudDeleteProfile(id) {
+    if (!cloud || !cloud.on || !cloud.user) return;
+    profRef(id).delete().catch(function () {});
+  }
+  window.addEventListener("pagehide", function () { cloudFlush(); });
+  document.addEventListener("visibilitychange", function () { if (document.hidden) cloudFlush(); });
+
   // ---------- Profiles ----------
   var P_COLORS = ["#2F6B4F", "#8E4D6E", "#3C6E91", "#B0613A", "#6A5ACD", "#3F8C8C", "#9C6B3E"];
   function currentProfile() { return profiles.list.find(function (p) { return p.id === profiles.current; }); }
@@ -3130,7 +3325,7 @@ td.paid { color: var(--ink-soft); }
   }
   function switchProfile(id) {
     if (id === profiles.current) { $("profileMenu").open = false; return; }
-    save();
+    save(); if (typeof cloudFlush === "function") cloudFlush();
     var sharedRate = state.rate;
     profiles.current = id; saveProfiles();
     KEY = keyFor(id);
@@ -3142,6 +3337,7 @@ td.paid { color: var(--ink-soft); }
     renderProfiles(); defaultDate(); renderRate(); updatePreview(); renderBackupNag();
     if ($("summaryView").hidden) render(); else { sYear = view.y; renderSummary(); }
     applyLock();
+    if (typeof cloudWatchProfile === "function") cloudWatchProfile();
     toast("Switched to " + currentProfile().name);
   }
   $("pList").addEventListener("click", function (e) {
@@ -3165,8 +3361,10 @@ td.paid { color: var(--ink-soft); }
     if (profiles.list.length < 2) return;
     if (!confirm('Delete "' + cp.name + '" and all of their budget data on this device? Back it up first if you might need it.')) return;
     try { localStorage.removeItem(keyFor(cp.id)); } catch (e) {}
+    if (typeof cloudDeleteProfile === "function") cloudDeleteProfile(cp.id);
     profiles.list = profiles.list.filter(function (p) { return p.id !== cp.id; });
     var next = profiles.list[0].id; profiles.current = next; saveProfiles();
+    if (typeof cloudWatchProfile === "function") setTimeout(cloudWatchProfile, 0);
     KEY = keyFor(next); state = migrate(load()); openPay = null;
     renderProfiles(); defaultDate(); renderRate(); updatePreview();
     if ($("summaryView").hidden) render(); else renderSummary();
@@ -3177,6 +3375,7 @@ td.paid { color: var(--ink-soft); }
   });
 
   setType("expense"); defaultDate(); render(); renderRate(); updatePreview(); renderProfiles(); applyFolds(); renderBackupNag(); applyLock(); if (!lockedView) fetchRate(false);
+  cloudInit();
 })();
 </script>
 </body>
