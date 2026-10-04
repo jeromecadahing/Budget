@@ -1067,7 +1067,7 @@ td.paid { color: var(--ink-soft); }
     var l = anyLoanFor(b); if (!l) return null;
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
     var from = new Date(t0.getFullYear(), t0.getMonth(), 1), to = new Date(t0.getFullYear() + 3, t0.getMonth(), 1);
-    var left = loanState(l).balance, r = (l.apr || 0) / 1200, map = {}, unknown = false;
+    var left = loanState(l).balance, r = monthlyRate(l.apr || 0), map = {}, unknown = false;
     Object.defineProperty(map, "_dates", { value: {}, enumerable: false });
     occurrences(b, from, to).forEach(function (o) {
       map._dates[o.key] = o.date;
@@ -1749,7 +1749,7 @@ td.paid { color: var(--ink-soft); }
   }
   // Total debt (in £) at the end of each month: actual for the past, projected for the future
   function loanBalanceAt(l, endStr) {
-    var bal = l.balance || 0, r = (l.apr || 0) / 1200;
+    var bal = l.balance || 0, r = monthlyRate(l.apr || 0);
     state.tx.filter(function (t) {
       if (t.type !== "expense" || t.date > endStr) return false;
       var isPay = t.loan === l.id || (l.billId && t.bill === l.billId), isBuy = l.kind === "bnpl" && t.pay === l.id;
@@ -1765,7 +1765,7 @@ td.paid { color: var(--ink-soft); }
   function loanBalanceFuture(l, endDate) {
     var now = loanState(l).balance, bill = loanBill(l);
     if (!bill || now <= 0) return now;
-    var pj = loanProjection(bill), r = (l.apr || 0) / 1200, bal = now, t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    var pj = loanProjection(bill), r = monthlyRate(l.apr || 0), bal = now, t0 = new Date(); t0.setHours(0, 0, 0, 0);
     Object.keys(pj).sort().forEach(function (k) {
       var d = pj._dates[k]; if (d < t0 || d > endDate || occPayment(bill, k)) return;
       bal = Math.max(0, bal + bal * r - (pj[k] || 0));
@@ -1990,6 +1990,8 @@ td.paid { color: var(--ink-soft); }
   function loanMoney(l, n) { return l.cur === "PHP" ? peso(n) : money(n); }
   function loanToGbp(l, n) { return l.cur === "PHP" ? (state.rate ? n * state.rate.value : 0) : n; }
   // Balance today: the balance you entered, reduced by each ticked payment of the linked bill since then (allowing for interest)
+  // A UK APR already includes monthly compounding, so the monthly rate is (1 + APR)^(1/12) - 1, not APR / 12
+  function monthlyRate(apr) { return apr > 0 ? Math.pow(1 + apr / 100, 1 / 12) - 1 : 0; }
   function loanBill(l) { return l.billId ? billById(l.billId) : null; }
   // How a loan is paid: "fixed" amount, "min" (minimum payment: amount and/or % of balance, whichever is higher), or "varies"
   function payMode(l) { if (l.payMode) return l.payMode; var b = loanBill(l); return b && b.amount > 0 ? "fixed" : (l.payment > 0 ? "fixed" : "varies"); }
@@ -2000,7 +2002,7 @@ td.paid { color: var(--ink-soft); }
     return b ? perMonth(b) : (l.payment || 0);
   }
   function loanState(l) {
-    var bal = l.balance || 0, r = (l.apr || 0) / 1200, paidCount = 0;
+    var bal = l.balance || 0, r = monthlyRate(l.apr || 0), paidCount = 0;
     state.tx.filter(function (t) {
       if (t.type !== "expense") return false;
       var isPay = t.loan === l.id || (l.billId && t.bill === l.billId), isBuy = l.kind === "bnpl" && t.pay === l.id;
@@ -3424,7 +3426,7 @@ td.paid { color: var(--ink-soft); }
     var interest = 0, series = [ds.reduce(function (a, d) { return a + d.left; }, 0)], m;
     for (m = 1; m <= 600; m++) {
       var active = ds.filter(function (d) { return d.left > 0.005; }); if (!active.length) break;
-      active.forEach(function (d) { if (d.aprAt) d.apr = d.aprAt(m - 1); var i = d.left * d.apr / 1200; d.left += i; interest += i; });
+      active.forEach(function (d) { if (d.aprAt) d.apr = d.aprAt(m - 1); var i = d.left * monthlyRate(d.apr); d.left += i; interest += i; });
       var budget = minimumsOnly ? Infinity : pool;
       active.forEach(function (d) { var p = Math.min(d.left, d.min(d.left), budget); d.left -= p; budget -= p; });
       if (!minimumsOnly && budget > 0.005) {
@@ -3557,7 +3559,7 @@ td.paid { color: var(--ink-soft); }
       var oOpts = debts.map(function (x) { return '<option value="' + x.id + '"' + (x.id === pick ? " selected" : "") + ">" + esc(x.name) + "</option>"; }).join("") + '<option value="custom"' + (pick === "custom" || !debts.length ? " selected" : "") + ">Something else (type the numbers)</option>";
       if (!pick) { pick = calcIn.one = debts.length ? debts[0].id : "custom"; d = debts[0]; }
       if (d && calcIn._loaded !== d.id) { calcIn.bal = d.bal.toFixed(2); calcIn.apr = String(d.apr || 0); calcIn.pay = d.min(d.bal).toFixed(2); calcIn._loaded = d.id; }
-      var B = parseFloat(calcIn.bal) || 0, A = parseFloat(calcIn.apr) || 0, P = parseFloat(calcIn.pay) || 0, N = parseInt(calcIn.months, 10) || 0, r = A / 1200;
+      var B = parseFloat(calcIn.bal) || 0, A = parseFloat(calcIn.apr) || 0, P = parseFloat(calcIn.pay) || 0, N = parseInt(calcIn.months, 10) || 0, r = monthlyRate(A);
       var res = "";
       if (B > 0 && P > 0) {
         if (r > 0 && P <= B * r) res += '<p class="big">Never cleared</p><p>' + money(P) + " a month doesn't cover the interest (" + money(B * r) + " a month). Pay more than that to start reducing it.</p>";
@@ -3594,7 +3596,7 @@ td.paid { color: var(--ink-soft); }
   var btIn = { from: "", amt: "", cur: "", fee: "3", promo: "0", months: "12", after: "", pay: "", _loaded: null };
   function payOffSim(B, aprFor, P, cap) {
     var b = B, interest = 0, m = 0;
-    while (b > 0.005 && m < (cap || 600)) { var r = aprFor(m) / 1200; var i = b * r; b += i; interest += i; b -= Math.min(P, b); m++; }
+    while (b > 0.005 && m < (cap || 600)) { var r = monthlyRate(aprFor(m)); var i = b * r; b += i; interest += i; b -= Math.min(P, b); m++; }
     return { months: b <= 0.005 ? m : null, interest: interest, left: b };
   }
   function renderBT(box, debts) {
@@ -3608,7 +3610,7 @@ td.paid { color: var(--ink-soft); }
       '<option value="custom"' + (btIn.from === "custom" ? " selected" : "") + ">Something else (type the numbers)</option>";
     var res = "";
     if (A > 0 && M > 0) {
-      var fee = A * feeP / 100, moved = A + fee, r0 = promo / 1200;
+      var fee = A * feeP / 100, moved = A + fee, r0 = monthlyRate(promo);
       var needPromo = r0 === 0 ? moved / M : moved * r0 / (1 - Math.pow(1 + r0, -M));
       res += '<p class="big">' + money(needPromo) + " a month</p><p>clears the " + money(moved) + " (" + money(A) + " + " + money(fee) + " fee) before the " + promo + "% ends after " + M + " months, around " + monthsFromNow(M) + ".</p>";
       if (P > 0) {
