@@ -330,20 +330,28 @@ tr.carried-out td { opacity: .6; }
 .bnpl-av .mini { margin-top: 4px; }
 .kv-total { font-weight: 600; border-top: 2px solid var(--line); }
 .kv-total span:first-child { color: var(--ink) !important; }
+.recon-res { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+.recon-res.ok { background: color-mix(in srgb, var(--good) 12%, transparent); }
+.recon-res.off { background: color-mix(in srgb, var(--brass) 14%, transparent); }
+#recon .kv small { display: block; font-size: 12px; color: var(--ink-soft); }
+#recon .kv span:last-child { white-space: nowrap; }
+.recon-fix { margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; font-size: 14px; }
+.recon-fix p { margin: 0 0 8px; color: var(--ink-soft); }
 .ac-sub { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 22px; margin: 28px 0 8px; }
-.acct { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.acct { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .acct:last-child { border-bottom: 0; }
-.acct .nm { font-weight: 600; }
-.acct .sub { font-size: 13px; color: var(--ink-soft); grid-column: 1; }
-.acct .sub.warn { color: var(--over); }
-.acct .bal { text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
-.acct .acts { grid-column: 2; display: flex; gap: 6px; justify-content: flex-end; }
-.bank-toggle { grid-column: 1 / -1; justify-self: start; background: none; border: 0; padding: 4px 0; font-size: 13px; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+.a-main { display: flex; align-items: center; gap: 8px; }
+.a-main .nm { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-main .tag { font-size: 10px; font-weight: 600; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: 2px; }
+.a-main .bal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.a-main .small-btn { padding: 3px 10px; }
+.a-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.a-sub .warn { color: var(--over); }
+.bank-toggle { flex: none; background: none; border: 0; padding: 2px 0; font-size: 12px; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
 .bank-toggle:hover { color: var(--ink); }
-.bank-bills { grid-column: 1 / -1; background: var(--paper); border-radius: 10px; padding: 6px 12px; }
+.bank-bills { background: var(--paper); border-radius: 10px; padding: 4px 12px; margin-top: 6px; }
 .bank-bills .kv { font-size: 14px; }
 .bank-bills small { color: var(--ink-soft); font-size: 12px; }
-.acct .bal.unset { font-weight: 400; font-size: 14px; color: var(--ink-soft); }
 .ca-card small.free { color: var(--good); }
 .ca-card small.over { color: var(--over); font-weight: 600; }
 .st-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -414,6 +422,11 @@ tr.carried-out td { opacity: .6; }
 .df-table tr.focus td { background: color-mix(in srgb, var(--good) 10%, transparent); }
 .df-table tr.tot td { font-weight: 600; border-top: 2px solid var(--line); }
 .df-table b.g { color: var(--good); }
+.df-sortbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; }
+.df-sortbar label { font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+.df-sortbar select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 14px; }
+.df-table tr.grp-row td { background: var(--paper); font-weight: 600; font-size: 13px; padding: 6px 8px; border-top: 8px solid var(--card); }
+.df-table tr.grp-row small { display: inline; margin-left: 8px; font-weight: 400; color: var(--ink-soft); }
 .df-what tr.pick { cursor: pointer; }
 @media (max-width: 560px) {
   .df-table thead { display: none; }
@@ -421,6 +434,9 @@ tr.carried-out td { opacity: .6; }
   .df-table tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; padding: 8px 6px; border-bottom: 1px solid var(--line); border-radius: 8px; }
   .df-table td { display: block; padding: 0 !important; border: 0 !important; text-align: left !important; background: none !important; }
   .df-table td:first-child { grid-column: 1 / -1; font-weight: 600; }
+  .df-table tr.grp-row { display: block; padding: 0; border: 0; margin-top: 10px; }
+  .df-table tr.grp-row td { border-radius: 8px; border-top: 0 !important; padding: 6px 8px !important; background: var(--paper) !important; }
+  .df-table tr.grp-row small { display: block; margin: 0; }
   .df-table td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; color: var(--ink-soft); font-weight: 400; }
   .df-table td.hide-sm { display: none; }
   .df-table tr.focus, .df-what tr.cur { background: color-mix(in srgb, var(--good) 12%, transparent); }
@@ -701,6 +717,10 @@ td.paid { color: var(--ink-soft); }
       <p class="hero-caption">In your bank accounts</p>
       <div class="left" id="acBig">–</div>
       <div class="hero-figs" id="acFigs"></div>
+    </section>
+    <section class="panel wide fold" data-sec="recon">
+      <h2><button class="sec-toggle" aria-expanded="true"><span>Bank vs income left</span><span class="sec-sum" id="sum-recon"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
+      <div id="recon"></div>
     </section>
     <section class="panel wide fold" data-sec="banks">
       <h2><button class="sec-toggle" aria-expanded="true"><span>Bank accounts</span><span class="sec-sum" id="sum-banks"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
@@ -2876,14 +2896,14 @@ td.paid { color: var(--ink-soft); }
         chk = "Checked " + (days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago") + (b.lastDiff && Math.abs(b.lastDiff) >= 0.01 ? " · was " + bankMoney(b, Math.abs(b.lastDiff)) + " out" : " · matched");
       }
       var stale = bal != null && (!b.checkedAt || (t0 - b.checkedAt) / 864e5 > 14);
-      return '<div class="acct"><span class="nm">' + esc(bankLabel(b)) + "</span>" +
-        (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : '<span class="bal unset">Balance not set</span>') +
-        '<span class="sub">' + sub.join(" · ") + "</span>" +
-        '<span class="acts"><button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></span>' +
-        (n ? '<button class="bank-toggle" data-bankbills="' + b.id + '" aria-expanded="' + (openBanks[b.id] ? "true" : "false") + '" title="' + esc(state.bills.filter(function (x) { return x.pay === b.id; }).map(function (x) { return x.name; }).join(", ")) + '">' + (openBanks[b.id] ? "Hide bills ▴" : "Show " + n + (n === 1 ? " bill" : " bills") + " ▾") + "</button>" : "") +
-        (openBanks[b.id] ? bankBillsHtml(b) : "") +
-        (chk || stale ? '<span class="sub' + (stale && !chk ? " warn" : "") + '" style="grid-column:1/-1">' + (chk || "Not checked against your bank yet") + (stale && chk ? " · time for a check" : "") + "</span>" : "") +
-        "</div>";
+      var bnames = state.bills.filter(function (x) { return x.pay === b.id; }).map(function (x) { return x.name; }).join(", ");
+      var status = chk || (bal != null ? "Not checked against your bank yet" : "");
+      return '<div class="acct"><div class="a-main"><span class="nm">' + esc(bankLabel(b)) + (b.cur === "PHP" ? ' <small class="tag">PH</small>' : "") + "</span>" +
+        (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : "") +
+        '<button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></div>' +
+        ((status || n) ? '<div class="a-sub"><span class="' + (stale ? "warn" : "") + '">' + esc(status) + (stale && chk ? " · time for a check" : "") + "</span>" +
+          (n ? '<button class="bank-toggle" data-bankbills="' + b.id + '" aria-expanded="' + (openBanks[b.id] ? "true" : "false") + '" title="' + esc(bnames) + '">' + (openBanks[b.id] ? "Hide bills ▴" : n + (n === 1 ? " bill" : " bills") + " ▾") + "</button>" : "") + "</div>" : "") +
+        (openBanks[b.id] ? bankBillsHtml(b) : "") + "</div>";
     }).join("") : '<p class="empty">Add the bank accounts you use, with the balance in each right now. The tracker then keeps each balance up to date as you log spending, income and transfers.</p>';
     var tot = accountsTotal();
     $("acBig").textContent = tot ? money(tot.gbp) : "–";
@@ -3370,7 +3390,7 @@ td.paid { color: var(--ink-soft); }
   // ---------- Cards page ----------
   function renderCardsPage() {
     var mk = monthKey();
-    renderBanks();
+    renderBanks(); renderRecon();
     $("caMonth").textContent = new Date(view.y, view.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     if (!state.cards.length) {
       $("caCaption").textContent = "No credit cards yet. Add one below.";
@@ -3706,7 +3726,7 @@ td.paid { color: var(--ink-soft); }
       var bal = cardToGbp(c, Math.max(0, cardStats(c, "").balance));
       if (bal < 0.01) return;
       var fixed = c.minPay > 0 ? cardToGbp(c, c.minPay) : 0, floor = isPH(c) ? 0 : 5;
-      list.push({ id: c.id, name: cardLabel(c), kind: "card", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
+      list.push({ id: c.id, name: cardLabel(c), kind: "card", group: "Credit cards", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
         min: function (b) { return Math.min(b, fixed > 0 ? fixed : estMin(b, this.apr, floor === 0)); } });
     });
     state.loans.forEach(function (l) {
@@ -3715,7 +3735,7 @@ td.paid { color: var(--ink-soft); }
       var minF;
       if (mode === "min") minF = function (b) { return Math.min(b, Math.max((l.minAmt || 0) * rate, b * (l.minPct || 0) / 100)); };
       else { var P = loanToGbp(l, loanPayment(l, st.balance)); minF = function (b) { return Math.min(b, P); }; }
-      list.push({ id: l.id, name: l.name, kind: "loan", bal: bal, apr: l.apr || 0, noPay: !(minF(bal) > 0), min: minF });
+      list.push({ id: l.id, name: l.name, kind: "loan", group: l.kind === "bnpl" ? "Buy now, pay later" : "Loans", bal: bal, apr: l.apr || 0, noPay: !(minF(bal) > 0), min: minF });
     });
     return list;
   }
@@ -3796,10 +3816,27 @@ td.paid { color: var(--ink-soft); }
       ? "This month: pay the minimum on everything (" + money(mins) + "), and put the extra <b>" + money(plan.extra) + "</b> towards <b>" + esc(target.name) + "</b>" + (plan.strategy === "avalanche" ? (target.apr ? " (" + target.apr + "% APR, your most expensive)" : "") : " (your smallest balance)") + ". That's " + money(mins + plan.extra) + " in total."
       : "Keep paying the same total, <b>" + money(mins) + " a month</b>, even as each debt clears and its minimum drops. Putting what's freed up onto the next debt is what gets you there" + (a.months != null ? " by " + monthsFromNow(a.months) : "") + ". Add an extra amount above to see how much sooner you could be debt-free.") + "</div>";
     // This month: what each debt gets, and when it clears
-    var sorted = a.debts.slice().sort(function (x, y) { return (x.paidOff || 9999) - (y.paidOff || 9999); });
+    var sortBy = ui.dfSort || "payoff";
+    var cmp = {
+      payoff: function (x, y) { return (x.paidOff == null ? 9999 : x.paidOff) - (y.paidOff == null ? 9999 : y.paidOff) || y.apr - x.apr; },
+      apr: function (x, y) { return y.apr - x.apr || y.bal - x.bal; },
+      owed: function (x, y) { return y.bal - x.bal; },
+      min: function (x, y) { return (y.m1min || 0) - (x.m1min || 0); },
+      name: function (x, y) { return x.name.localeCompare(y.name); }
+    }[sortBy] || function () { return 0; };
+    var groups = ["Credit cards", "Buy now, pay later", "Loans"], sorted = [];
+    groups.forEach(function (g) {
+      var inG = a.debts.filter(function (d) { return d.group === g; }).sort(cmp);
+      if (!inG.length) return;
+      var gOwed = inG.reduce(function (x, d) { return x + d.bal; }, 0), gPay = inG.reduce(function (x, d) { return x + (d.m1min || 0) + (d.m1extra || 0); }, 0);
+      sorted.push({ header: g, owed: gOwed, pay: gPay, n: inG.length }); sorted = sorted.concat(inG);
+    });
     var tm = 0, te = 0;
-    html += '<h3 style="font-size:14px;margin:0 0 6px">This month, debt by debt</h3><div class="tx-scroll"><table class="df-table"><thead><tr><th>Debt</th><th class="r">APR</th><th class="r">Owed</th><th class="r">Minimum</th><th class="r">Extra</th><th class="r">Pay</th><th class="r">Cleared</th></tr></thead><tbody>' +
+    html += '<div class="df-sortbar"><h3 style="font-size:14px;margin:0">This month, debt by debt</h3><label>Sort by <select id="dfSort">' +
+      [["payoff", "When it clears"], ["apr", "Interest rate (APR)"], ["owed", "Amount owed"], ["min", "Minimum payment"], ["name", "Name"]].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === sortBy ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") +
+      '</select></label></div><div class="tx-scroll"><table class="df-table"><thead><tr><th>Debt</th><th class="r">APR</th><th class="r">Owed</th><th class="r">Minimum</th><th class="r">Extra</th><th class="r">Pay</th><th class="r">Cleared</th></tr></thead><tbody>' +
       sorted.map(function (d) {
+        if (d.header) return '<tr class="grp-row"><td colspan="7"><span>' + d.header + "</span><small>" + d.n + (d.n === 1 ? " debt" : " debts") + " · " + money(d.owed) + " owed · " + money(d.pay) + " this month</small></td></tr>";
         var mn = d.m1min || 0, ex = d.m1extra || 0; tm += mn; te += ex;
         var aprTxt = d.kind === "card" && d.noApr ? '<span class="na">not set</span>' : (d.promo ? (d.apr || 0) + '%<small>' + esc(d.promo) + "</small>" : (d.apr || 0) + "%");
         return "<tr" + (ex > 0 ? ' class="focus"' : "") + "><td>" + esc(d.name) + (d.noPay ? ' <small>(no payment set)</small>' : "") + '</td><td class="r" data-l="APR">' + aprTxt + '</td><td class="r" data-l="Owed">' + money(d.bal) +
@@ -3842,6 +3879,11 @@ td.paid { color: var(--ink-soft); }
   document.addEventListener("click", function (e) {
     var r = e.target.closest("[data-dfextra]"); if (!r) return;
     state.dfPlan = Object.assign(state.dfPlan || { strategy: "avalanche" }, { extra: +r.dataset.dfextra }); save(); renderDebtFree(); renderCalc();
+  });
+  document.addEventListener("change", function (e) {
+    if (e.target.id !== "dfSort") return;
+    ui.dfSort = e.target.value; try { localStorage.setItem(UIKEY, JSON.stringify(ui)); } catch (er) {}
+    renderDebtFree();
   });
   var dfTimer = null;
   $("dfExtra").addEventListener("input", function () {
@@ -4004,6 +4046,78 @@ td.paid { color: var(--ink-soft); }
       },
       onDelete: function () { state.tx = state.tx.filter(function (x) { return x !== t; }); },
       deleteLabel: "Delete transfer", deletedMsg: "Transfer deleted"
+    });
+  }
+
+  // Bank vs income left: why the money in your accounts isn't the same as this month's income minus spending
+  function renderRecon() {
+    var box = $("recon"), tot = accountsTotal();
+    if (!tot) { box.innerHTML = '<p class="empty">Set a balance on your bank accounts first, then this explains how they relate to your income left.</p>'; $("sum-recon").textContent = ""; return; }
+    var ym = ymOf(new Date()), inc = 0, sp = 0, onCredit = 0, cardPays = 0, debtPays = 0, noAcctSp = 0, noAcctInc = 0;
+    state.tx.forEach(function (t) {
+      var cf = countsFor(t);
+      if (t.type === "income" && cf === ym) { inc += t.amount; if (!bankById(t.into)) noAcctInc += t.amount; }
+      if (t.type === "expense" && cf === ym) {
+        var credit = !!cardById(t.pay) || !!bnplById(t.pay), fromBank = !!bankById(t.pay);
+        if (isTransfer(t)) { if (fromBank) debtPays += t.amount; return; }
+        sp += t.amount;
+        if (credit) onCredit += t.amount; else if (!fromBank) noAcctSp += t.amount;
+      }
+      if (t.type === "cardpay" && cf === ym && bankById(t.from)) cardPays += t.amount;
+    });
+    var left = inc - sp, should = left + onCredit - cardPays - debtPays + noAcctSp - noAcctInc, diff = tot.gbp - should;
+    var row = function (label, v, sign, hint) {
+      if (Math.abs(v) < 0.005) return "";
+      return '<div class="kv"><span>' + label + (hint ? "<small>" + hint + "</small>" : "") + "</span><span>" + (sign > 0 ? "+ " : "− ") + money(Math.abs(v)) + "</span></div>";
+    };
+    var html = '<div class="kv kv-total"><span>Income left this month</span><span>' + money(left) + "</span></div>" +
+      row("Spent on credit cards and BNPL", onCredit, 1, "Counted as spending now, but it leaves your bank when you pay the card") +
+      row("Credit cards paid off from your banks", cardPays, -1, "Leaves your bank, but isn't new spending") +
+      row("BNPL and loan repayments from your banks", debtPays, -1, "For accounts where you track purchases, so the repayment isn't counted as spending") +
+      row("Spending with no account chosen", noAcctSp, 1, "Lowers income left, but no bank balance") +
+      row("Income with no account chosen", noAcctInc, -1, "Raises income left, but no bank balance") +
+      '<div class="kv kv-total"><span>Should be in your accounts</span><span>' + money(should) + "</span></div>" +
+      '<div class="kv"><span>The tracker\'s account total</span><span>' + money(tot.gbp) + "</span></div>";
+    var ok = Math.abs(diff) < 1;
+    html += '<div class="recon-res ' + (ok ? "ok" : "off") + '">' + (ok
+      ? "<b>They match.</b> Everything in your accounts is explained by this month's income and spending."
+      : "<b>" + money(Math.abs(diff)) + (diff > 0 ? " more" : " less") + "</b> in your accounts than this month explains. " +
+        (diff > 0 ? "That's money that was there before this month started, or income that isn't logged." : "That usually means spending, a transfer or a card payment from a bank that isn't logged yet.") +
+        " If you start each month with nothing left, look for entries without an account (Edit → Paid with / Paid into) and check each bank with <b>Check</b>.") + "</div>" +
+      (tot.n < state.banks.length ? '<p class="hint">Only accounts with a balance set are counted (' + tot.n + " of " + state.banks.length + ").</p>" : "");
+    if (!ok && diff < 0) html += '<div class="recon-fix"><p>Started tracking partway through the month? Spending from before then isn\'t logged, so income left looks too high.</p>' +
+      '<button class="small-btn" id="reconCatchUp">Record ' + money(-diff) + ' as spending before I started</button></div>';
+    box.innerHTML = html;
+    var cu = $("reconCatchUp"); if (cu) cu.onclick = function () { catchUpSpending(-diff); };
+    $("sum-recon").textContent = ok ? "Matches" : money(Math.abs(diff)) + " unexplained";
+  }
+
+  // One entry for spending that happened before you started tracking this month.
+  // It lowers income left but not your bank balances (they were set after this spending had already left).
+  function catchUpSpending(amt) {
+    var tracked = state.banks.filter(function (b) { return b.bal != null && b.balDate; });
+    var first = tracked.slice().sort(function (a, b) { return a.balDate.localeCompare(b.balDate) || (a.balAt || 0) - (b.balAt || 0); })[0];
+    var other = state.categories.find(function (c) { return /^other|untracked|misc/i.test(c.name); });
+    openEditor({
+      title: "Spending before you started tracking",
+      fields: [
+        { key: "n", label: "This adds one entry for what you spent between payday and when you set your bank balances, so income left matches your accounts. Your bank balances won't change.", type: "note" },
+        { key: "amt", label: "Amount (£)", type: "number", value: (Math.round(amt * 100) / 100).toFixed(2) },
+        { key: "cat", label: "Category", type: "select", value: other ? other.id : "__new", options: [["__new", "New category: Before tracking"]].concat(catOptions()) },
+        { key: "pay", label: "Mostly paid from", type: "select", value: first ? first.id : "cash", options: payOptions(), full: true },
+        { key: "note", label: "Note", type: "text", value: "Spending before I started tracking", full: true, max: 80 }
+      ],
+      saveLabel: "Add entry", savedMsg: "",
+      onSave: function (v) {
+        if (!(v.amt > 0)) return "Enter an amount above zero.";
+        var cat = v.cat;
+        if (cat === "__new") { var nc = { id: uid(), name: "Before tracking", budget: 0, color: PALETTE[mainCats().length % PALETTE.length] }; state.categories.push(nc); cat = nc.id; }
+        // dated on the day the first balance was set, and marked as made just before it, so no balance counts it again
+        var d = first ? first.balDate : today();
+        state.tx.push({ id: uid(), type: "expense", created: first ? (first.balAt || 1) - 1 : 1, cur: "GBP", orig: r2(v.amt), rate: 1, amount: r2(v.amt), date: d,
+          category: cat, pay: v.pay, note: v.note.trim() || "Spending before I started tracking", forMonth: ymOf(new Date()) });
+        setTimeout(function () { toast("Added. Income left and your accounts should now line up."); }, 50);
+      }
     });
   }
 
