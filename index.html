@@ -17,7 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
 <style>
 :root {
-  --paper: #E6ECE7;
+  --paper: #D3DDD6;
   --card: #F7F9F7;
   --ink: #1D332C;
   --ink-soft: #55695F;
@@ -32,12 +32,12 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #121B18; --card: #1A2622; --ink: #E3EAE5; --ink-soft: #9AAEA4;
+    --paper: #0B1210; --card: #1A2622; --ink: #E3EAE5; --ink-soft: #9AAEA4;
     --line: #2E3E38; --brass: #D3A54A; --over: #E0756D; --good: #7CC3A0; --field: #0F1714;
   }
 }
 :root[data-theme="dark"] {
-  --paper: #121B18; --card: #1A2622; --ink: #E3EAE5; --ink-soft: #9AAEA4;
+  --paper: #0B1210; --card: #1A2622; --ink: #E3EAE5; --ink-soft: #9AAEA4;
   --line: #2E3E38; --brass: #D3A54A; --over: #E0756D; --good: #7CC3A0; --field: #0F1714;
 }
 *, *::before, *::after { box-sizing: inherit; }
@@ -354,7 +354,7 @@ tr.carried-out td { opacity: .6; }
 .bank-bills .kv { font-size: 14px; }
 .bank-bills small { color: var(--ink-soft); font-size: 12px; }
 .ca-card small.free { color: var(--good); }
-.ca-card small.over { color: var(--over); font-weight: 600; }
+.ca-card small.over, .ca-card small .over { color: var(--over); font-weight: 600; }
 .st-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
 .st-head h2 { margin: 0; }
 .st-head .acts { display: flex; gap: 6px; align-items: center; }
@@ -375,8 +375,27 @@ tr.carried-out td { opacity: .6; }
   .topbar { flex-wrap: nowrap; gap: 8px; }
   #pName { display: none; }
 }
-.ca-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--cc); border-radius: 12px; padding: 10px 14px; min-width: 150px; text-align: left; cursor: pointer; }
-.ca-card[aria-pressed="true"] { background: color-mix(in srgb, var(--cc) 16%, var(--card)); border-color: var(--cc); box-shadow: 0 0 0 2px var(--cc) inset; }
+.ca-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 150px; text-align: left; cursor: pointer; transition: background-color .12s, border-color .12s; }
+/* one hover and one selected look for every tile, whatever the card or debt */
+.ca-card:hover { border-color: var(--ink-soft); background: color-mix(in srgb, var(--ink) 5%, var(--card)); }
+.ca-card[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 8%, var(--card)); border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; }
+@media (prefers-reduced-motion: reduce) { .ca-card { transition: none; } }
+/* Credit cards: compact tiles */
+.cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; margin-top: 6px; max-width: 760px; }
+.ca-card.cc-tile { min-width: 0; width: 100%; padding: 8px 10px; gap: 1px; border-radius: 10px; }
+.cc-tile .cc-name { font-size: 12px; color: var(--ink-soft); width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-tile b { font-size: 16px; line-height: 1.25; }
+.cc-tile small { font-size: 11.5px; line-height: 1.35; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-util { display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--paper); overflow: hidden; margin: 4px 0 3px; }
+.cc-util i { display: block; height: 100%; background: var(--ink-soft); border-radius: 2px; }
+.cc-util.hi i { background: var(--brass); } .cc-util.over i { background: var(--over); }
+/* Debts: loans and BNPL in separate groups */
+.d-group + .d-group { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.d-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 0 0 8px; }
+.d-group-head h3 { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 17px; margin: 0; }
+.d-group-head span { font-size: 14px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.opening-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 12px; font-size: 14px; color: var(--ink-soft); }
+.opening-pick select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font-size: 14px; }
 .ca-card[aria-pressed="true"] b { color: var(--ink); }
 .ca-card span { font-size: 13px; color: var(--ink-soft); }
 .ca-card b { font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -696,9 +715,11 @@ td.paid { color: var(--ink-soft); }
           <label>Currency<select id="bCur"><option value="GBP">£ GBP</option><option value="PHP">₱ PHP</option></select></label>
           <label>How often<select id="bFreq"></select></label>
           <label id="bDueWrap">Due day each month<input id="bDue" type="number" min="1" max="31" step="1" inputmode="numeric" placeholder="1–31"></label>
-          <label id="bStartWrap" hidden>Next due date<input id="bStart" type="date"></label>
+          <label id="bStartWrap" hidden>First or next due date<input id="bStart" type="date"></label>
+          <label id="bBeginWrap">Starts from (optional)<input id="bBegin" type="date" aria-describedby="bBeginHint"></label>
           <label>Category<select id="bCat"></select></label>
           <label>Paid from<select id="bPay"></select></label>
+          <p class="m-note" id="bBeginHint" style="grid-column:1/-1">Starting later? Pick the date of the first payment and the bill won't show as due before then.</p>
           <label class="auto-check"><input type="checkbox" id="bAuto"> Paid automatically (direct debit, standing order or recurring card payment)</label>
         </div>
         <button class="ghost" id="addBill">Add bill</button>
@@ -749,7 +770,7 @@ td.paid { color: var(--ink-soft); }
     </header>
     <section class="hero">
       <p class="hero-caption" id="caCaption">Card activity</p>
-      <div class="ca-cards" id="caCards"></div>
+      <div class="cc-tiles" id="caCards"></div>
     </section>
     <section class="panel wide fold" data-sec="cardst">
       <h2><button class="sec-toggle" aria-expanded="true"><span>Card statement</span><span class="sec-sum" id="sum-cardst"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
@@ -807,7 +828,7 @@ td.paid { color: var(--ink-soft); }
     </section>
     <div id="dLegacy"></div>
     <p class="hero-caption" id="dCaption" style="margin:4px 0 8px">Tap a debt to see its payments and details</p>
-    <div class="ca-cards d-tiles" id="dTiles"></div>
+    <div class="d-tiles" id="dTiles"></div>
     <div class="d-actions"><button class="ghost" id="addLoan">Add a loan or debt</button></div>
     <section class="panel wide" id="dDetailWrap"><div id="dDetail"></div></section>
     <section class="panel wide fold" data-sec="ddti">
@@ -1086,6 +1107,31 @@ td.paid { color: var(--ink-soft); }
     var tracked = state.banks.filter(function (b) { return bankBalance(b) != null; });
     return tracked.length ? { gbp: tracked.reduce(function (s2, b) { return s2 + bankToGbp(b, bankBalance(b)); }, 0), n: tracked.length } : null;
   }
+  // ---------- Starting month ----------
+  // In the month you start tracking, the money already sitting in your accounts counts towards income left,
+  // so income left matches your accounts. From the next month on, income left is just that month's income minus spending.
+  function openingYm() {
+    if (state.openingYm === "off") return null;
+    if (state.openingYm) return state.openingYm;
+    var first = null;
+    state.tx.forEach(function (t) { var c = countsFor(t); if (!first || c < first) first = c; });
+    state.banks.forEach(function (b) { if (b.balDate) { var c = b.balDate.slice(0, 7); if (!first || c < first) first = c; } });
+    return first || ymOf(new Date());
+  }
+  // What was in your accounts before tracking began: today's account total minus every logged movement in or out of a bank since then.
+  // Logging spending or income later changes both sides equally, so this stays put.
+  function openingAmount(ym) {
+    var o = openingYm(); if (!o || ym !== o) return 0;
+    var tot = accountsTotal(); if (!tot) return 0;
+    var flow = 0;
+    state.tx.forEach(function (t) {
+      if (countsFor(t) < o) return;
+      if (t.type === "income" && bankById(t.into)) flow += t.amount;
+      else if (t.type === "expense" && bankById(t.pay)) flow -= t.amount;
+      else if (t.type === "cardpay" && bankById(t.from)) flow -= t.amount;
+    });
+    return Math.round((tot.gbp - flow) * 100) / 100;
+  }
   function bankOptionsHtml(blank) {
     return (blank ? '<option value="">' + blank + "</option>" : "") + state.banks.map(function (b) {
       return '<option value="' + b.id + '">' + esc(bankLabel(b)) + (b.cur === "PHP" ? " (₱)" : "") + "</option>"; }).join("");
@@ -1265,6 +1311,8 @@ td.paid { color: var(--ink-soft); }
   // Monthly bills use the month ("2026-10") as their key, so older ticks keep working.
   function occurrences(b, from, to) {
     var out = [], f = freqOf(b);
+    // A bill that starts in the future has no due dates before its start
+    if (b.begins) { var bg = parseDay(b.begins); if (bg > from) from = bg; if (from >= to) return out; }
     if (f === "monthly") {
       var cur = new Date(from.getFullYear(), from.getMonth(), 1);
       while (cur < to) {
@@ -1289,6 +1337,12 @@ td.paid { color: var(--ink-soft); }
       if (dd >= from) out.push({ date: dd, key: dayKey(dd) });
     }
     return out;
+  }
+  // Not started yet: its first payment is in the future and nothing has been paid towards it
+  function billNotStarted(b) {
+    var first = b.begins || b.start; if (!first) return false;
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    return parseDay(first) > t0 && !state.tx.some(function (t) { return t.bill === b.id; });
   }
   function nextOccurrence(b, from) {
     var o = occurrences(b, from, new Date(from.getFullYear() + 2, from.getMonth(), from.getDate()));
@@ -1449,7 +1503,7 @@ td.paid { color: var(--ink-soft); }
       $("bills").innerHTML += '<div class="not-due"><span>Not due in ' + label + ":</span> " + notDue.map(function (b) {
         var nx = nextOccurrence(b, mTo);
         return '<span class="nd-item">' + esc(b.name) + " <small>" + billAmtText(b) +
-          (nx ? " · next " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: nx.date.getFullYear() !== y ? "numeric" : undefined }) : " · set a due date") +
+          (nx ? (billNotStarted(b) ? " · starts " : " · next ") + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: nx.date.getFullYear() !== y ? "numeric" : undefined }) : " · set a due date") +
           '</small> <button class="edit-btn" data-editbill="' + b.id + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></span>';
       }).join("") + "</div>";
     }
@@ -1598,12 +1652,13 @@ td.paid { color: var(--ink-soft); }
     var totalBudget = budgetsOn ? mainCats().reduce(function (s, c) { return s + (c.budget || 0); }, 0) : 0;
 
     // Hero: left in your budgets if you use them, otherwise income left this month
-    var left = totalBudget - spent, incLeft = income - spent;
+    var opening = openingAmount(mk0), hasOpening = Math.abs(opening) >= 0.005;
+    var left = totalBudget - spent, incLeft = opening + income - spent;
     if (totalBudget > 0) {
       $("heroCaption").textContent = "Left of your " + money(totalBudget) + " monthly budget";
       $("left").textContent = money(left); $("left").classList.toggle("neg", left < 0);
-    } else if (income > 0) {
-      $("heroCaption").textContent = "Income left this month";
+    } else if (income > 0 || hasOpening) {
+      $("heroCaption").textContent = hasOpening ? "Income left this month, including what was already in your accounts" : "Income left this month";
       $("left").textContent = money(incLeft); $("left").classList.toggle("neg", incLeft < 0);
     } else {
       $("heroCaption").textContent = "Spent this month · add your income to see what's left";
@@ -1613,7 +1668,8 @@ td.paid { color: var(--ink-soft); }
     $("heroFigs").innerHTML =
       "<span>Income <b>" + money(income) + "</b></span>" +
       "<span>Spent <b>" + money(spent) + "</b></span>" +
-      (totalBudget > 0 && income > 0 ? "<span>Income left <b" + (incLeft < 0 ? ' style="color:var(--over)"' : "") + ">" + money(incLeft) + "</b></span>" : "") +
+      (hasOpening ? "<span>" + (opening > 0 ? "Already in accounts" : "Adjusted to match accounts") + " <b>" + money(opening) + "</b><small>when you started</small></span>" : "") +
+      (totalBudget > 0 && (income > 0 || hasOpening) ? "<span>Income left <b" + (incLeft < 0 ? ' style="color:var(--over)"' : "") + ">" + money(incLeft) + "</b></span>" : "") +
       (acct ? "<span>In your accounts <b>" + money(acct.gbp) + "</b></span>" : "") +
       (state.payday && (state.bills.length || state.cards.length) && ymOf(new Date()) === monthKey() && dueBeforePayday().total > 0
         ? "<span>Bills before payday <b>" + money(dueBeforePayday().total) + "</b></span>" : "") +
@@ -1852,11 +1908,12 @@ td.paid { color: var(--ink-soft); }
   $("bFreq").innerHTML = FREQS.map(function (f) { return '<option value="' + f[0] + '">' + f[1] + "</option>"; }).join("");
   $("bFreq").onchange = function () {
     var monthly = this.value === "monthly";
-    $("bDueWrap").hidden = !monthly; $("bStartWrap").hidden = monthly;
+    $("bDueWrap").hidden = !monthly; $("bStartWrap").hidden = monthly; $("bBeginWrap").hidden = !monthly; $("bBeginHint").hidden = !monthly;
     if (!monthly && !$("bStart").value) $("bStart").value = today();
   };
   $("addBill").onclick = function () {
-    var name = $("bName").value.trim(), amt = parseFloat($("bAmt").value), due = parseInt($("bDue").value, 10), freq = $("bFreq").value, start = $("bStart").value;
+    var name = $("bName").value.trim(), amt = parseFloat($("bAmt").value), due = parseInt($("bDue").value, 10), freq = $("bFreq").value, start = $("bStart").value, begin = $("bBegin").value;
+    if (freq === "monthly" && begin && !(due >= 1 && due <= 31)) due = parseDay(begin).getDate();   // no due day given: use the first payment's day
     if (!name) { toast("Give the bill a name"); $("bName").focus(); return; }
     if (!(amt >= 0)) amt = 0;
     if (freq === "monthly" && !(due >= 1 && due <= 31)) { toast("Due day must be 1 to 31"); $("bDue").focus(); return; }
@@ -1866,9 +1923,11 @@ td.paid { color: var(--ink-soft); }
       due: freq === "monthly" ? due : parseDay(start).getDate(), category: $("bCat").value, pay: $("bPay").value };
     if ($("bAuto").checked) { nb.auto = true; nb.autoSince = today(); }
     if (freq !== "monthly") nb.start = start;
+    else if (begin) nb.begins = begin;
     state.bills.push(nb);
-    $("bName").value = ""; $("bAmt").value = ""; $("bDue").value = ""; $("bStart").value = ""; $("bAuto").checked = false;
-    save(); render(); toast(nb.amount > 0 ? "Bill added" : "Bill added · amount varies");
+    $("bName").value = ""; $("bAmt").value = ""; $("bDue").value = ""; $("bStart").value = ""; $("bBegin").value = ""; $("bAuto").checked = false;
+    var firstDue = billNotStarted(nb) ? nextOccurrence(nb, parseDay(nb.begins || nb.start)) : null;
+    save(); render(); toast(firstDue ? "Bill added · starts " + firstDue.date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : nb.amount > 0 ? "Bill added" : "Bill added · amount varies");
   };
 
   $("addCard").onclick = function () {
@@ -2881,7 +2940,8 @@ td.paid { color: var(--ink-soft); }
         { key: "cur", label: "Currency", type: "select", value: b.cur, options: [["GBP", "£ GBP"], ["PHP", "₱ PHP"]] },
         { key: "freq", label: "How often", type: "select", value: freqOf(b), options: FREQS },
         { key: "due", label: "Due day each month (1–31)", type: "number", step: "1", value: b.due, showIf: function (v) { return v.freq === "monthly"; } },
-        { key: "start", label: "A due date (next or past)", type: "date", value: b.start || dayKey(nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))) ? nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))).date : new Date()),
+        { key: "begins", label: "Starts from (blank if it already has)", type: "date", value: b.begins || "", showIf: function (v) { return v.freq === "monthly"; } },
+        { key: "start", label: "A due date (past, next, or first one if it starts later)", type: "date", value: b.start || dayKey(nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))) ? nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))).date : new Date()),
           showIf: function (v) { return v.freq !== "monthly"; } },
         { key: "cat", label: "Category", type: "select", value: b.category, options: catOptions() },
         { key: "auto", label: "Paid automatically (direct debit, standing order or recurring card payment)", type: "checkbox", value: !!b.auto },
@@ -2896,9 +2956,10 @@ td.paid { color: var(--ink-soft); }
           var due = Math.round(v.due);
           if (!(due >= 1 && due <= 31)) return "Due day must be 1 to 31.";
           b.due = due; delete b.start;
+          if (v.begins) b.begins = v.begins; else delete b.begins;
         } else {
           if (!v.start) return "Pick a due date so the schedule can be worked out.";
-          b.start = v.start; b.due = parseDay(v.start).getDate();
+          b.start = v.start; b.due = parseDay(v.start).getDate(); delete b.begins;
         }
         if (v.cat !== b.category) {
           var past = state.tx.filter(function (t) { return t.bill === b.id && t.type === "expense" && t.category !== v.cat; });
@@ -3027,7 +3088,7 @@ td.paid { color: var(--ink-soft); }
     var rows = bl.map(function (x) {
       var nx = null; if (!billFinished(x)) { var occ = occurrences(x, t0, new Date(t0.getFullYear() + 1, t0.getMonth(), t0.getDate())); nx = occ.find(function (o) { return !occPayment(x, o.key) && !nothingDue(x, o.key); }); }
       var pm = perMonth(x) || 0; monthly += billGbp(x, pm);
-      return '<div class="kv"><span>' + esc(x.name) + " <small>" + freqLabel(x).toLowerCase() + (x.auto ? " · automatic" : "") + (nx ? " · next " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "") + "</small></span><span>" +
+      return '<div class="kv"><span>' + esc(x.name) + " <small>" + freqLabel(x).toLowerCase() + (x.auto ? " · automatic" : "") + (nx ? (billNotStarted(x) ? " · starts " : " · next ") + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "") + "</small></span><span>" +
         (nx ? (billDue(x, nx.key) > 0 ? (x.cur === "PHP" ? peso(billDue(x, nx.key)) : money(billDue(x, nx.key))) : "Varies") : '<small>done</small>') + "</span></div>";
     }).join("");
     return '<div class="bank-bills">' + rows + '<div class="kv kv-total"><span>About a month</span><span>' + money(monthly) + "</span></div></div>";
@@ -3553,11 +3614,12 @@ td.paid { color: var(--ink-soft); }
     $("caCaption").textContent = "Tap a card to see its " + ymLabel(mk) + " charges";
     $("caCards").innerHTML = state.cards.map(function (c) {
       var ch = 0; state.tx.forEach(function (t) { if (t.type === "expense" && t.pay === c.id && t.date.slice(0, 7) === mk) ch += inCard(c, t); });
-      var bal = cardStats(c, "").balance;
-      return '<button class="ca-card" style="--cc:' + c.color + '" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '">' +
-        "<span>" + esc(cardLabel(c)) + "</span><b>" + cm(c, ch) + "</b><small>charged this month</small><small>" + cm(c, bal) + " owed now</small>" +
-        (c.limit > 0 ? (bal > c.limit ? '<small class="over">' + cm(c, bal - c.limit) + " over limit</small>" : '<small class="free">' + cm(c, c.limit - bal) + " free</small>") : "") +
-        (promoText(c) ? "<small>" + esc(promoText(c)) + "</small>" : "") + "</button>";
+      var bal = cardStats(c, "").balance, pct = c.limit > 0 ? Math.max(0, bal / c.limit * 100) : null, promo = promoText(c);
+      return '<button class="ca-card cc-tile" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '"' + (promo ? ' title="' + esc(promo) + '"' : "") + ">" +
+        '<span class="cc-name">' + esc(cardLabel(c)) + "</span><b>" + cm(c, bal) + "</b>" +
+        (pct != null ? '<i class="cc-util' + (pct > 100 ? " over" : pct >= 75 ? " hi" : "") + '" aria-hidden="true"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></i>' : "") +
+        "<small>" + (c.limit > 0 ? (bal > c.limit ? '<span class="over">' + cm(c, bal - c.limit) + " over limit</span>" : cm(c, c.limit - bal) + " free") : "owed now") + "</small>" +
+        "<small>" + cm(c, ch) + " charged in " + esc(ymLabel(mk, { month: "short" })) + "</small></button>";
     }).join("");
     renderCardActivity(mk);
   }
@@ -3570,6 +3632,9 @@ td.paid { color: var(--ink-soft); }
 
   // ---------- Debts page ----------
   var dSel = null;
+  // Buy now, pay later: anything set to that type, plus the usual providers by name (store cards like Argos and Very included)
+  var BNPL_NAMES = /\b(clearpay|klarna|argos|very|zilch|laybuy|paypal\s*(pay\s*in\s*3|credit)|pay\s*in\s*3|afterpay|affirm|monzo\s*flex|deferit|openpay|payl8r|littlewoods|jd\s*williams|freemans|tymit)\b/i;
+  function isBnplDebt(l) { return l.kind === "bnpl" || BNPL_NAMES.test(l.name || ""); }
   function payoffText(l, st, bill) {
     if (st.balance <= 0) return { main: "Paid off", sub: "" };
     if (bill) {
@@ -3609,13 +3674,22 @@ td.paid { color: var(--ink-soft); }
     }
     if (!dSel || !state.loans.some(function (l) { return l.id === dSel; })) dSel = (ui.debtSel && state.loans.some(function (l) { return l.id === ui.debtSel; })) ? ui.debtSel : state.loans[0].id;
     $("dCaption").textContent = "Tap a debt to see its payments and details";
-    $("dTiles").innerHTML = state.loans.map(function (l, i) {
-      var st = loanState(l), nx = nextPayment(l), col = PALETTE[(i + 3) % PALETTE.length];
+    var tile = function (l) {
+      var st = loanState(l), nx = nextPayment(l);
       var line = st.balance <= 0 ? '<small style="color:var(--good)">Paid off</small>'
         : nx ? '<small class="nx' + (nx.date < new Date(new Date().setHours(0, 0, 0, 0)) ? " warn" : "") + '">Next ' + (nx.amt != null ? loanMoney(l, nx.amt) : "payment") + " · " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + "</small>"
         : "<small>" + (loanBill(l) ? "No upcoming payment" : "Not in Bills yet") + "</small>";
-      return '<button class="ca-card" style="--cc:' + col + '" data-dsel="' + l.id + '" aria-pressed="' + (l.id === dSel ? "true" : "false") + '">' +
+      return '<button class="ca-card" data-dsel="' + l.id + '" aria-pressed="' + (l.id === dSel ? "true" : "false") + '">' +
         "<span>" + esc(l.name) + "</span><b>" + loanMoney(l, st.balance) + "</b>" + line + "</button>";
+    };
+    var groups = [
+      { title: "Loans", items: state.loans.filter(function (l) { return !isBnplDebt(l); }) },
+      { title: "Buy now, pay later", items: state.loans.filter(isBnplDebt) }
+    ].filter(function (g) { return g.items.length; });
+    $("dTiles").innerHTML = groups.map(function (g) {
+      var owed = g.items.reduce(function (s2, l) { return s2 + loanToGbp(l, Math.max(0, loanState(l).balance)); }, 0);
+      return '<div class="d-group"><div class="d-group-head"><h3>' + g.title + "</h3><span>" + money(owed) + " owed · " + g.items.length + (g.items.length === 1 ? " account" : " accounts") + "</span></div>" +
+        '<div class="ca-cards">' + g.items.map(tile).join("") + "</div></div>";
     }).join("");
     $("dDetailWrap").hidden = false;
     $("dDetail").innerHTML = loanDetail(state.loans.find(function (l) { return l.id === dSel; }));
@@ -3941,9 +4015,9 @@ td.paid { color: var(--ink-soft); }
     document.querySelectorAll("[data-dfs]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.dfs === plan.strategy ? "true" : "false"); });
     if (document.activeElement !== $("dfExtra")) $("dfExtra").value = plan.extra || "";
     (function () {
-      var now = new Date(), d = yearData(now.getFullYear()), m = d.months[now.getMonth()], left = m.income - m.spent, bills = state.payday ? dueBeforePayday().total : 0, acct = accountsTotal();
+      var now = new Date(), d = yearData(now.getFullYear()), m = d.months[now.getMonth()], left = m.income - m.spent + openingAmount(ymOf(now)), bills = state.payday ? dueBeforePayday().total : 0, acct = accountsTotal();
       var bits = [];
-      if (m.income > 0) bits.push("Income left this month: " + money(left) + (bills > 0 ? ", with " + money(bills) + " of bills still due before payday" : ""));
+      if (m.income > 0 || openingAmount(ymOf(now))) bits.push("Income left this month: " + money(left) + (bills > 0 ? ", with " + money(bills) + " of bills still due before payday" : ""));
       if (acct) bits.push("In your accounts: " + money(acct.gbp));
       $("dfSpare").textContent = bits.length ? bits.join(" · ") + ". Choose an extra amount you can keep up every month." : "";
     })();
@@ -4220,12 +4294,14 @@ td.paid { color: var(--ink-soft); }
       }
       if (t.type === "cardpay" && cf === ym && bankById(t.from)) cardPays += t.amount;
     });
-    var left = inc - sp, should = left + onCredit - cardPays - debtPays + noAcctSp - noAcctInc, diff = tot.gbp - should;
+    var opening = openingAmount(ym), left = inc - sp + opening, should = left + onCredit - cardPays - debtPays + noAcctSp - noAcctInc, diff = tot.gbp - should;
     var row = function (label, v, sign, hint) {
       if (Math.abs(v) < 0.005) return "";
       return '<div class="kv"><span>' + label + (hint ? "<small>" + hint + "</small>" : "") + "</span><span>" + (sign > 0 ? "+ " : "− ") + money(Math.abs(v)) + "</span></div>";
     };
-    var html = '<div class="kv kv-total"><span>Income left this month</span><span>' + money(left) + "</span></div>" +
+    var html = (Math.abs(opening) >= 0.005 ? '<div class="kv"><span>Income minus spending</span><span>' + money(inc - sp) + "</span></div>" +
+        row("Already in your accounts when you started", opening, opening >= 0 ? 1 : -1, "Counted in " + ymLabel(ym) + " only, so income left matches your accounts. From next month it's income minus spending.") : "") +
+      '<div class="kv kv-total"><span>Income left this month</span><span>' + money(left) + "</span></div>" +
       row("Spent on credit cards and BNPL", onCredit, 1, "Counted as spending now, but it leaves your bank when you pay the card") +
       row("Credit cards paid off from your banks", cardPays, -1, "Leaves your bank, but isn't new spending") +
       row("BNPL and loan repayments from your banks", debtPays, -1, "For accounts where you track purchases, so the repayment isn't counted as spending") +
@@ -4242,7 +4318,15 @@ td.paid { color: var(--ink-soft); }
       (tot.n < state.banks.length ? '<p class="hint">Only accounts with a balance set are counted (' + tot.n + " of " + state.banks.length + ").</p>" : "");
     if (!ok && diff < 0) html += '<div class="recon-fix"><p>Started tracking partway through the month? Spending from before then isn\'t logged, so income left looks too high.</p>' +
       '<button class="small-btn" id="reconCatchUp">Record ' + money(-diff) + ' as spending before I started</button></div>';
+    // Which month counts the money that was already there
+    var oy = openingYm(), mopts = [], cy = ymOf(new Date());
+    for (var i = 0; i < 12; i++) mopts.push(ymAdd(cy, -i));
+    if (oy && mopts.indexOf(oy) < 0) mopts.push(oy);
+    html += '<label class="opening-pick">Count money already in my accounts in <select id="openingPick">' +
+      mopts.map(function (k) { return '<option value="' + k + '"' + (k === oy ? " selected" : "") + ">" + esc(ymLabel(k, { month: "long", year: "numeric" })) + "</option>"; }).join("") +
+      '<option value="off"' + (!oy ? " selected" : "") + ">Don't count it</option></select></label>";
     box.innerHTML = html;
+    $("openingPick").onchange = function () { state.openingYm = this.value; save(); render(); renderRecon(); toast(this.value === "off" ? "Income left is now income minus spending only" : "Starting money counted in " + ymLabel(this.value)); };
     var cu = $("reconCatchUp"); if (cu) cu.onclick = function () { catchUpSpending(-diff); };
     $("sum-recon").textContent = ok ? "Matches" : money(Math.abs(diff)) + " unexplained";
   }
