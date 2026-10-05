@@ -1461,7 +1461,7 @@ td.paid { color: var(--ink-soft); }
       var fb = bankById(c.payFrom);
       var meta = (c.dueDay ? "Due " + dShort(cr.date) : "No due day set") + (fb ? " · " + esc(bankLabel(fb)) : "") +
         (p ? " · paid " + dShort(new Date(p.date + "T00:00:00"))
-          : cv.src === "edited" ? ' · your amount · <button type="button" class="mini-link" data-cardminreset="' + c.id + '" data-occ="' + key + '">use ' + (cardMinPay(c).est ? "estimate" : "minimum") + "</button>"
+          : cv.src === "edited" ? ' · your amount · <button type="button" class="mini-link" data-cardminreset="' + c.id + '" data-occ="' + key + '">use ' + (cardMinBase(c).est ? "estimate" : "minimum") + "</button>"
           : cv.src === "set" ? " · minimum payment" : " · estimated minimum");
       var shown = p ? inCard(c, p) : cv.v;
       return '<div class="bill' + (p ? " is-paid" : "") + '">' +
@@ -2242,7 +2242,14 @@ td.paid { color: var(--ink-soft); }
     var raw = apr > 0 ? bal * (0.01 + monthlyRate(apr)) : bal * 0.03;
     return Math.min(bal, Math.max(raw, ph ? 0 : 5));
   }
+  // This month's minimum: the amount you entered for this month in Bills, if any, otherwise cardMinBase
   function cardMinPay(c) {
+    var e = cardMinEdit(c, ymOf(new Date()));
+    if (e != null) return { v: e, est: false, edited: true };
+    return cardMinBase(c);
+  }
+  // The minimum set in the card's Edit form, or the estimate from the live balance
+  function cardMinBase(c) {
     var bal = Math.max(0, cardStats(c, "").balance);
     if (c.minPay > 0) return { v: c.minPay, est: false };
     var apr = cardAprAt(c, 0);
@@ -2250,12 +2257,13 @@ td.paid { color: var(--ink-soft); }
   }
   // ---------- Card minimums in This month's bills ----------
   // Each card with a balance shows its minimum (from the card's Edit form, or the estimate on the Debts tab) as a bill.
-  // Change the amount in the bill row and that amount is kept for that month instead.
+  // Change the amount in the bill row and that amount is kept for that month instead. For the current month
+  // it is also used everywhere else (Debts tab, debt to income, debt-free plan); other months follow the estimate.
   function cardInBills(c) { return c.minInBills !== false; }
   function cardMinEdit(c, ym) { return c.minEdits && c.minEdits[ym] > 0 ? c.minEdits[ym] : null; }
   function cardMinFor(c, ym) {
     var e = cardMinEdit(c, ym); if (e != null) return { v: e, src: "edited" };
-    var mp = cardMinPay(c); return { v: mp.v, src: mp.est ? "estimate" : "set" };
+    var mp = cardMinBase(c); return { v: mp.v, src: mp.est ? "estimate" : "set" };
   }
   function cardMinDate(c, y, m) { var dim = daysInMonth(y, m); return new Date(y, m, Math.min(c.dueDay || dim, dim)); }
   // The payment that covers a month's minimum: one ticked off in Bills, or any other payment to the card that month
@@ -2275,13 +2283,14 @@ td.paid { color: var(--ink-soft); }
     return out;
   }
   function setCardMinEdit(c, ym, raw) {
-    var v = Math.round((parseFloat(raw) || 0) * 100) / 100, est = cardMinPay(c).v;
+    var v = Math.round((parseFloat(raw) || 0) * 100) / 100, est = cardMinBase(c).v;
+    if (v > 0 && Math.abs(v - cardMinFor(c, ym).v) < 0.005) return;   // nothing changed
     c.minEdits = c.minEdits || {};
     var reset = !(v > 0) || Math.abs(v - est) < 0.005;
     if (reset) delete c.minEdits[ym]; else c.minEdits[ym] = v;
     if (!Object.keys(c.minEdits).length) delete c.minEdits;
     save(); render();
-    toast(reset ? cardLabel(c) + " back to its " + (cardMinPay(c).est ? "estimated " : "") + "minimum" : cardLabel(c) + " set to " + cm(c, v) + " for " + ymLabel(ym));
+    toast(reset ? cardLabel(c) + " back to its " + (cardMinBase(c).est ? "estimated " : "") + "minimum" : cardLabel(c) + " set to " + cm(c, v) + " for " + ymLabel(ym));
   }
   function toggleCardMin(c, checked, ym, fromPayday) {
     var existing = cardMinPaid(c, ym);
@@ -2523,7 +2532,7 @@ td.paid { color: var(--ink-soft); }
     state.cards.forEach(function (c) {
       var mp = cardMinPay(c);
       cardPay += cardToGbp(c, mp.v); cardOwed += cardToGbp(c, Math.max(0, cardStats(c, "").balance));
-      cardRows += '<div class="kv"><span>' + esc(cardLabel(c)) + (mp.est ? " <small>(estimated: " + mp.how + (isPH(c) ? "" : ", at least £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
+      cardRows += '<div class="kv"><span>' + esc(cardLabel(c)) + (mp.edited ? " <small>(this month's amount from Bills)</small>" : mp.est ? " <small>(estimated: " + mp.how + (isPH(c) ? "" : ", at least £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
     });
 
     var L = loanSummary(false), loanOwed = L.owed, loanPay = L.pay, loanPayDti = L.payDti, loanInt = L.interest, loanRows = L.rows, billTotal = L.legacyTotal;
@@ -2556,7 +2565,7 @@ td.paid { color: var(--ink-soft); }
         (totalDebt > 0 ? '<div class="kv"><span>Total debt vs income</span><span>' + (totalDebt / avgIncome).toFixed(1) + "× a month's income</span></div>" : "");
     }
     var right = "<h3>Card minimum payments</h3>" +
-      (state.cards.some(function (c) { return !(c.minPay > 0); }) ? '<p class="hint" style="margin:0 0 4px">Estimates are rough. For exact figures, add each minimum from your statement in the card\'s Edit form on the Cards tab.</p>' : "") +
+      (state.cards.some(function (c) { return cardMinPay(c).est; }) ? '<p class="hint" style="margin:0 0 4px">Estimates are rough. For exact figures, type each minimum from your statement into the card\'s row in this month\'s Bills.</p>' : "") +
       (state.cards.length ? cardRows + '<div class="kv kv-total"><span>Card minimums total</span><span>' + money(cardPay) + "</span></div>" : '<p class="empty">No credit cards added.</p>') +
       '<h3 style="margin-top:16px">Loan and BNPL payments</h3>' + (function () {
         var live = state.loans.filter(function (l) { return loanState(l).balance > 0; });
@@ -3844,8 +3853,10 @@ td.paid { color: var(--ink-soft); }
       var bal = cardToGbp(c, Math.max(0, cardStats(c, "").balance));
       if (bal < 0.01) return;
       var fixed = c.minPay > 0 ? cardToGbp(c, c.minPay) : 0, floor = isPH(c) ? 0 : 5;
+      var thisMonth = cardMinEdit(c, ymOf(new Date())), thisMonthGbp = thisMonth != null ? cardToGbp(c, thisMonth) : null;
       list.push({ id: c.id, name: cardLabel(c), kind: "card", group: "Credit cards", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
-        min: function (b) { return Math.min(b, fixed > 0 ? fixed : estMin(b, this.apr, floor === 0)); } });
+        // m is the plan month (1 = this month); left out means this month. This month uses the amount entered in Bills.
+        min: function (b, m) { if (thisMonthGbp != null && (m == null || m === 1)) return Math.min(b, thisMonthGbp); return Math.min(b, fixed > 0 ? fixed : estMin(b, this.apr, floor === 0)); } });
     });
     state.loans.forEach(function (l) {
       var st = loanState(l); if (st.balance < 0.01) return;
@@ -3873,9 +3884,9 @@ td.paid { color: var(--ink-soft); }
     for (m = 1; m <= 600; m++) {
       var active = ds.filter(function (d) { return d.left > 0.005; }); if (!active.length) break;
       active.forEach(function (d) { if (d.aprAt) d.apr = d.aprAt(m - 1); var i = d.left * monthlyRate(d.apr); d.left += i; interest += i; });
-      if (m === 1 && !minimumsOnly) pool = active.reduce(function (x, d) { return x + d.min(d.left); }, 0) + extra;
+      if (m === 1 && !minimumsOnly) pool = active.reduce(function (x, d) { return x + d.min(d.left, m); }, 0) + extra;
       var budget = minimumsOnly ? Infinity : pool;
-      active.forEach(function (d) { var p = Math.min(d.left, d.min(d.left), budget); d.left -= p; budget -= p; if (m === 1) { d.m1min = p; d.m1extra = 0; } });
+      active.forEach(function (d) { var p = Math.min(d.left, d.min(d.left, m), budget); d.left -= p; budget -= p; if (m === 1) { d.m1min = p; d.m1extra = 0; } });
       if (!minimumsOnly && budget > 0.005) {
         active.slice().sort(dfOrder(strategy)).forEach(function (d) {
           if (budget <= 0.005 || d.left <= 0.005) return; var p = Math.min(d.left, budget); d.left -= p; budget -= p; if (m === 1) d.m1extra += p;
