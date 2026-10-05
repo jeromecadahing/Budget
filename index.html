@@ -34,7 +34,19 @@
   --line: #2E3E38; --brass: #D3A54A; --over: #E0756D; --good: #7CC3A0; --field: #0F1714;
 }
 *, *::before, *::after { box-sizing: inherit; }
+/* content inside <details> doesn't inherit from the page in some browsers, so set it directly */
+details > *, input, select, textarea, button { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.env-row > * { flex-shrink: 0; } .env-row .env-name { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 420px) {
+  .env-row { flex-wrap: wrap; row-gap: 4px; column-gap: 6px; }
+  .env-row .env-name { flex: 1 1 55%; }
+  .env-row .budget-in { width: 72px; }
+  .env-row > span[style*="ink-soft"] { display: none; }
+}
+/* grid and flex children may shrink below their content (stops wide dropdowns spilling out of forms) */
+.fields > *, .bill-form > *, .card-form > *, .m-fields > *, .calc-grid > *, .plan-row > * { min-width: 0; }
+select { max-width: 100%; }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
@@ -51,7 +63,6 @@ header.top { display: flex; justify-content: space-between; align-items: center;
 .month-nav button { background: none; border: 1px solid var(--line); border-radius: 999px; width: 36px; height: 36px; font-size: 18px; }
 .month-nav button:hover { border-color: var(--ink-soft); }
 .month-label { font-family: "Young Serif", Georgia, serif; font-size: 22px; min-width: 190px; text-align: center; }
-.tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .ghost { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 14px; }
 .ghost:hover { border-color: var(--ink-soft); }
 
@@ -127,7 +138,6 @@ header.top { display: flex; justify-content: space-between; align-items: center;
 .rh-add input { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 14px; }
 .rh-add input[type="number"] { width: 92px; }
 .rh-add label { display: flex; align-items: center; gap: 4px; }
-.rh-tag { font-size: 11px; font-weight: 600; color: var(--brass); margin-left: 6px; }
 .rate-line { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .rate-line span { color: var(--ink-soft); font-size: 13px; }
 .rate-line .small-btn { margin-left: auto; }
@@ -251,11 +261,9 @@ tr.carried-out td { opacity: .6; }
 .mini i { display: block; height: 100%; }
 .small-btn { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; font-size: 13px; }
 .small-btn:hover { border-color: var(--ink-soft); }
-.cc-pay { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
-.cc-pay input { flex: 1; min-width: 0; max-width: 200px; background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
 .add-card { margin-top: 12px; }
 .add-card summary { cursor: pointer; font-weight: 500; color: var(--ink-soft); }
-.card-form { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
+.card-form { display: grid; grid-template-columns: 1.3fr 0.8fr 1fr 1fr 1fr auto; gap: 8px; margin-top: 10px; align-items: end; }
 .card-form input, .card-form select { min-width: 0; width: 100%; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 15px; }
 @media (max-width: 620px) { .card-form { grid-template-columns: 1fr 1fr; } .card-form input:first-child { grid-column: 1 / -1; } }
 .cc-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
@@ -296,6 +304,8 @@ tr.carried-out td { opacity: .6; }
 .m-fields input:not([type="checkbox"]), .m-fields select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 16px; width: 100%; }
 .m-fields input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--ink); }
 .m-note { grid-column: 1 / -1; font-size: 13px; color: var(--ink-soft); margin: 0; }
+.m-more { grid-column: 1 / -1; justify-self: start; background: none; border: 0; padding: 4px 0; color: var(--ink-soft); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.m-more:hover { color: var(--ink); }
 .m-err { color: var(--over); font-size: 14px; min-height: 1.3em; margin: 10px 0 0; }
 .m-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .m-actions .primary { width: auto; margin: 0; padding: 9px 18px; }
@@ -322,6 +332,22 @@ tr.carried-out td { opacity: .6; }
 .bnpl-av small { display: inline; color: var(--ink-soft); }
 .bnpl-av .warn b { color: var(--over); }
 .bnpl-av .mini { margin-top: 4px; }
+.ac-sub { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 22px; margin: 28px 0 8px; }
+.acct { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.acct:last-child { border-bottom: 0; }
+.acct .nm { font-weight: 600; }
+.acct .sub { font-size: 13px; color: var(--ink-soft); grid-column: 1; }
+.acct .sub.warn { color: var(--over); }
+.acct .bal { text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+.acct .acts { grid-column: 2; display: flex; gap: 6px; justify-content: flex-end; }
+.acct .bal.unset { font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+.ca-card small.free { color: var(--good); }
+.ca-card small.over { color: var(--over); font-weight: 600; }
+.st-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.st-head h2 { margin: 0; }
+.st-head .acts { display: flex; gap: 6px; align-items: center; }
+.use-budgets { display: flex; gap: 8px; align-items: center; font-size: 14px; margin: -4px 0 10px; color: var(--ink-soft); }
+.use-budgets input { width: 18px; height: 18px; accent-color: var(--ink); }
 .ca-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; max-width: 760px; }
 .sm-only { display: none; }
 @media (max-width: 480px) {
@@ -381,8 +407,6 @@ tr.carried-out td { opacity: .6; }
 .df-order li.stuck span { color: var(--over); }
 .df-chart svg { display: block; width: 100%; height: auto; }
 .df-warn { font-size: 13px; color: var(--over); margin: 4px 0 0; }
-.ca-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.ca-top select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; min-width: 200px; }
 .ca-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
 @media (max-width: 620px) { .ca-flow { grid-template-columns: 1fr 1fr; } }
 .ca-flow div { background: var(--paper); border-radius: 10px; padding: 9px 11px; }
@@ -442,7 +466,7 @@ span.bill-amt.none { border: 0; background: transparent; }
 .bank-row span.c { color: var(--ink-soft); font-size: 13px; }
 .bank-row .edit-btn { margin-left: auto; }
 .bank-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.bank-add input { flex: 1; min-width: 140px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
+.bank-add input { flex: 1; min-width: 120px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 .bank-add select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 #bankList:empty::before { content: "No accounts yet. Add the banks your bills come out of."; display: block; color: var(--ink-soft); font-size: 14px; padding: 8px 0 0; }
 .pd-split { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink-soft); }
@@ -450,6 +474,9 @@ span.bill-amt.none { border: 0; background: transparent; }
 .add-bill summary { cursor: pointer; font-weight: 500; color: var(--ink-soft); }
 .bill-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
 @media (max-width: 620px) { .bill-form { grid-template-columns: 1fr 1fr; } }
+.bill-form .auto-check { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+.bill-form .auto-check input { width: 18px; height: 18px; accent-color: var(--ink); }
+.auto-tag { font-size: 11px; font-weight: 600; color: var(--good); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; margin-left: 4px; white-space: nowrap; }
 .bill-form label { display: flex; flex-direction: column; font-size: 13px; color: var(--ink-soft); gap: 4px; }
 .bill-form input, .bill-form select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; }
 .pay-tag { display: block; font-size: 12px; color: var(--ink-soft); }
@@ -465,7 +492,7 @@ td.paid { color: var(--ink-soft); }
   <div class="topbar">
   <nav class="tabs" role="tablist" aria-label="View">
     <button role="tab" id="tabMonth" aria-selected="true"><span class="lg-only">This month</span><span class="sm-only">Month</span></button>
-    <button role="tab" id="tabCards" aria-selected="false">Cards</button>
+    <button role="tab" id="tabCards" aria-selected="false">Accounts</button>
     <button role="tab" id="tabDebts" aria-selected="false">Debts</button>
     <button role="tab" id="tabPlan" aria-selected="false">Plan</button>
     <button role="tab" id="tabSummary" aria-selected="false"><span class="lg-only">Summary</span><span class="sm-only">Year</span></button>
@@ -486,8 +513,8 @@ td.paid { color: var(--ink-soft); }
       <div id="pActions">
       <div class="pactions">
         <span class="pbackup" id="pBackupInfo"></span>
-        <button class="small-btn" id="backup">Back up this profile</button>
-        <button class="small-btn" id="restoreBtn">Restore from backup</button>
+        <button class="small-btn" id="backup" hidden>Back up this profile</button>
+        <button class="small-btn" id="restoreBtn" hidden>Restore from backup</button>
         <input type="file" id="restoreFile" accept=".json,application/json" hidden>
       </div>
       <div class="pactions">
@@ -544,6 +571,7 @@ td.paid { color: var(--ink-soft); }
       <div class="seg" role="group" aria-label="Transaction type">
         <button type="button" data-type="expense" aria-pressed="true">Expense</button>
         <button type="button" data-type="income" aria-pressed="false">Income</button>
+        <button type="button" data-type="transfer" aria-pressed="false">Transfer</button>
       </div>
       <div class="fields">
         <label class="full" id="linkWrap">Payment for<select id="link"></select></label>
@@ -551,7 +579,11 @@ td.paid { color: var(--ink-soft); }
         <label>Currency<select id="cur"><option value="GBP">£ GBP</option><option value="PHP">₱ PHP</option></select></label>
         <label>Date<input id="date" type="date"></label>
         <label id="catWrap">Category<select id="cat"></select></label>
-        <label class="full" id="payWrap">Paid with<select id="pay"></select></label>
+        <label class="full" id="payWrap"><span id="payLabel">Paid with</span><select id="pay"></select></label>
+        <label class="full" id="intoWrap" hidden>Paid into<select id="into"></select></label>
+        <label id="tFromWrap" hidden>From<select id="tFrom"></select></label>
+        <label id="tToWrap" hidden>To<select id="tTo"></select></label>
+        <label class="full" id="tRecvWrap" hidden><span id="tRecvLabel">Amount received</span><input id="tRecv" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
         <div class="full plan-row" id="planWrap" hidden>
           <label>Pay over<select id="planTerm"><option value="0">In full (next payment)</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
           <label>Fee (£)<input id="planFee" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></label>
@@ -564,7 +596,7 @@ td.paid { color: var(--ink-soft); }
       <p class="err" id="err"></p>
 
       <div class="rate">
-        <div class="rate-line"><b id="rateText">Loading rate…</b><span id="rateMeta"></span><button class="small-btn" id="rateEdit" aria-expanded="false">Edit</button></div>
+        <div class="rate-line"><b id="rateText">Loading rate…</b><span id="rateMeta"></span><button class="small-btn" id="rateEdit" aria-expanded="false">Change rate</button></div>
         <div class="rate-actions" id="rateActions" hidden>
           <button class="ghost" id="refreshRate">Refresh live rate</button>
           <button class="ghost" id="wiseToggle">Use Wise rate</button>
@@ -602,12 +634,13 @@ td.paid { color: var(--ink-soft); }
     </section>
 
     <section class="panel fold" data-sec="budgets">
-      <h2><button class="sec-toggle" aria-expanded="true"><span>Monthly budgets</span><span class="sec-sum" id="sum-budgets"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
+      <h2><button class="sec-toggle" aria-expanded="true"><span id="budgetsTitle">Categories</span><span class="sec-sum" id="sum-budgets"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
+      <label class="use-budgets"><input type="checkbox" id="useBudgets"> Use monthly budgets (a spending limit for each category)</label>
       <div id="envelopes"></div>
       <div class="add-cat">
         <input id="newCat" type="text" placeholder="New category or subcategory" maxlength="30" aria-label="New category name">
         <select id="newCatParent" aria-label="Where to add it"></select>
-        <button class="ghost" id="addCat">Add</button>
+        <button class="ghost" id="addCat">Add category</button>
       </div>
     </section>
 
@@ -626,18 +659,10 @@ td.paid { color: var(--ink-soft); }
           <label id="bDueWrap">Due day each month<input id="bDue" type="number" min="1" max="31" step="1" inputmode="numeric" placeholder="1–31"></label>
           <label id="bStartWrap" hidden>Next due date<input id="bStart" type="date"></label>
           <label>Category<select id="bCat"></select></label>
-          <label>Paid with<select id="bPay"></select></label>
+          <label>Paid from<select id="bPay"></select></label>
+          <label class="auto-check"><input type="checkbox" id="bAuto"> Paid automatically (direct debit, standing order or recurring card payment)</label>
         </div>
         <button class="ghost" id="addBill">Add bill</button>
-      </details>
-      <details class="add-bill" id="banksBox">
-        <summary>Bank accounts for debit payments <span id="bankCount"></span></summary>
-        <div id="bankList"></div>
-        <div class="bank-add">
-          <input id="bankName" type="text" maxlength="30" placeholder="e.g. Monzo, BPI" aria-label="Bank account name">
-          <select id="bankCur" aria-label="Bank country"><option value="GBP">UK bank (£)</option><option value="PHP">PH bank (₱)</option></select>
-          <button class="ghost" id="addBank">Add account</button>
-        </div>
       </details>
     </section>
 
@@ -651,6 +676,25 @@ td.paid { color: var(--ink-soft); }
   </div>
 
   <div id="cardsView" hidden>
+    <section class="hero">
+      <p class="hero-caption">In your bank accounts</p>
+      <div class="left" id="acBig">–</div>
+      <div class="hero-figs" id="acFigs"></div>
+    </section>
+    <section class="panel wide">
+      <h2>Bank accounts</h2>
+      <div id="bankList"></div>
+      <details class="add-bill" id="addBankBox">
+        <summary>Add a bank account</summary>
+        <div class="bank-add">
+          <input id="bankName" type="text" maxlength="30" placeholder="e.g. HSBC, BPI" aria-label="Bank account name">
+          <select id="bankCur" aria-label="Bank country"><option value="GBP">UK bank (£)</option><option value="PHP">PH bank (₱)</option></select>
+          <input id="bankBal" type="number" step="0.01" inputmode="decimal" placeholder="Balance now" aria-label="Balance right now">
+          <button class="ghost" id="addBank">Add account</button>
+        </div>
+      </details>
+    </section>
+    <h2 class="ac-sub">Credit cards</h2>
     <header class="top">
       <div class="month-nav">
         <button id="caPrev" aria-label="Previous month">‹</button>
@@ -665,13 +709,12 @@ td.paid { color: var(--ink-soft); }
     <section class="panel wide">
       <div id="cardAct"></div>
     </section>
-    <section class="panel wide fold" data-sec="cards">
-      <h2><button class="sec-toggle" aria-expanded="true"><span>Your cards</span><span class="sec-sum" id="sum-cards"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
-      <div id="cards"></div>
+    <section class="panel wide">
       <details class="add-card">
-        <summary>Add a card</summary>
+        <summary>Add a credit card</summary>
         <div class="card-form">
           <input id="cardName" type="text" placeholder="Card name, e.g. BDO" maxlength="30" aria-label="Card name">
+          <input id="cardLast4" type="text" inputmode="numeric" maxlength="4" placeholder="Last 4 (optional)" aria-label="Last 4 digits of the card number">
           <select id="cardCur" aria-label="Card country"><option value="GBP">UK card (£)</option><option value="PHP">PH card (₱)</option></select>
           <input id="cardOpen" type="number" step="0.01" min="0" inputmode="decimal" placeholder="Owed now" aria-label="Current balance owed">
           <input id="cardLimit" type="number" step="1" min="0" inputmode="decimal" placeholder="Limit (optional)" aria-label="Credit limit">
@@ -693,6 +736,7 @@ td.paid { color: var(--ink-soft); }
           <button type="button" data-dfs="snowball" aria-pressed="false">Smallest balance first</button>
         </div>
         <label class="df-extra">Extra each month (£)<input id="dfExtra" type="number" min="0" step="10" inputmode="decimal" placeholder="0"></label>
+        <p class="hint" id="dfSpare" style="margin:0;flex-basis:100%"></p>
       </div>
       <div id="dfOut"></div>
     </section>
@@ -952,7 +996,47 @@ td.paid { color: var(--ink-soft); }
     }).join("");
   }
   function cardById(id) { return state.cards.find(function (c) { return c.id === id; }); }
+  function cardLabel(c) { return c ? c.name + (c.last4 ? " ••" + c.last4 : "") : ""; }
   function bankById(id) { return state.banks.find(function (b) { return b.id === id; }); }
+  // ---------- Bank account balances ----------
+  // A bank's balance = what you told the tracker (bal, at balAt/balDate) plus everything logged against it since.
+  function inBankCur(b, t, amtOrig) {
+    var orig = amtOrig != null ? amtOrig : t.orig, cur = t.cur;
+    if (cur === b.cur) return orig;
+    var gbp = cur === "PHP" ? orig * (t.rate || (state.rate ? state.rate.value : 0)) : orig;
+    return b.cur === "GBP" ? gbp : (state.rate ? gbp / state.rate.value : 0);
+  }
+  function bankDelta(b, t) {
+    if (t.type === "income" && t.into === b.id) return inBankCur(b, t);
+    if (t.type === "expense" && t.pay === b.id) return -inBankCur(b, t);
+    if (t.type === "cardpay" && t.from === b.id) return -inBankCur(b, t);
+    if (t.type === "transfer") {
+      if (t.from === b.id) return -t.amtFrom;
+      if (t.to === b.id) return t.amtTo;
+    }
+    return 0;
+  }
+  function bankCounts(b, t) {
+    if (t.date > b.balDate) return true;
+    return t.date === b.balDate && (t.created || 0) > (b.balAt || 0);
+  }
+  function bankBalance(b) {
+    if (b.bal == null || !b.balDate) return null;
+    var v = b.bal;
+    state.tx.forEach(function (t) { var d = bankDelta(b, t); if (d && bankCounts(b, t)) v += d; });
+    return Math.round(v * 100) / 100;
+  }
+  function bankMoney(b, n) { return b.cur === "PHP" ? peso(n) : money(n); }
+  function bankToGbp(b, n) { return b.cur === "PHP" ? (state.rate ? n * state.rate.value : 0) : n; }
+  function accountsTotal() {
+    var tracked = state.banks.filter(function (b) { return bankBalance(b) != null; });
+    return tracked.length ? { gbp: tracked.reduce(function (s2, b) { return s2 + bankToGbp(b, bankBalance(b)); }, 0), n: tracked.length } : null;
+  }
+  function bankOptionsHtml(blank) {
+    return (blank ? '<option value="">' + blank + "</option>" : "") + state.banks.map(function (b) {
+      return '<option value="' + b.id + '">' + esc(b.name) + (b.cur === "PHP" ? " (₱)" : "") + "</option>"; }).join("");
+  }
+  function usingBudgets() { return state.useBudgets != null ? !!state.useBudgets : mainCats().some(function (c) { return c.budget > 0; }); }
   function bnplById(id) { return state.loans.find(function (l) { return l.id === id && l.kind === "bnpl"; }); }
   // A payment towards a BNPL whose purchases you record isn't new spending (the purchases already were), like paying off a card
   function payTargetLoan(t) {
@@ -970,7 +1054,7 @@ td.paid { color: var(--ink-soft); }
   // "Cash or debit" | "Monzo" | "Amex" — and how to phrase it
   function payInfo(p) {
     if (!p || p === "cash") return { kind: "cash", name: "Cash or debit" };
-    var c = cardById(p); if (c) return { kind: "card", name: c.name };
+    var c = cardById(p); if (c) return { kind: "card", name: cardLabel(c) };
     var b = bankById(p); if (b) return { kind: "bank", name: b.name };
     var n = bnplById(p); if (n) return { kind: "card", name: n.name, bnpl: true };
     return { kind: "gone", name: "Removed account" };
@@ -980,7 +1064,7 @@ td.paid { color: var(--ink-soft); }
     if (state.banks.length) o += '<optgroup label="Bank accounts (debit)">' + state.banks.map(function (b) {
       return '<option value="' + b.id + '">' + esc(b.name) + (b.cur === "PHP" ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
     if (state.cards.length) o += '<optgroup label="Credit cards">' + state.cards.map(function (c) {
-      return '<option value="' + c.id + '">' + esc(c.name) + (isPH(c) ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
+      return '<option value="' + c.id + '">' + esc(cardLabel(c)) + (isPH(c) ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
     if (bnplLoans().length) o += '<optgroup label="Buy now, pay later">' + bnplLoans().map(function (l) {
       return '<option value="' + l.id + '">' + esc(l.name) + (l.cur === "PHP" ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
     return o;
@@ -1220,7 +1304,7 @@ td.paid { color: var(--ink-soft); }
       (r.items.length ? '<ul class="pd-list">' + r.items.map(function (i) {
         var b = i.bill;
         return '<li><input type="checkbox" class="bill-check" data-pdpay="' + b.id + '" data-occ="' + i.key + '" aria-label="Mark ' + esc(b.name) + ' as paid">' +
-          "<div>" + esc(b.name) + ' <span class="' + (i.late ? "late" : "bill-meta") + '">' + (i.late ? "overdue, was due " : "due ") + fmt(i.due) +
+          "<div>" + esc(b.name) + (b.auto ? '<span class="auto-tag">auto</span>' : "") + ' <span class="' + (i.late ? "late" : "bill-meta") + '">' + (i.late ? "overdue, was due " : "due ") + fmt(i.due) +
           (function () { var pi = payInfo(b.pay); return pi.kind === "bank" ? " · from " + esc(pi.name) : pi.kind === "card" ? " · on " + esc(pi.name) : ""; })() + "</span></div>" +
           '<span class="amt">' + (function () {
             var d = billDue(b, i.key), f = b.cur === "PHP" ? peso : money;
@@ -1238,7 +1322,6 @@ td.paid { color: var(--ink-soft); }
     var pprev = $("bPay").value;
     $("bPay").innerHTML = payOptionsHtml();
     if (pprev && validPay(pprev)) $("bPay").value = pprev;
-    renderBanks();
 
     var y = view.y, m = view.m, dim = daysInMonth(y, m);
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -1261,7 +1344,7 @@ td.paid { color: var(--ink-soft); }
       var b = r.b, o = r.o, p = occPayment(b, o.key), diff = Math.round((o.date - t0) / 86400000);
       var status, cls;
       var planZero = !p && nothingDue(b, o.key);
-      if (p) { status = "Paid"; cls = "paid"; paidN++; }
+      if (p) { status = p.auto ? "Paid automatically" : "Paid"; cls = "paid"; paidN++; }
       else if (billFinished(b)) { status = "Loan paid off"; cls = "paid"; paidN++; }
       else if (planZero) { status = planLoanFor(b) ? "Nothing due" : "Nothing left to pay"; cls = "paid"; nothingN++; }
       else {
@@ -1269,11 +1352,13 @@ td.paid { color: var(--ink-soft); }
         if (diff < 0) { status = "Overdue"; cls = "late"; }
         else if (diff === 0) { status = "Due today"; cls = "soon"; }
         else if (diff <= 3) { status = "Due in " + diff + (diff === 1 ? " day" : " days"); cls = "soon"; }
-        else { status = "Not paid yet"; cls = "due"; }
+        else { status = b.auto ? (isVar(b) && !(billDue(b, o.key) > 0) ? "Auto · amount varies" : "Auto on " + o.date.toLocaleDateString(undefined, { day: "numeric", month: "short" })) : "Not paid yet"; cls = "due"; }
+        if (b.auto && diff < 0 && isVar(b) && !(billDue(b, o.key) > 0)) { status = "Enter amount taken"; cls = "soon"; }
       }
       var c = catById(b.category), pi = payInfo(b.pay), f = freqOf(b);
       var meta = "Due " + o.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) +
         (pi.kind === "bank" ? " · " + esc(pi.name) : pi.kind === "card" ? " · " + esc(pi.name) + (pi.bnpl ? " BNPL" : " card") : pi.kind === "gone" ? " · removed account" : "") +
+        (b.auto ? (pi.kind === "bank" ? " · direct debit" : " · auto") : "") +
         (p ? " · paid " + new Date(p.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "");
       var est = billDue(b, o.key), shown = p ? (b.cur === "PHP" ? p.orig : p.amount) : (est > 0 ? est : (isVar(b) || nothingDue(b, o.key) ? null : b.amount)), idk = b.id + "_" + o.key;
       return '<div class="bill' + (p ? " is-paid" : "") + '">' +
@@ -1304,15 +1389,40 @@ td.paid { color: var(--ink-soft); }
       (owing > 0 ? " · <b>" + money(owing) + "</b> still to pay" : totalN && paidN === totalN ? " · all done for " + label : "");
   }
 
+  // Automatic bills: record the payment on its due date (from when it was set to automatic)
+  function processAutoBills() {
+    var added = 0, t0b = new Date(); t0b.setHours(0, 0, 0, 0);
+    var tomorrow = new Date(t0b.getFullYear(), t0b.getMonth(), t0b.getDate() + 1);
+    state.bills.forEach(function (b) {
+      if (!b.auto || !b.autoSince || !validPay(b.pay) || b.pay === "cash") return;
+      var from = parseDay(b.autoSince), floor = new Date(t0b.getFullYear(), t0b.getMonth() - 2, 1);
+      if (from < floor) from = floor;
+      occurrences(b, from, tomorrow).forEach(function (o) {
+        if (occPayment(b, o.key) || (b.autoSkip && b.autoSkip[o.key]) || billFinished(b) || nothingDue(b, o.key)) return;
+        var amt = billDue(b, o.key); if (!(amt > 0)) return;          // varies: wait for the real amount
+        var rate = 1;
+        if (b.cur === "PHP") { if (!state.rate) return; rate = state.rate.value; }
+        var orig = Math.round(amt * 100) / 100, gbp = Math.round(orig * rate * 100) / 100;
+        state.tx.push({ id: "auto_" + b.id + "_" + o.key, type: "expense", auto: true, bill: b.id, billOcc: o.key, billMonth: ymOf(o.date), created: Date.now(),
+          cur: b.cur, orig: orig, rate: rate, amount: gbp, date: dayKey(o.date),
+          category: catById(b.category) ? b.category : (state.categories[0] ? state.categories[0].id : null),
+          pay: b.pay, cardAmt: cardById(b.pay) ? cardAmtFor(b.pay, b.cur, orig, gbp) : undefined, note: b.name });
+        added++;
+      });
+    });
+    if (added) { save(); setTimeout(function () { toast(added === 1 ? "1 automatic payment recorded" : added + " automatic payments recorded"); }, 300); }
+  }
   var allBillsOpen = false;
   document.addEventListener("toggle", function (e) { if (e.target.classList && e.target.classList.contains("all-bills")) allBillsOpen = e.target.open; }, true);
   function toggleBill(b, checked, key, fromPayday, amtOverride) {
     var existing = occPayment(b, key);
     if (!checked) {
+      if (existing && existing.auto) { b.autoSkip = b.autoSkip || {}; b.autoSkip[key] = true; }
       if (existing) state.tx = state.tx.filter(function (t) { return t !== existing; });
       save(); render(); toast(b.name + " marked as not paid"); return;
     }
     if (existing) return;
+    if (b.autoSkip && b.autoSkip[key]) delete b.autoSkip[key];
     var amtEl = fromPayday ? null : $("bamt-" + b.id + "_" + key);
     var v = amtOverride > 0 ? amtOverride : amtEl ? parseFloat(amtEl.value) : (billDue(b, key) || b.amount);
     if (!(v > 0)) {
@@ -1340,7 +1450,6 @@ td.paid { color: var(--ink-soft); }
     save(); render(); toast(b.name + " marked as paid");
   }
 
-  function monthTx() { var k = monthKey(); return state.tx.filter(function (t) { return t.date.slice(0, 7) === k; }); }
   // Income carry-over: pay that lands on (or up to 3 days before) a late-month payday counts towards the next month.
   function nextYm(ym) { var y = +ym.slice(0, 4), m = +ym.slice(5, 7) + 1; if (m > 12) { m = 1; y++; } return y + "-" + pad(m); }
   function ymLabel(ym, opt) { return new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString(undefined, opt || { month: "long" }); }
@@ -1359,7 +1468,7 @@ td.paid { color: var(--ink-soft); }
   }
   function defaultMonthFor(type, date) { return type === "income" ? defaultIncomeMonth(date) : defaultSpendMonth(date); }
   function countsFor(t) {
-    if (t.type === "cardpay") return t.date.slice(0, 7);
+    if (t.type === "cardpay" || t.type === "transfer") return t.date.slice(0, 7);
     return t.forMonth || defaultMonthFor(t.type, t.date);
   }
   // What the month view shows: everything dated this month, plus income carried in from the month before
@@ -1370,30 +1479,40 @@ td.paid { color: var(--ink-soft); }
   function toast(msg) { var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove("show"); }, 2200); }
 
   function render() {
+    processAutoBills();
     var label = new Date(view.y, view.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     $("monthLabel").textContent = label;
 
     var txs = monthView(), mk0 = monthKey();
     var income = 0, spent = 0, byCat = {}, phpSpent = 0, phpSpentGbp = 0;
     txs.forEach(function (t) {
-      if (t.type === "cardpay" || isTransfer(t)) return;
+      if (t.type === "cardpay" || t.type === "transfer" || isTransfer(t)) return;
       if (countsFor(t) !== mk0) return;
       if (t.type === "expense" && t.cur === "PHP") { phpSpent += t.orig; phpSpentGbp += t.amount; }
       if (t.type === "income") income += t.amount;
       else { spent += t.amount; byCat[t.category] = (byCat[t.category] || 0) + t.amount; }
     });
-    var totalBudget = mainCats().reduce(function (s, c) { return s + (c.budget || 0); }, 0);
+    var budgetsOn = usingBudgets();
+    var totalBudget = budgetsOn ? mainCats().reduce(function (s, c) { return s + (c.budget || 0); }, 0) : 0;
 
-    // Hero: always measured against your monthly budgets, so it doesn't jump when income arrives
-    var left = totalBudget - spent;
-    $("heroCaption").textContent = totalBudget > 0 ? "Left of your " + money(totalBudget) + " monthly budget" : "Spent this month · set budgets below to see what's left";
-    $("left").textContent = totalBudget > 0 ? money(left) : money(spent);
-    $("left").classList.toggle("neg", totalBudget > 0 && left < 0);
-
+    // Hero: left in your budgets if you use them, otherwise income left this month
+    var left = totalBudget - spent, incLeft = income - spent;
+    if (totalBudget > 0) {
+      $("heroCaption").textContent = "Left of your " + money(totalBudget) + " monthly budget";
+      $("left").textContent = money(left); $("left").classList.toggle("neg", left < 0);
+    } else if (income > 0) {
+      $("heroCaption").textContent = "Income left this month";
+      $("left").textContent = money(incLeft); $("left").classList.toggle("neg", incLeft < 0);
+    } else {
+      $("heroCaption").textContent = "Spent this month · add your income to see what's left";
+      $("left").textContent = money(spent); $("left").classList.remove("neg");
+    }
+    var acct = accountsTotal();
     $("heroFigs").innerHTML =
       "<span>Income <b>" + money(income) + "</b></span>" +
       "<span>Spent <b>" + money(spent) + "</b></span>" +
-      (income > 0 ? "<span>Income left <b" + (income - spent < 0 ? ' style="color:var(--over)"' : "") + ">" + money(income - spent) + "</b></span>" : "") +
+      (totalBudget > 0 && income > 0 ? "<span>Income left <b" + (incLeft < 0 ? ' style="color:var(--over)"' : "") + ">" + money(incLeft) + "</b></span>" : "") +
+      (acct ? "<span>In your accounts <b>" + money(acct.gbp) + "</b></span>" : "") +
       (state.payday && state.bills.length && ymOf(new Date()) === monthKey() && dueBeforePayday().total > 0
         ? "<span>Bills before payday <b>" + money(dueBeforePayday().total) + "</b></span>" : "") +
       (phpSpent > 0 ? "<span>Spent in pesos <b>" + peso(phpSpent) + "</b><small>" + money(phpSpentGbp) + "</small></span>" : "");
@@ -1409,45 +1528,29 @@ td.paid { color: var(--ink-soft); }
 
     var mk = monthKey();
     renderBills(mk);
-    $("cards").innerHTML = state.cards.length ? cardGroups().map(function (g) {
-      var tot = 0;
-      var rows = g.cards.map(function (c) {
-        var st = cardStats(c, mk), lim = c.limit || 0; tot += st.balance;
-        var pct = lim > 0 ? Math.max(0, Math.min(100, st.balance / lim * 100)) : 0, free = lim - st.balance;
-        var pt = promoText(c);
-        return '<div class="cc-row">' +
-          '<div><div class="cc-name"><span class="dot" style="background:' + c.color + '"></span><span>' + esc(c.name) + "</span></div>" + (pt ? '<small style="display:block;font-size:12px;color:var(--ink-soft)">' + esc(pt) + "</small>" : "") +
-          (lim > 0 ? '<div class="mini"><i style="width:' + pct + "%;background:" + (pct >= 90 ? "var(--over)" : c.color) + '"></i></div>' : "") + "</div>" +
-          '<div class="cc-bal">' + cm(c, st.balance) + (lim > 0 ? '<small class="' + (pct >= 90 ? "low" : "") + '">' + (free < 0 ? cm(c, -free) + " over limit" : cm(c, free) + " free") + "</small>" : "<small>owed</small>") + "</div>" +
-          '<button class="small-btn" data-startpay="card:' + c.id + '">Pay</button>' +
-          '<button class="edit-btn" data-editcard="' + c.id + '" aria-label="Edit ' + esc(c.name) + '">Edit</button>' +
-          "</div>";
-      }).join("");
-      var gbpNote = g.key === "PHP" && state.rate ? " (≈ " + money(tot * state.rate.value) + ")" : "";
-      return '<div class="cc-group"><div class="cc-head"><b>' + g.title + "</b><span>" + (g.key === "PHP" ? peso(tot) : money(tot)) + " owed" + gbpNote + "</span></div>" + rows + "</div>";
-    }).join("")
-      : '<p class="empty">Add a credit card below, then choose it under "Paid with" when you log an expense.</p>';
 
     // Envelopes
+    $("useBudgets").checked = budgetsOn;
+    $("budgetsTitle").textContent = budgetsOn ? "Monthly budgets" : "Categories";
     $("envelopes").innerHTML = mainCats().map(function (c) {
       var subs = subsOf(c.id), s = (byCat[c.id] || 0) + subs.reduce(function (t, sc) { return t + (byCat[sc.id] || 0); }, 0);
-      var b = c.budget || 0, over = b > 0 && s > b;
-      var pct = b > 0 ? Math.min(100, s / b * 100) : 0;
-      var note = b > 0 ? (over ? money(s - b) + " over" : money(b - s) + " left") : "No budget set";
+      var b = budgetsOn ? (c.budget || 0) : 0, over = b > 0 && s > b;
+      var pct = b > 0 ? Math.min(100, s / b * 100) : (spent > 0 ? s / spent * 100 : 0);
+      var note = b > 0 ? (over ? money(s - b) + " over" : money(b - s) + " left") : budgetsOn ? "No budget set" : (spent > 0 ? Math.round(s / spent * 100) + "% of this month's spending" : "Nothing spent yet");
       return '<div class="env">' +
         '<div class="env-row"><span class="dot" style="background:' + c.color + '"></span>' +
         '<span class="env-name">' + esc(c.name) + '</span>' +
         '<span class="env-amt' + (over ? " over" : "") + '">' + money(s) + "</span>" +
-        '<span style="color:var(--ink-soft)">/</span>' +
-        '<input class="budget-in" type="number" min="0" step="1" inputmode="decimal" value="' + (b || "") + '" placeholder="0" data-budget="' + c.id + '" aria-label="Monthly budget for ' + esc(c.name) + '">' +
+        (budgetsOn ? '<span style="color:var(--ink-soft)">/</span>' +
+        '<input class="budget-in" type="number" min="0" step="1" inputmode="decimal" value="' + (c.budget || "") + '" placeholder="0" data-budget="' + c.id + '" aria-label="Monthly budget for ' + esc(c.name) + '">' : "") +
         '<button class="edit-btn" data-editcat="' + c.id + '" aria-label="Edit ' + esc(c.name) + '">Edit</button></div>' +
-        (b > 0 ? '<div class="track"><i style="width:' + pct + "%;background:" + (over ? "var(--over)" : c.color) + '"></i></div>' : "") +
+        (b > 0 || (!budgetsOn && s > 0) ? '<div class="track"><i style="width:' + pct + "%;background:" + (over ? "var(--over)" : c.color) + '"></i></div>' : "") +
         '<div class="env-note">' + note + "</div>" +
         (subs.length ? '<div class="subs">' + subs.map(function (sc) {
           return '<button class="edit-btn sub-chip" data-editcat="' + sc.id + '" aria-label="Edit ' + esc(sc.name) + '">' + esc(sc.name) + " <b>" + money(byCat[sc.id] || 0) + "</b></button>";
         }).join("") + (byCat[c.id] ? '<span class="sub-chip plain">General <b>' + money(byCat[c.id]) + "</b></span>" : "") + "</div>" : "") +
         "</div>";
-    }).join("") || '<p class="empty">Add a category to start budgeting.</p>';
+    }).join("") || '<p class="empty">Add a category, like Groceries or House Bills.</p>';
     var pc = $("newCatParent"), pcv = pc.value;
     pc.innerHTML = '<option value="">As a main category</option>' + mainCats().map(function (m) { return '<option value="' + m.id + '">Under ' + esc(m.name) + "</option>"; }).join("");
     if (pcv && catById(pcv)) pc.value = pcv;
@@ -1465,8 +1568,14 @@ td.paid { color: var(--ink-soft); }
           var cf = countsFor(t);
           var carryTag = cf !== t.date.slice(0, 7)
               ? '<span class="pay-tag carry">' + (cf === mk0 ? "Carried over from " + ymLabel(t.date.slice(0, 7), { month: "short" }) : "Counts for " + ymLabel(cf)) + "</span>" : "";
-          var catCell = t.type === "income" ? "Income" + carryTag
-            : t.type === "cardpay" ? '<span class="cat-tag"><span class="dot" style="background:' + (card ? card.color : "#999") + '"></span>Paid ' + esc(cardName) + "</span>"
+          if (t.type === "transfer") {
+            var fb = bankById(t.from), tb = bankById(t.to);
+            return "<tr><td>" + d0(t) + '</td><td><span class="cat-tag">Transfer</span><span class="pay-tag">' + esc(fb ? fb.name : "Removed account") + " → " + esc(tb ? tb.name : "Removed account") + " · not spending</span></td><td>" + esc(t.note || "") + "</td>" +
+              '<td class="num paid">' + (fb ? bankMoney(fb, t.amtFrom) : money(t.amtFrom)) + (fb && tb && fb.cur !== tb.cur ? '<span class="orig">→ ' + bankMoney(tb, t.amtTo) + "</span>" : "") + "</td>" +
+              '<td><button class="edit-btn" data-edittx="' + t.id + '" aria-label="Edit transfer">Edit</button></td></tr>';
+          }
+          var catCell = t.type === "income" ? "Income" + (bankById(t.into) ? '<span class="pay-tag">Into ' + esc(bankById(t.into).name) + "</span>" : "") + carryTag
+            : t.type === "cardpay" ? '<span class="cat-tag"><span class="dot" style="background:' + (card ? card.color : "#999") + '"></span>Paid ' + esc(cardName) + "</span>" + (bankById(t.from) ? '<span class="pay-tag">From ' + esc(bankById(t.from).name) + "</span>" : "")
             : '<span class="cat-tag"><span class="dot" style="background:' + catColor(t.category) + '"></span>' + esc(catLabel(t.category)) + "</span>" +
               (function () { var pi = payInfo(t.pay); return pi.kind === "cash" ? "" : '<span class="pay-tag">' + (pi.kind === "bank" ? "From " : pi.kind === "card" ? "On " : "") + esc(pi.name) + "</span>"; })() +
               (t.loan ? (function () { var ln = state.loans.find(function (x) { return x.id === t.loan; }); return '<span class="pay-tag">Pays off ' + esc(ln ? ln.name : "removed loan") + "</span>"; })() : "") +
@@ -1484,22 +1593,50 @@ td.paid { color: var(--ink-soft); }
             '<td><button class="edit-btn" data-edittx="' + t.id + '" aria-label="Edit transaction">Edit</button></td></tr>';
         }).join("") + "</tbody></table>";
     }
+    ["into", "tFrom", "tTo"].forEach(function (id, k) {
+      var el = $(id), keep = el.value;
+      el.innerHTML = bankOptionsHtml(id === "into" ? "Not tracked" : "");
+      if (keep && [].some.call(el.options, function (o) { return o.value === keep; })) el.value = keep;
+      else if (id === "tTo" && state.banks.length > 1 && el.value === $("tFrom").value) el.value = state.banks[1].id;
+    });
     renderPaydayBar(); renderLinkOptions(); updatePlanRow(); if (currentTab === "cards") renderCardsPage(); if (currentTab === "debts") renderDebtsPage(); if (currentTab === "plan") { renderDebtFree(); renderCalc(); }
     updateSums(txs, spent, totalBudget);
   }
 
+  function d0(t) { return new Date(t.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" }); }
   function setType(type) {
     setTimeout(updatePreview, 0);
     txType = type;
-    document.querySelectorAll(".seg button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.type === type ? "true" : "false"); });
-    $("catWrap").style.display = type === "income" ? "none" : "";
-    $("payWrap").style.display = type === "income" ? "none" : "";
-    $("addTx").textContent = type === "income" ? "Add income" : "Add expense";
-    $("linkWrap").style.display = type === "income" ? "none" : "";
+    var inc = type === "income", tr = type === "transfer";
+    document.querySelectorAll(".seg button[data-type]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.type === type ? "true" : "false"); });
+    $("catWrap").style.display = inc || tr ? "none" : "";
+    $("payWrap").style.display = inc || tr ? "none" : "";
+    $("linkWrap").style.display = inc || tr ? "none" : "";
+    $("intoWrap").hidden = !inc;
+    $("tFromWrap").hidden = !tr; $("tToWrap").hidden = !tr;
+    $("addTx").textContent = inc ? "Add income" : tr ? "Add transfer" : "Add expense";
+    $("note").placeholder = inc ? "e.g. Salary" : tr ? "e.g. Money for Mama via Wise" : "e.g. Weekly shop";
+    if ((inc || tr) && $("link").value) { $("link").value = ""; $("cur").disabled = false; }
+    if (tr) syncTransfer(); else { $("tRecvWrap").hidden = true; $("cur").disabled = !!(type === "expense" && $("link").value); }
     setTimeout(updatePlanRow, 0);
-    if (type === "income" && $("link").value) { $("link").value = ""; $("cur").disabled = false; }
     if (type === "expense" && $("link").value) applyLink();
   }
+  // Transfers: the amount is in the "From" account's currency; a cross-currency transfer also asks what arrived
+  function syncTransfer() {
+    var f = bankById($("tFrom").value), t = bankById($("tTo").value);
+    if (f) { $("cur").value = f.cur; $("cur").disabled = true; }
+    var cross = !!(f && t && f.cur !== t.cur);
+    $("tRecvWrap").hidden = !cross;
+    if (cross) {
+      $("tRecvLabel").textContent = "Amount received (" + (t.cur === "PHP" ? "₱" : "£") + ")";
+      var a = parseFloat($("amt").value) || 0;
+      if (a > 0 && !$("tRecv").dataset.touched && state.rate) $("tRecv").value = (f.cur === "GBP" ? a / state.rate.value : a * state.rate.value).toFixed(2);
+    }
+  }
+  $("tFrom").addEventListener("change", syncTransfer);
+  $("tTo").addEventListener("change", syncTransfer);
+  $("amt").addEventListener("input", function () { if (txType === "transfer") syncTransfer(); });
+  $("tRecv").addEventListener("input", function () { this.dataset.touched = "1"; });
 
   function defaultDate() {
     var k = monthKey();
@@ -1515,6 +1652,22 @@ td.paid { color: var(--ink-soft); }
     var amt = parseFloat($("amt").value), date = $("date").value;
     if (!(amt > 0)) { $("err").textContent = "Enter an amount above zero."; return; }
     if (!date) { $("err").textContent = "Choose a date."; return; }
+    if (txType === "transfer") {
+      var fb = bankById($("tFrom").value), tb = bankById($("tTo").value);
+      if (!fb || !tb) { $("err").textContent = state.banks.length < 2 ? "Add at least two bank accounts on the Accounts tab first." : "Choose both accounts."; return; }
+      if (fb === tb) { $("err").textContent = "Choose two different accounts."; return; }
+      var aFrom = Math.round(amt * 100) / 100, aTo = aFrom;
+      if (fb.cur !== tb.cur) { aTo = Math.round((parseFloat($("tRecv").value) || 0) * 100) / 100; if (!(aTo > 0)) { $("err").textContent = "Enter the amount that arrived."; return; } }
+      var rF = fb.cur === "PHP" ? (state.rate ? state.rate.value : 0) : 1;
+      state.tx.push({ id: uid(), type: "transfer", created: Date.now(), date: date, from: fb.id, to: tb.id, amtFrom: aFrom, amtTo: aTo,
+        cur: fb.cur, orig: aFrom, rate: rF, amount: Math.round(aFrom * rF * 100) / 100, note: $("note").value.trim() });
+      if (fb.cur === "GBP" && tb.cur === "PHP") logRate(aTo / aFrom, "wise", date);
+      if (fb.cur === "PHP" && tb.cur === "GBP") logRate(aFrom / aTo, "wise", date);
+      $("err").textContent = ""; save();
+      $("amt").value = ""; $("note").value = ""; $("tRecv").value = ""; delete $("tRecv").dataset.touched;
+      var tk = date.slice(0, 7); if (tk !== monthKey()) { view.y = +tk.slice(0, 4); view.m = +tk.slice(5, 7) - 1; }
+      render(); toast("Transfer added · " + fb.name + " → " + tb.name); return;
+    }
     if (txType === "expense" && !state.categories.length) { $("err").textContent = "Add a category first."; return; }
     var cur = $("cur").value, rate = 1;
     if (cur === "PHP") {
@@ -1525,13 +1678,14 @@ td.paid { color: var(--ink-soft); }
     var orig = Math.round(amt * 100) / 100, gbp = Math.round(orig * rate * 100) / 100;
     var L = txType === "expense" ? parseLink($("link").value) : null, msg = txType === "income" ? "Income added" : "Expense added";
     if (L && L.kind === "card") {
-      state.tx.push({ id: uid(), type: "cardpay", card: L.c.id, cur: cur, orig: orig, rate: rate, amount: gbp,
+      state.tx.push({ id: uid(), type: "cardpay", created: Date.now(), card: L.c.id, from: bankById($("pay").value) ? $("pay").value : undefined, cur: cur, orig: orig, rate: rate, amount: gbp,
         cardAmt: isPH(L.c) ? orig : undefined, date: date, category: null, note: $("note").value.trim() || "Card payment" });
       msg = "Payment recorded · " + L.c.name + " now " + cm(L.c, cardStats(L.c, "").balance);
     } else {
       var tx = { id: uid(), type: txType, created: Date.now(), cur: cur, orig: orig, rate: rate, amount: gbp, date: date,
         category: txType === "expense" ? $("cat").value : null,
         pay: txType === "expense" ? $("pay").value : undefined,
+        into: txType === "income" && $("into").value ? $("into").value : undefined,
         cardAmt: txType === "expense" ? cardAmtFor($("pay").value, cur, orig, gbp) : undefined,
         note: $("note").value.trim() };
       if (L && L.kind === "bill") {
@@ -1580,6 +1734,7 @@ td.paid { color: var(--ink-soft); }
     if (t.dataset.startpay) startPayment(t.dataset.startpay);
   });
 
+  $("useBudgets").onchange = function () { state.useBudgets = this.checked; save(); render(); if (currentTab === "summary") renderSummary(); };
   $("addCat").onclick = function () {
     var name = $("newCat").value.trim(); if (!name) return;
     var parent = $("newCatParent").value;
@@ -1600,20 +1755,26 @@ td.paid { color: var(--ink-soft); }
     if (!(amt >= 0)) amt = 0;
     if (freq === "monthly" && !(due >= 1 && due <= 31)) { toast("Due day must be 1 to 31"); $("bDue").focus(); return; }
     if (freq !== "monthly" && !start) { toast("Pick the next due date"); $("bStart").focus(); return; }
+    if ($("bAuto").checked && $("bPay").value === "cash") { toast("Choose which bank or card it's taken from"); $("bPay").focus(); return; }
     var nb = { id: uid(), name: name, amount: Math.round(amt * 100) / 100, cur: $("bCur").value, freq: freq,
       due: freq === "monthly" ? due : parseDay(start).getDate(), category: $("bCat").value, pay: $("bPay").value };
+    if ($("bAuto").checked) { nb.auto = true; nb.autoSince = today(); }
     if (freq !== "monthly") nb.start = start;
     state.bills.push(nb);
-    $("bName").value = ""; $("bAmt").value = ""; $("bDue").value = ""; $("bStart").value = "";
+    $("bName").value = ""; $("bAmt").value = ""; $("bDue").value = ""; $("bStart").value = ""; $("bAuto").checked = false;
     save(); render(); toast(nb.amount > 0 ? "Bill added" : "Bill added · amount varies");
   };
 
   $("addCard").onclick = function () {
     var name = $("cardName").value.trim();
     if (!name) { toast("Give the card a name"); $("cardName").focus(); return; }
-    state.cards.push({ id: uid(), name: name, cur: $("cardCur").value, opening: Math.max(0, parseFloat($("cardOpen").value) || 0),
-      limit: Math.max(0, parseFloat($("cardLimit").value) || 0), color: PALETTE[(state.cards.length + 2) % PALETTE.length] });
-    $("cardName").value = ""; $("cardOpen").value = ""; $("cardLimit").value = "";
+    var l4 = $("cardLast4").value.replace(/\D/g, "");
+    if (l4 && l4.length !== 4) { toast("Last 4 digits should be exactly 4 numbers"); $("cardLast4").focus(); return; }
+    var nc = { id: uid(), name: name, cur: $("cardCur").value, opening: Math.max(0, parseFloat($("cardOpen").value) || 0),
+      limit: Math.max(0, parseFloat($("cardLimit").value) || 0), color: PALETTE[(state.cards.length + 2) % PALETTE.length] };
+    if (l4) nc.last4 = l4;
+    state.cards.push(nc);
+    $("cardName").value = ""; $("cardLast4").value = ""; $("cardOpen").value = ""; $("cardLimit").value = "";
     save(); render(); toast("Card added");
   };
   $("newCat").addEventListener("keydown", function (e) { if (e.key === "Enter") $("addCat").click(); });
@@ -1625,7 +1786,7 @@ td.paid { color: var(--ink-soft); }
   $("rateEdit").onclick = function () {
     var a = $("rateActions"), open = a.hidden;
     a.hidden = !open; this.setAttribute("aria-expanded", open ? "true" : "false");
-    this.textContent = open ? "Done" : "Edit";
+    this.textContent = open ? "Done" : "Change rate";
     if (!open) $("wiseRow").hidden = true;
   };
   $("wiseToggle").onclick = function () {
@@ -1639,7 +1800,7 @@ td.paid { color: var(--ink-soft); }
     state.rate = { value: v, source: "Wise", date: today(), fetchedAt: Date.now(), manual: true };
     logRate(p, "wise"); if ($("rateHist").open) renderHistory();
     save(); renderRate(); updatePreview(); $("wiseRow").hidden = true; $("rateActions").hidden = true;
-    $("rateEdit").textContent = "Edit"; $("rateEdit").setAttribute("aria-expanded", "false"); toast("Wise rate saved");
+    $("rateEdit").textContent = "Change rate"; $("rateEdit").setAttribute("aria-expanded", "false"); toast("Wise rate saved");
   };
 
   function download(name, text, type) {
@@ -1655,8 +1816,9 @@ td.paid { color: var(--ink-soft); }
     var rows = [["Date", "Type", "Category", "Paid with", "Note", "Original amount", "Currency", "Rate (GBP to PHP)", "Amount (GBP)", "Counts for"]];
     monthView().sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (t) {
       var c = catById(t.category), sign = t.type === "expense" ? -1 : 1, cd = cardById(t.pay || t.card);
-      var catName = t.type === "income" ? "Income" : t.type === "cardpay" ? "Card payment" : catLabel(t.category).replace(" › ", " > ");
-      var payName = t.type === "income" ? "" : t.type === "cardpay" ? (cd ? cd.name : "Removed card") : payInfo(t.pay).name;
+      var catName = t.type === "transfer" ? "Transfer" : t.type === "income" ? "Income" : t.type === "cardpay" ? "Card payment" : catLabel(t.category).replace(" › ", " > ");
+      var payName = t.type === "transfer" ? ((bankById(t.from) || {}).name || "?") + " → " + ((bankById(t.to) || {}).name || "?")
+        : t.type === "income" ? ((bankById(t.into) || {}).name || "") : t.type === "cardpay" ? (cd ? cd.name : "Removed card") : payInfo(t.pay).name;
       rows.push([t.date, t.type === "cardpay" ? "card payment" : t.type, catName, payName, t.note,
         sign * t.orig, t.cur, t.cur === "PHP" ? +(1 / t.rate).toFixed(4) : 1, sign * t.amount, countsFor(t)]);
     });
@@ -1734,7 +1896,7 @@ td.paid { color: var(--ink-soft); }
       if (+ck.slice(0, 4) !== y) return;
       var m = months[+ck.slice(5, 7) - 1];
       m.count++;
-      if (t.type === "cardpay" || isTransfer(t)) return;
+      if (t.type === "cardpay" || t.type === "transfer" || isTransfer(t)) return;
       m.spent += t.amount;
       cats[t.category] = (cats[t.category] || 0) + t.amount;
       if (t.cur === "PHP") { m.php += t.orig; m.phpGbp += t.amount; php += t.orig; phpGbp += t.amount; }
@@ -1935,7 +2097,7 @@ td.paid { color: var(--ink-soft); }
       var name = r.c ? r.c.name : "Removed category", color = r.c ? r.c.color : "#999", pct = spent ? r.v / spent * 100 : 0;
       var pm = perMonth[r.id] || [], fullAvg = complete ? pm.reduce(function (a, v, i) { return a + (i !== mi.curIdx && !mi.future(i) ? v : 0); }, 0) / complete : r.v;
       var budgetNote = "";
-      if (r.c && r.c.budget > 0 && monthsForBudget > 0) {
+      if (usingBudgets() && r.c && r.c.budget > 0 && monthsForBudget > 0) {
         var diff = r.c.budget * monthsForBudget - r.v;
         budgetNote = " · " + (diff >= 0 ? money(diff) + " under budget" : money(-diff) + " over budget");
       }
@@ -2059,22 +2221,22 @@ td.paid { color: var(--ink-soft); }
         { key: "minPct", label: "or % of balance", type: "number", step: "0.1", value: l.minPct || "", showIf: function (v) { return v.mode === "min"; } },
         { key: "nmin", label: "Use your statement: many store cards take a set amount or a % of the balance, whichever is higher. Fill in one or both.", type: "note", showIf: function (v) { return v.mode === "min"; } },
         { key: "apr", label: "Interest rate (APR %, optional)", type: "number", step: "0.01", value: l.apr || "", full: true },
-        { key: "limit", label: "Overall spending limit (optional)", type: "number", step: "1", value: l.limit || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "feePct", label: "Usual fee per purchase (%, optional)", type: "number", step: "0.01", value: l.feePct || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "lim0", label: "Limit: pay in full", type: "number", step: "1", value: (l.limits && l.limits[0]) || "", showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "lim3", label: "Limit: 3-month plans", type: "number", step: "1", value: (l.limits && l.limits[3]) || "", showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "lim6", label: "Limit: 6-month plans", type: "number", step: "1", value: (l.limits && l.limits[6]) || "", showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "lim12", label: "Limit: 12-month plans", type: "number", step: "1", value: (l.limits && l.limits[12]) || "", showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "nlim", label: "Leave plan limits blank if there's just one overall limit.", type: "note", showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "track", label: "I'll record purchases on it (choose it under Paid with)", type: "checkbox", value: l.trackBuys !== undefined ? !!l.trackBuys : !!l.limit, showIf: function (v) { return v.kind === "bnpl"; } },
-        { key: "nb", label: "With this ticked, purchases count as spending when you make them and lower what's available. Its payments then work like paying off a credit card, so they aren't counted as spending twice. Leave it unticked if you only track the repayments.", type: "note", showIf: function (v) { return v.kind === "bnpl"; } },
+        { key: "limit", label: "Overall spending limit (optional)", type: "number", step: "1", value: l.limit || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "feePct", label: "Usual fee per purchase (%, optional)", type: "number", step: "0.01", value: l.feePct || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "lim0", label: "Limit: pay in full", type: "number", step: "1", value: (l.limits && l.limits[0]) || "", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "lim3", label: "Limit: 3-month plans", type: "number", step: "1", value: (l.limits && l.limits[3]) || "", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "lim6", label: "Limit: 6-month plans", type: "number", step: "1", value: (l.limits && l.limits[6]) || "", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "lim12", label: "Limit: 12-month plans", type: "number", step: "1", value: (l.limits && l.limits[12]) || "", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "nlim", label: "Leave plan limits blank if there's just one overall limit.", type: "note", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "track", label: "I'll record purchases on it (choose it under Paid with)", type: "checkbox", value: l.trackBuys !== undefined ? !!l.trackBuys : !!l.limit, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
+        { key: "nb", label: "With this ticked, purchases count as spending when you make them and lower what's available. Its payments then work like paying off a credit card, so they aren't counted as spending twice. Leave it unticked if you only track the repayments.", type: "note", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
         { key: "bill", label: "Payments in Bills", type: "select", value: forceNew ? "__new" : (l.billId || (isNew && !l.billId ? "__new" : "")), options: billOpts, full: true },
         { key: "bfreq", label: "How often", type: "select", value: "monthly", options: FREQS, full: true, showIf: function (v) { return v.bill === "__new"; } },
         { key: "due", label: "Payment due day each month", type: "number", step: "1", value: l.dueDay || "", showIf: function (v) { return v.bill === "__new" && v.bfreq === "monthly"; } },
         { key: "bstart", label: "Next payment date", type: "date", value: today(), showIf: function (v) { return v.bill === "__new" && v.bfreq !== "monthly"; } },
         { key: "bpay", label: "Paid from", type: "select", value: l.payWith && validPay(l.payWith) ? l.payWith : "cash", options: payOptions(), showIf: function (v) { return v.bill === "__new"; } },
         { key: "bcat", label: "Category", type: "select", value: l.category && catById(l.category) ? l.category : (state.categories[0] ? state.categories[0].id : ""), options: catOptions(), full: true, showIf: function (v) { return v.bill === "__new"; } },
-        { key: "excl", label: "Leave out of debt-to-income (e.g. UK student loan taken from salary)", type: "checkbox", value: !!l.exclude },
+        { key: "excl", label: "Leave out of debt-to-income (e.g. UK student loan taken from salary)", type: "checkbox", value: !!l.exclude , adv: true },
         { key: "n", label: "You pay it in Bills: ticking its bill lowers this balance automatically. For amounts that vary (like BNPL), change the amount next to the bill before ticking it. If the balance drifts from your statement, type the right figure here.", type: "note" }
       ].filter(Boolean),
       onSave: function (v) {
@@ -2204,7 +2366,7 @@ td.paid { color: var(--ink-soft); }
     state.cards.forEach(function (c) {
       var mp = cardMinPay(c);
       cardPay += cardToGbp(c, mp.v); cardOwed += cardToGbp(c, Math.max(0, cardStats(c, "").balance));
-      cardRows += '<div class="kv"><span>' + esc(c.name) + (mp.est ? " <small>(estimated: " + (isPH(c) ? "3%" : "3% or £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
+      cardRows += '<div class="kv"><span>' + esc(cardLabel(c)) + (mp.est ? " <small>(estimated: " + (isPH(c) ? "3%" : "3% or £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
     });
 
     var L = loanSummary(false), loanOwed = L.owed, loanPay = L.pay, loanPayDti = L.payDti, loanInt = L.interest, loanRows = L.rows, billTotal = L.legacyTotal;
@@ -2341,8 +2503,7 @@ td.paid { color: var(--ink-soft); }
       } else bs = paid + " of " + tot + " paid";
     }
     $("sum-bills").textContent = bs;
-    var owed = state.cards.reduce(function (t, c) { return t + cardToGbp(c, cardStats(c, "").balance); }, 0);
-    $("sum-cards").textContent = state.cards.length ? money(owed) + " owed" : "";
+
     var n = txs.length;
     $("sum-tx").textContent = n ? n + (n === 1 ? " entry" : " entries") : "";
   }
@@ -2362,7 +2523,10 @@ td.paid { color: var(--ink-soft); }
     var back = document.createElement("div");
     back.className = "modal-back";
     back.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h3 id="mTitle">' + esc(cfg.title) + "</h3>" +
-      '<div class="m-fields">' + cfg.fields.map(function (f) {
+      '<div class="m-fields">' + cfg.fields.filter(function (f) { return !f.adv; }).concat(
+        cfg.fields.some(function (f) { return f.adv; }) ? [{ key: "__more", type: "more" }] : [],
+        cfg.fields.filter(function (f) { return f.adv; })).map(function (f) {
+        if (f.type === "more") return '<button type="button" class="m-more" id="mMore" aria-expanded="false">More options</button>';
         if (f.type === "note") return '<p class="m-note" data-key="' + f.key + '">' + esc(f.label) + "</p>";
         var id = "m-" + f.key, input;
         if (f.type === "select") {
@@ -2391,14 +2555,26 @@ td.paid { color: var(--ink-soft); }
       });
       return v;
     }
+    // Advanced fields start hidden, unless one of them is already in use
+    var moreOpen = cfg.fields.some(function (f) {
+      if (!f.adv || f.type === "note") return false;
+      return f.type === "checkbox" ? !!f.value : (f.value != null && f.value !== "" && f.value !== 0 && f.value !== "0");
+    });
     function refresh() {
       var v = vals();
       cfg.fields.forEach(function (f) {
-        if (!f.showIf) return;
-        var wrap = back.querySelector('[data-key="' + f.key + '"]');
-        if (wrap) wrap.style.display = f.showIf(v) ? "" : "none";
+        var wrap = back.querySelector('[data-key="' + f.key + '"]'); if (!wrap) return;
+        var show = (!f.adv || moreOpen) && (!f.showIf || f.showIf(v));
+        wrap.style.display = show ? "" : "none";
       });
+      var mb = back.querySelector("#mMore");
+      if (mb) {
+        var anyAdv = cfg.fields.some(function (f) { return f.adv && f.type !== "note" && (!f.showIf || f.showIf(v)); });
+        mb.style.display = anyAdv ? "" : "none";
+        mb.textContent = moreOpen ? "Fewer options" : "More options"; mb.setAttribute("aria-expanded", moreOpen ? "true" : "false");
+      }
     }
+    if (back.querySelector("#mMore")) back.querySelector("#mMore").onclick = function () { moreOpen = !moreOpen; refresh(); };
     back.addEventListener("change", refresh);
     refresh();
     back.addEventListener("mousedown", function (e) { if (e.target === back && !cfg.noCancel) closeEditor(); });
@@ -2429,7 +2605,7 @@ td.paid { color: var(--ink-soft); }
   function payOptions() {
     return [["cash", "Cash or debit (no bank set)"]]
       .concat(state.banks.map(function (b) { return [b.id, b.name + (b.cur === "PHP" ? " (PH bank, debit)" : " (debit)")]; }))
-      .concat(state.cards.map(function (c) { return [c.id, c.name + (isPH(c) ? " (PH credit card)" : " (credit card)")]; }))
+      .concat(state.cards.map(function (c) { return [c.id, cardLabel(c) + (isPH(c) ? " (PH credit card)" : " (credit card)")]; }))
       .concat(bnplLoans().map(function (l) { return [l.id, l.name + " (buy now, pay later)"]; }));
   }
   function r2(n) { return Math.round(n * 100) / 100; }
@@ -2443,12 +2619,14 @@ td.paid { color: var(--ink-soft); }
         fields: [
           { key: "amt", label: "Amount (" + (ph ? "₱" : "£") + ")", type: "number", value: t.orig },
           { key: "date", label: "Date", type: "date", value: t.date },
+          { key: "from", label: "Paid from", type: "select", value: t.from || "", full: true, options: [["", "Not tracked"]].concat(state.banks.map(function (b) { return [b.id, b.name]; })) },
           { key: "note", label: "Note", type: "text", value: t.note || "", full: true, max: 80 }
         ],
         onSave: function (v) {
           if (!(v.amt > 0)) return "Enter an amount above zero.";
           if (!v.date) return "Choose a date.";
           t.orig = r2(v.amt); t.date = v.date; t.note = v.note.trim();
+          if (v.from) t.from = v.from; else delete t.from;
           if (ph) { t.cardAmt = t.orig; t.amount = r2(t.orig * (t.rate || (state.rate ? state.rate.value : 0))); } else t.amount = t.orig;
         },
         onDelete: function () { state.tx = state.tx.filter(function (x) { return x !== t; }); },
@@ -2456,6 +2634,7 @@ td.paid { color: var(--ink-soft); }
       });
       return;
     }
+    if (t.type === "transfer") { editTransfer(t); return; }
     var bill = t.bill ? billById(t.bill) : null;
     var curRate = t.cur === "PHP" && t.rate ? (1 / t.rate).toFixed(4) : (state.rate ? (1 / state.rate.value).toFixed(4) : "");
     openEditor({
@@ -2468,6 +2647,7 @@ td.paid { color: var(--ink-soft); }
         { key: "rate", label: "Rate used: £1 = ₱", type: "number", step: "0.0001", value: curRate, full: true, showIf: function (v) { return v.cur === "PHP"; } },
         { key: "cat", label: "Category", type: "select", value: t.category, options: catOptions(), showIf: function (v) { return v.type === "expense"; } },
         { key: "pay", label: "Paid with", type: "select", value: t.pay || "cash", options: payOptions(), showIf: function (v) { return v.type === "expense"; } },
+        { key: "into", label: "Paid into", type: "select", value: t.into || "", options: [["", "Not tracked"]].concat(state.banks.map(function (b) { return [b.id, b.name]; })), showIf: function (v) { return v.type === "income"; } },
         { key: "note", label: "Note", type: "text", value: t.note || "", full: true, max: 80 },
         { key: "forMonth", label: "Counts towards", type: "select", value: countsFor(t), full: true,
           options: [[t.date.slice(0, 7), ymLabel(t.date.slice(0, 7), { month: "long", year: "numeric" }) + " (when it was paid)"],
@@ -2495,7 +2675,8 @@ td.paid { color: var(--ink-soft); }
             if (v.loan && v.loan !== t.loan) { t.loan = v.loan; if (!t.created) t.created = new Date(t.date + "T12:00:00").getTime(); }
             else if (!v.loan) delete t.loan;
           }
-        } else { t.category = null; t.pay = undefined; t.cardAmt = undefined; delete t.loan; }
+          delete t.into;
+        } else { t.category = null; t.pay = undefined; t.cardAmt = undefined; delete t.loan; if (v.into) t.into = v.into; else delete t.into; }
         if (t.plan && v.plan != null) t.plan.months = +v.plan;
         var dm = v.date.slice(0, 7), fm = v.forMonth, def = defaultMonthFor(v.type, v.date);
         if (fm !== dm && fm !== nextYm(dm)) fm = def;
@@ -2522,7 +2703,9 @@ td.paid { color: var(--ink-soft); }
         { key: "start", label: "A due date (next or past)", type: "date", value: b.start || dayKey(nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))) ? nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))).date : new Date()),
           showIf: function (v) { return v.freq !== "monthly"; } },
         { key: "cat", label: "Category", type: "select", value: b.category, options: catOptions() },
+        { key: "auto", label: "Paid automatically (direct debit, standing order or recurring card payment)", type: "checkbox", value: !!b.auto },
         { key: "pay", label: "Paid with", type: "select", value: b.pay || "cash", options: payOptions(), full: true },
+        { key: "nauto", label: "Automatic bills mark themselves as paid on the due date. If one ever fails, untick it in Bills. If the amount varies, you'll be asked what was taken.", type: "note", showIf: function (v) { return !!v.auto; } },
         { key: "n", label: "Payments you've already ticked keep their amounts. Changing how often it's paid can move which dates show as due, so check the next few months after changing it. If this bill repays a loan, link it from the Debts tab.", type: "note" }
       ],
       onSave: function (v) {
@@ -2542,6 +2725,9 @@ td.paid { color: var(--ink-soft); }
             past.forEach(function (t) { t.category = v.cat; });
           }
         }
+        if (v.auto && v.pay === "cash") return "Choose which bank or card it's taken from.";
+        if (v.auto && !b.auto) b.autoSince = today();
+        if (v.auto) b.auto = true; else { delete b.auto; delete b.autoSince; }
         b.freq = v.freq; b.name = v.name.trim(); b.amount = r2(v.amt); b.cur = v.cur; b.category = v.cat; b.pay = v.pay;
       },
       onDelete: function () {
@@ -2561,18 +2747,22 @@ td.paid { color: var(--ink-soft); }
     openEditor({
       title: "Edit card",
       fields: [
-        { key: "name", label: "Card name", type: "text", value: c.name, full: true, max: 30 },
+        { key: "name", label: "Card name", type: "text", value: c.name, max: 30 },
+        { key: "last4", label: "Last 4 digits (optional)", type: "text", value: c.last4 || "", max: 4 },
         { key: "open", label: "Owed when you added it (" + sym + ")", type: "number", value: c.opening || 0 },
         { key: "limit", label: "Credit limit (" + sym + ")", type: "number", step: "1", value: c.limit || "" },
         { key: "min", label: "Minimum payment a month (" + sym + ")", type: "number", value: c.minPay || "" },
         { key: "apr", label: "Interest rate (APR %)", type: "number", step: "0.01", value: c.apr || "" },
-        { key: "promoApr", label: "Promo rate, e.g. 0% balance transfer (%)", type: "number", step: "0.01", value: c.promoEnd ? (c.promoApr || 0) : "" },
-        { key: "promoEnd", label: "Promo ends", type: "date", value: c.promoEnd || "" },
-        { key: "np", label: "Leave the promo fields blank if there isn't one. The plan uses the promo rate until it ends, then the normal rate above.", type: "note" },
+        { key: "promoApr", label: "Promo rate, e.g. 0% balance transfer (%)", type: "number", step: "0.01", value: c.promoEnd ? (c.promoApr || 0) : "", adv: true },
+        { key: "promoEnd", label: "Promo ends", type: "date", value: c.promoEnd || "", adv: true },
+        { key: "np", label: "Leave the promo fields blank if there isn't one. The plan uses the promo rate until it ends, then the normal rate above.", type: "note", adv: true },
         { key: "n", label: (isPH(c) ? "Philippine card, tracked in pesos." : "UK card, tracked in pounds.") + " Your current balance is worked out from the starting amount plus charges, minus payments.", type: "note" }
       ],
       onSave: function (v) {
         if (!v.name.trim()) return "Give the card a name.";
+        var l4 = (v.last4 || "").replace(/\D/g, "");
+        if (l4 && l4.length !== 4) return "Last 4 digits should be exactly 4 numbers, or leave it blank.";
+        if (l4) c.last4 = l4; else delete c.last4;
         c.name = v.name.trim(); c.opening = Math.max(0, v.open || 0); c.limit = Math.max(0, v.limit || 0); c.minPay = Math.max(0, v.min || 0); c.apr = Math.max(0, v.apr || 0);
         if (v.promoEnd) { c.promoEnd = v.promoEnd; c.promoApr = Math.max(0, v.promoApr || 0); } else { delete c.promoEnd; delete c.promoApr; }
       },
@@ -2633,12 +2823,55 @@ td.paid { color: var(--ink-soft); }
     }).join("") + "</div>";
   }
   function renderBanks() {
-    $("bankCount").textContent = state.banks.length ? "(" + state.banks.length + ")" : "";
-    $("bankList").innerHTML = state.banks.map(function (b) {
-      var n = state.bills.filter(function (x) { return x.pay === b.id; }).length;
-      return '<div class="bank-row"><span>' + esc(b.name) + '</span><span class="c">' + (b.cur === "PHP" ? "PH bank" : "UK bank") +
-        (n ? " · " + n + (n === 1 ? " bill" : " bills") : "") + '</span><button class="edit-btn" data-editbank="' + b.id + '" aria-label="Edit ' + esc(b.name) + '">Edit</button></div>';
-    }).join("");
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    $("bankList").innerHTML = state.banks.length ? state.banks.map(function (b) {
+      var bal = bankBalance(b), n = state.bills.filter(function (x) { return x.pay === b.id; }).length, sub = [];
+      sub.push(b.cur === "PHP" ? "PH bank (₱)" : "UK bank (£)");
+      if (n) sub.push(n + (n === 1 ? " bill" : " bills"));
+      var chk = "";
+      if (b.checkedAt) {
+        var days = Math.round((t0 - new Date(new Date(b.checkedAt).setHours(0, 0, 0, 0))) / 864e5);
+        chk = "Checked " + (days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago") + (b.lastDiff && Math.abs(b.lastDiff) >= 0.01 ? " · was " + bankMoney(b, Math.abs(b.lastDiff)) + " out" : " · matched");
+      }
+      var stale = bal != null && (!b.checkedAt || (t0 - b.checkedAt) / 864e5 > 14);
+      return '<div class="acct"><span class="nm">' + esc(b.name) + "</span>" +
+        (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : '<span class="bal unset">Balance not set</span>') +
+        '<span class="sub">' + sub.join(" · ") + "</span>" +
+        '<span class="acts"><button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></span>' +
+        (chk || stale ? '<span class="sub' + (stale && !chk ? " warn" : "") + '" style="grid-column:1/-1">' + (chk || "Not checked against your bank yet") + (stale && chk ? " · time for a check" : "") + "</span>" : "") +
+        "</div>";
+    }).join("") : '<p class="empty">Add the bank accounts you use, with the balance in each right now. The tracker then keeps each balance up to date as you log spending, income and transfers.</p>';
+    var tot = accountsTotal();
+    $("acBig").textContent = tot ? money(tot.gbp) : "–";
+    var cardsOwed = state.cards.reduce(function (a, c) { return a + cardToGbp(c, Math.max(0, cardStats(c, "").balance)); }, 0);
+    $("acFigs").innerHTML = (tot ? "<span>Accounts tracked <b>" + tot.n + " of " + state.banks.length + "</b></span>" : "<span>Set a balance on each account to see your total</span>") +
+      (state.cards.length ? "<span>Owed on cards <b>" + money(cardsOwed) + "</b></span>" : "") +
+      (tot && state.cards.length ? "<span>After paying cards off <b" + (tot.gbp - cardsOwed < 0 ? ' style="color:var(--over)"' : "") + ">" + money(tot.gbp - cardsOwed) + "</b></span>" : "") +
+      (state.banks.some(function (b) { return b.cur === "PHP"; }) ? "<span><small>Peso accounts in £ at today's rate</small></span>" : "");
+  }
+  function checkBank(id) {
+    var b = bankById(id); if (!b) return;
+    var now = bankBalance(b), setting = now == null;
+    openEditor({
+      title: setting ? "Set " + b.name + "'s balance" : "Check " + b.name + " against your bank",
+      fields: [
+        setting ? { key: "n0", label: "Open your banking app and enter the balance it shows right now. From then on, everything you log against " + b.name + " keeps this up to date.", type: "note" }
+          : { key: "n0", label: "The tracker thinks " + b.name + " has " + bankMoney(b, now) + ". What does your banking app show right now?", type: "note" },
+        { key: "actual", label: "Balance in your banking app (" + (b.cur === "PHP" ? "₱" : "£") + ")", type: "number", full: true, value: "" },
+        { key: "n1", label: "Use the available balance, including any pending payments, if your bank shows them.", type: "note" }
+      ],
+      saveLabel: setting ? "Set balance" : "Check", savedMsg: "",
+      onSave: function (v) {
+        if (v.actual == null || isNaN(v.actual)) return "Enter the balance your bank shows.";
+        var diff = setting ? 0 : r2(v.actual - now);
+        b.bal = r2(v.actual); b.balAt = Date.now(); b.balDate = today(); b.checkedAt = Date.now(); b.lastDiff = diff;
+        setTimeout(function () {
+          if (setting) toast(b.name + " balance set");
+          else if (Math.abs(diff) < 0.01) toast("Matches your bank ✓");
+          else toast(diff < 0 ? "Your bank has " + bankMoney(b, -diff) + " less than the tracker: probably a payment or transfer that isn't logged yet. Updated to match." : "Your bank has " + bankMoney(b, diff) + " more than the tracker: probably income or a refund that isn't logged yet. Updated to match.");
+        }, 50);
+      }
+    });
   }
   function editBank(id) {
     var b = bankById(id); if (!b) return;
@@ -2646,7 +2879,8 @@ td.paid { color: var(--ink-soft); }
       title: "Edit bank account",
       fields: [
         { key: "name", label: "Account name", type: "text", value: b.name, max: 30 },
-        { key: "cur", label: "Country", type: "select", value: b.cur, options: [["GBP", "UK bank (£)"], ["PHP", "PH bank (₱)"]] }
+        { key: "cur", label: "Country", type: "select", value: b.cur, options: [["GBP", "UK bank (£)"], ["PHP", "PH bank (₱)"]] },
+        { key: "n", label: "To change the balance, use Check on the Accounts tab. That keeps the history of what's been logged.", type: "note" }
       ],
       onSave: function (v) { if (!v.name.trim()) return "Give the account a name."; b.name = v.name.trim(); b.cur = v.cur; },
       onDelete: function () { state.banks = state.banks.filter(function (x) { return x !== b; }); },
@@ -2658,8 +2892,10 @@ td.paid { color: var(--ink-soft); }
   $("addBank").onclick = function () {
     var name = $("bankName").value.trim();
     if (!name) { toast("Give the account a name"); $("bankName").focus(); return; }
-    state.banks.push({ id: uid(), name: name, cur: $("bankCur").value });
-    $("bankName").value = ""; save(); render(); toast(name + " added");
+    var nb = { id: uid(), name: name, cur: $("bankCur").value }, bv = $("bankBal").value;
+    if (bv !== "" && !isNaN(parseFloat(bv))) { nb.bal = r2(parseFloat(bv)); nb.balAt = Date.now(); nb.balDate = today(); nb.checkedAt = Date.now(); nb.lastDiff = 0; }
+    state.banks.push(nb);
+    $("bankName").value = ""; $("bankBal").value = ""; save(); render(); toast(name + " added");
   };
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-editloan]"); if (b) { editLoan(b.dataset.editloan); return; }
@@ -2672,7 +2908,8 @@ td.paid { color: var(--ink-soft); }
   });
   $("bankName").addEventListener("keydown", function (e) { if (e.key === "Enter") $("addBank").click(); });
   document.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-editbank]"); if (b) editBank(b.dataset.editbank);
+    var b = e.target.closest("[data-editbank]"); if (b) { editBank(b.dataset.editbank); return; }
+    var c = e.target.closest("[data-checkbank]"); if (c) checkBank(c.dataset.checkbank);
   });
 
   // ---------- Backup reminder ----------
@@ -2790,7 +3027,7 @@ td.paid { color: var(--ink-soft); }
     var pd = nextPayday(t0), days = Math.round((pd - t0) / 86400000);
     $("paydayText").innerHTML = "Payday <b>" + ordinal(state.payday) + "</b> · " + (days === 1 ? "tomorrow" : "in " + days + " days");
     $("paydayText").title = "Paid on the " + ordinal(state.payday) + " of each month";
-    $("paydayBtn").textContent = "Change";
+    $("paydayBtn").textContent = "Change payday";
   }
   $("paydayBtn").onclick = function () {
     openEditor({
@@ -2961,7 +3198,7 @@ td.paid { color: var(--ink-soft); }
     if (T.bills.length) h += '<optgroup label="Bills not paid yet">' + T.bills.map(function (x) {
       return '<option value="bill:' + x.b.id + ":" + x.o.key + '">' + esc(x.b.name) + " · due " + fmt(x.o.date) + " · " + ((planLoanFor(x.b) || anyLoanFor(x.b)) && billDue(x.b, x.o.key) > 0 ? "≈ " + money(billDue(x.b, x.o.key)) : billAmtText(x.b)) + "</option>"; }).join("") + "</optgroup>";
     if (T.cards.length) h += '<optgroup label="Paying off a credit card">' + T.cards.map(function (c) {
-      return '<option value="card:' + c.id + '">' + esc(c.name) + " · " + cm(c, cardStats(c, "").balance) + " owed</option>"; }).join("") + "</optgroup>";
+      return '<option value="card:' + c.id + '">' + esc(cardLabel(c)) + " · " + cm(c, cardStats(c, "").balance) + " owed</option>"; }).join("") + "</optgroup>";
     sel.innerHTML = h;
     if (prev && [].some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
     else if (prev) { sel.value = ""; applyLink(); }
@@ -2978,7 +3215,8 @@ td.paid { color: var(--ink-soft); }
     var L = parseLink($("link").value);
     $("cur").disabled = !!L;
     $("catWrap").style.display = L && L.kind === "card" ? "none" : "";
-    $("payWrap").style.display = L && L.kind === "card" ? "none" : "";
+    $("payWrap").style.display = "";
+    $("payLabel").textContent = L && L.kind === "card" ? "Paid from" : "Paid with";
     if (!L) { $("addTx").textContent = "Add expense"; updatePreview(); return; }
     if (L.kind === "bill") {
       var due0 = billDue(L.b, L.key); $("amt").value = due0 > 0 ? due0.toFixed(2) : (isVar(L.b) ? "" : L.b.amount.toFixed(2)); $("cur").value = L.b.cur;
@@ -3044,7 +3282,7 @@ td.paid { color: var(--ink-soft); }
     var chT = charges.reduce(function (a, x) { return a + x.v; }, 0), pyT = payments.reduce(function (a, x) { return a + x.v; }, 0);
     var closing = opening + chT - pyT, label = ymLabel(mk);
     var rows = charges.concat(payments).sort(function (a, b) { return b.t.date.localeCompare(a.t.date); });
-    box.innerHTML = '<h2 style="margin-bottom:12px">' + esc(c.name) + (isPH(c) ? " (PH)" : "") + "</h2>" +
+    box.innerHTML = '<div class="st-head"><h2>' + esc(cardLabel(c)) + (isPH(c) ? " (PH)" : "") + '</h2><span class="acts"><button class="small-btn" data-startpay="card:' + c.id + '">Pay</button><button class="edit-btn" data-editcard="' + c.id + '">Edit</button></span></div>' +
       '<div class="ca-flow">' +
         "<div><span>Start of " + label + "</span><b>" + cm(c, opening) + "</b></div>" +
         "<div><span>Charges (" + charges.length + ")</span><b>+" + cm(c, chT) + "</b></div>" +
@@ -3066,9 +3304,10 @@ td.paid { color: var(--ink-soft); }
   // ---------- Cards page ----------
   function renderCardsPage() {
     var mk = monthKey();
+    renderBanks();
     $("caMonth").textContent = new Date(view.y, view.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     if (!state.cards.length) {
-      $("caCaption").textContent = "No credit cards yet";
+      $("caCaption").textContent = "No credit cards yet. Add one below.";
       $("caCards").innerHTML = ""; renderCardActivity(mk); return;
     }
     if (!caCardId || !cardById(caCardId)) caCardId = (ui.caCard && cardById(ui.caCard)) ? ui.caCard : state.cards[0].id;
@@ -3077,7 +3316,9 @@ td.paid { color: var(--ink-soft); }
       var ch = 0; state.tx.forEach(function (t) { if (t.type === "expense" && t.pay === c.id && t.date.slice(0, 7) === mk) ch += inCard(c, t); });
       var bal = cardStats(c, "").balance;
       return '<button class="ca-card" style="--cc:' + c.color + '" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '">' +
-        "<span>" + esc(c.name) + "</span><b>" + cm(c, ch) + "</b><small>charged this month</small><small>" + cm(c, bal) + " owed now</small></button>";
+        "<span>" + esc(cardLabel(c)) + "</span><b>" + cm(c, ch) + "</b><small>charged this month</small><small>" + cm(c, bal) + " owed now</small>" +
+        (c.limit > 0 ? (bal > c.limit ? '<small class="over">' + cm(c, bal - c.limit) + " over limit</small>" : '<small class="free">' + cm(c, c.limit - bal) + " free</small>") : "") +
+        (promoText(c) ? "<small>" + esc(promoText(c)) + "</small>" : "") + "</button>";
     }).join("");
     renderCardActivity(mk);
   }
@@ -3120,7 +3361,8 @@ td.paid { color: var(--ink-soft); }
       "<span>Loans and BNPL <b>" + money(o.loanOwed) + "</b></span>" +
       "<span>Repayments a month <b>" + money(o.payments) + "</b>" + (o.loanInt > 0 ? "<small>≈ " + money(o.loanInt) + " is interest</small>" : "") + "</span>" +
       (o.dtiRatio != null ? "<span>Debt to income <b>" + Math.round(o.dtiRatio) + "%</b></span>" : "") +
-      (o.bnplAv != null ? "<span>BNPL available <b>" + money(o.bnplAv) + "</b></span>" : "");
+      (o.bnplAv != null ? "<span>BNPL available <b>" + money(o.bnplAv) + "</b></span>" : "") +
+      (function () { var a = accountsTotal(); return a ? "<span>In your accounts <b>" + money(a.gbp) + "</b><small>" + (a.gbp - o.totalDebt >= 0 ? money(a.gbp - o.totalDebt) + " more than you owe" : money(o.totalDebt - a.gbp) + " more owed than you have") + "</small></span>" : ""; })();
     $("dLegacy").innerHTML = o.legacy || "";
     if (!state.loans.length) {
       $("dCaption").textContent = "No loans or debts yet";
@@ -3398,7 +3640,7 @@ td.paid { color: var(--ink-soft); }
       var bal = cardToGbp(c, Math.max(0, cardStats(c, "").balance));
       if (bal < 0.01) return;
       var fixed = c.minPay > 0 ? cardToGbp(c, c.minPay) : 0, floor = isPH(c) ? 0 : 5;
-      list.push({ id: c.id, name: c.name, kind: "card", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
+      list.push({ id: c.id, name: cardLabel(c), kind: "card", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
         min: function (b) { return Math.min(b, fixed > 0 ? fixed : Math.max(b * 0.03, floor)); } });
     });
     state.loans.forEach(function (l) {
@@ -3456,6 +3698,13 @@ td.paid { color: var(--ink-soft); }
     var plan = state.dfPlan || (state.dfPlan = { strategy: "avalanche", extra: 0 });
     document.querySelectorAll("[data-dfs]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.dfs === plan.strategy ? "true" : "false"); });
     if (document.activeElement !== $("dfExtra")) $("dfExtra").value = plan.extra || "";
+    (function () {
+      var now = new Date(), d = yearData(now.getFullYear()), m = d.months[now.getMonth()], left = m.income - m.spent, bills = state.payday ? dueBeforePayday().total : 0, acct = accountsTotal();
+      var bits = [];
+      if (m.income > 0) bits.push("Income left this month: " + money(left) + (bills > 0 ? ", with " + money(bills) + " of bills still due before payday" : ""));
+      if (acct) bits.push("In your accounts: " + money(acct.gbp));
+      $("dfSpare").textContent = bits.length ? bits.join(" · ") + ". Choose an extra amount you can keep up every month." : "";
+    })();
     var debts = dfDebts();
     if (!debts.length) { $("dfOut").innerHTML = '<p class="empty">No debts with a balance. Nothing to plan, which is the goal.</p>'; $("sum-dfree").textContent = "Debt-free"; return; }
     var a = dfSimulate(plan.strategy, plan.extra || 0, false), b = dfSimulate(plan.strategy, 0, true);
@@ -3642,6 +3891,33 @@ td.paid { color: var(--ink-soft); }
     Object.keys(map).forEach(function (id) { $(id).oninput = function () { btIn[map[id]] = this.value; renderCalc(); }; });
   }
 
+  function editTransfer(t) {
+    var opts = state.banks.map(function (b) { return [b.id, b.name + (b.cur === "PHP" ? " (₱)" : "")]; });
+    var cur = function (id) { var b = bankById(id); return b ? b.cur : "GBP"; };
+    openEditor({
+      title: "Edit transfer",
+      fields: [
+        { key: "date", label: "Date", type: "date", value: t.date },
+        { key: "from", label: "From", type: "select", value: t.from, options: opts },
+        { key: "to", label: "To", type: "select", value: t.to, options: opts },
+        { key: "amtFrom", label: "Amount sent", type: "number", value: t.amtFrom },
+        { key: "amtTo", label: "Amount received", type: "number", value: t.amtTo, showIf: function (v) { return cur(v.from) !== cur(v.to); } },
+        { key: "note", label: "Note", type: "text", value: t.note || "", full: true, max: 80 },
+        { key: "n", label: "Transfers move money between your own accounts, so they're not counted as spending or income.", type: "note" }
+      ],
+      onSave: function (v) {
+        if (!v.from || !v.to || v.from === v.to) return "Choose two different accounts.";
+        if (!(v.amtFrom > 0)) return "Enter the amount sent.";
+        var cross = cur(v.from) !== cur(v.to);
+        if (cross && !(v.amtTo > 0)) return "Enter the amount received.";
+        t.date = v.date; t.from = v.from; t.to = v.to; t.amtFrom = r2(v.amtFrom); t.amtTo = cross ? r2(v.amtTo) : t.amtFrom; t.note = v.note.trim();
+        t.cur = cur(v.from); t.orig = t.amtFrom; t.rate = t.cur === "PHP" ? (state.rate ? state.rate.value : 0) : 1; t.amount = r2(t.orig * t.rate);
+      },
+      onDelete: function () { state.tx = state.tx.filter(function (x) { return x !== t; }); },
+      deleteLabel: "Delete transfer", deletedMsg: "Transfer deleted"
+    });
+  }
+
   // ---------- Profiles ----------
   var P_COLORS = ["#2F6B4F", "#8E4D6E", "#3C6E91", "#B0613A", "#6A5ACD", "#3F8C8C", "#9C6B3E"];
   function currentProfile() { return profiles.list.find(function (p) { return p.id === profiles.current; }); }
@@ -3657,7 +3933,7 @@ td.paid { color: var(--ink-soft); }
     }).join("");
     $("pDelete").hidden = profiles.list.length < 2;
     $("pActions").hidden = !!cp.locked;
-    $("pBackupInfo").textContent = state.lastBackup ? "Last backup " + agoText(state.lastBackup) : "Not backed up yet";
+    $("pBackupInfo").textContent = (state.lastBackup ? "Last backup " + agoText(state.lastBackup) : "Not backed up yet") + ". Back up and restore are at the bottom of every page.";
     document.title = "Budget · " + cp.name;
   }
   function switchProfile(id) {
