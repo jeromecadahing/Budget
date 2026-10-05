@@ -513,6 +513,7 @@ span.bill-amt.none { border: 0; background: transparent; }
 @media (max-width: 620px) { .bill-form { grid-template-columns: 1fr 1fr; } }
 .bill-form .auto-check { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
 .bill-form .auto-check input { width: 18px; height: 18px; accent-color: var(--ink); }
+.mini-link { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; cursor: pointer; }
 .auto-tag { font-size: 11px; font-weight: 600; color: var(--good); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; margin-left: 4px; white-space: nowrap; }
 .bill-form label { display: flex; flex-direction: column; font-size: 13px; color: var(--ink-soft); gap: 4px; }
 .bill-form input, .bill-form select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; }
@@ -1313,8 +1314,19 @@ td.paid { color: var(--ink-soft); }
         items.push({ bill: b, key: o.key, due: o.date, late: o.date < t0 });
       });
     });
+    // Card minimums: those with a due day before payday, or this month's if the card has no due day set
+    var curYm = ymOf(t0), pdYm = ymOf(pd);
+    state.cards.forEach(function (c) {
+      if (!cardInBills(c) || !(cardStats(c, "").balance > 0)) return;
+      [curYm, nextYm(curYm)].forEach(function (ym) {
+        if (ym > pdYm || cardMinPaid(c, ym)) return;
+        var d = cardMinDate(c, +ym.slice(0, 4), +ym.slice(5, 7) - 1);
+        if (c.dueDay ? d >= pd : ym !== curYm) return;
+        items.push({ card: c, key: ym, due: d, late: !!c.dueDay && d < t0 });
+      });
+    });
     items.sort(function (a, b) { return a.due - b.due; });
-    var total = items.reduce(function (s, i) { return s + billGbp(i.bill, billDue(i.bill, i.key)); }, 0);
+    var total = items.reduce(function (s, i) { return s + (i.card ? cardToGbp(i.card, cardMinFor(i.card, i.key).v) : billGbp(i.bill, billDue(i.bill, i.key))); }, 0);
     return { payday: pd, items: items, total: total };
   }
 
@@ -1329,7 +1341,7 @@ td.paid { color: var(--ink-soft); }
       return false;
     }
     var r = dueBeforePayday(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
-    if (!state.bills.length) {
+    if (!state.bills.length && !r.items.length) {
       var dd = Math.round((r.payday - t0) / 86400000);
       box.className = "payday clear";
       box.innerHTML = '<div class="pd-title">Payday ' + r.payday.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) +
@@ -1344,8 +1356,15 @@ td.paid { color: var(--ink-soft); }
     box.innerHTML = '<div class="pd-head"><div><div class="pd-title">' +
       (r.items.length ? "Due before payday" : "All bills covered until payday") + "</div>" +
       '<div class="pd-sub">Payday ' + pdLabel + " · " + (days === 1 ? "tomorrow" : "in " + days + " days") + "</div></div>" +
-      (r.items.length ? '<div class="pd-total">' + money(r.total) + (r.items.some(function (i) { return !(billDue(i.bill, i.key) > 0); }) ? '<small style="display:block;font-size:12px;font-weight:400;color:var(--ink-soft)">+ bills that vary</small>' : "") + "</div>" : "") + "</div>" +
+      (r.items.length ? '<div class="pd-total">' + money(r.total) + (r.items.some(function (i) { return !i.card && !(billDue(i.bill, i.key) > 0); }) ? '<small style="display:block;font-size:12px;font-weight:400;color:var(--ink-soft)">+ bills that vary</small>' : "") + "</div>" : "") + "</div>" +
       (r.items.length ? '<ul class="pd-list">' + r.items.map(function (i) {
+        if (i.card) {
+          var c = i.card, cv = cardMinFor(c, i.key), fb = bankById(c.payFrom);
+          return '<li><input type="checkbox" class="bill-check" data-pdcardmin="' + c.id + '" data-occ="' + i.key + '" aria-label="Mark ' + esc(cardLabel(c)) + ' minimum as paid">' +
+            "<div>" + esc(cardLabel(c)) + ' minimum <span class="' + (i.late ? "late" : "bill-meta") + '">' + (c.dueDay ? (i.late ? "overdue, was due " : "due ") + fmt(i.due) : "this month") +
+            (fb ? " · from " + esc(bankLabel(fb)) : "") + "</span></div>" +
+            '<span class="amt">' + (cv.src === "estimate" ? "≈ " : "") + cm(c, cv.v) + "</span></li>";
+        }
         var b = i.bill;
         return '<li><input type="checkbox" class="bill-check" data-pdpay="' + b.id + '" data-occ="' + i.key + '" aria-label="Mark ' + esc(b.name) + ' as paid">' +
           "<div>" + esc(b.name) + (b.auto ? '<span class="auto-tag">auto</span>' : "") + ' <span class="' + (i.late ? "late" : "bill-meta") + '">' + (i.late ? "overdue, was due " : "due ") + fmt(i.due) +
@@ -1371,7 +1390,8 @@ td.paid { color: var(--ink-soft); }
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
     var label = new Date(y, m, 1).toLocaleDateString(undefined, { month: "long" });
     $("billsTitle").textContent = "Bills for " + label;
-    if (!state.bills.length) {
+    var cardMins = cardMinRows(y, m);
+    if (!state.bills.length && !cardMins.length) {
       $("billsSum").textContent = ""; renderPayday();
       $("bills").innerHTML = '<p class="empty">Add your regular bills below. Each month you can tick them off as you pay them.</p>';
       return;
@@ -1383,8 +1403,10 @@ td.paid { color: var(--ink-soft); }
       if (!occ.length) { notDue.push(b); return; }
       occ.forEach(function (o) { rows.push({ b: b, o: o }); });
     });
+    cardMins.forEach(function (cr) { rows.push({ cr: cr, b: { name: cardLabel(cr.c) }, o: { date: cr.date, key: cr.key } }); });
     rows.sort(function (a, c) { return a.o.date - c.o.date || a.b.name.localeCompare(c.b.name); });
     $("bills").innerHTML = rows.map(function (r) {
+      if (r.cr) return cardMinRowHtml(r.cr);
       var b = r.b, o = r.o, p = occPayment(b, o.key), diff = Math.round((o.date - t0) / 86400000);
       var status, cls;
       var planZero = !p && nothingDue(b, o.key);
@@ -1423,6 +1445,33 @@ td.paid { color: var(--ink-soft); }
       }).join("") + "</div>";
     }
     var totalN = rows.length - nothingN;
+    // A card's minimum payment as a bill row: the estimate (or the card's set minimum) unless you change the amount
+    function cardMinRowHtml(cr) {
+      var c = cr.c, p = cr.p, key = cr.key, cv = cardMinFor(c, key), diff = Math.round((cr.date - t0) / 86400000), status, cls;
+      var dShort = function (d) { return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
+      if (p) { status = "Paid"; cls = "paid"; paidN++; }
+      else {
+        owing += cardToGbp(c, cv.v);
+        if (!c.dueDay) { status = "Not paid yet"; cls = "due"; }
+        else if (diff < 0) { status = "Overdue"; cls = "late"; }
+        else if (diff === 0) { status = "Due today"; cls = "soon"; }
+        else if (diff <= 3) { status = "Due in " + diff + (diff === 1 ? " day" : " days"); cls = "soon"; }
+        else { status = "Not paid yet"; cls = "due"; }
+      }
+      var fb = bankById(c.payFrom);
+      var meta = (c.dueDay ? "Due " + dShort(cr.date) : "No due day set") + (fb ? " · " + esc(bankLabel(fb)) : "") +
+        (p ? " · paid " + dShort(new Date(p.date + "T00:00:00"))
+          : cv.src === "edited" ? ' · your amount · <button type="button" class="mini-link" data-cardminreset="' + c.id + '" data-occ="' + key + '">use ' + (cardMinPay(c).est ? "estimate" : "minimum") + "</button>"
+          : cv.src === "set" ? " · minimum payment" : " · estimated minimum");
+      var shown = p ? inCard(c, p) : cv.v;
+      return '<div class="bill' + (p ? " is-paid" : "") + '">' +
+        '<input type="checkbox" class="bill-check" data-cardmin="' + c.id + '" data-occ="' + key + '"' + (p ? " checked" : "") + ' aria-label="Mark ' + esc(cardLabel(c)) + ' minimum payment as paid">' +
+        '<div><div class="bill-name">' + esc(cardLabel(c)) + '<span class="auto-tag">card</span></div><div class="bill-meta">' + meta + "</div></div>" +
+        '<span class="status ' + cls + '">' + status + "</span>" +
+        '<input class="bill-amt" type="number" step="0.01" min="0" inputmode="decimal" id="cmin-' + c.id + "_" + key + '" data-cardminamt="' + c.id + '" data-occ="' + key + '" value="' + shown.toFixed(2) + '"' + (p ? " disabled" : "") +
+        ' aria-label="Minimum payment for ' + esc(cardLabel(c)) + " in " + (isPH(c) ? "PHP" : "GBP") + '" title="' + (isPH(c) ? "Pesos" : "Pounds") + '">' +
+        '<button class="edit-btn" data-editcard="' + c.id + '" aria-label="Edit ' + esc(cardLabel(c)) + '">Edit</button></div>';
+    }
     if (renderPayday()) {
       // The payday box is the checklist; the full month list folds away underneath
       $("bills").innerHTML = '<details class="all-bills"' + (allBillsOpen ? " open" : "") + '><summary>All bills in ' + label +
@@ -1557,7 +1606,7 @@ td.paid { color: var(--ink-soft); }
       "<span>Spent <b>" + money(spent) + "</b></span>" +
       (totalBudget > 0 && income > 0 ? "<span>Income left <b" + (incLeft < 0 ? ' style="color:var(--over)"' : "") + ">" + money(incLeft) + "</b></span>" : "") +
       (acct ? "<span>In your accounts <b>" + money(acct.gbp) + "</b></span>" : "") +
-      (state.payday && state.bills.length && ymOf(new Date()) === monthKey() && dueBeforePayday().total > 0
+      (state.payday && (state.bills.length || state.cards.length) && ymOf(new Date()) === monthKey() && dueBeforePayday().total > 0
         ? "<span>Bills before payday <b>" + money(dueBeforePayday().total) + "</b></span>" : "") +
       (phpSpent > 0 ? "<span>Spent in pesos <b>" + peso(phpSpent) + "</b><small>" + money(phpSpentGbp) + "</small></span>" : "");
 
@@ -1770,12 +1819,16 @@ td.paid { color: var(--ink-soft); }
       var pb = billById(e.target.dataset.pdpay); if (pb) toggleBill(pb, true, e.target.dataset.occ, true); return;
     }
     if (e.target.dataset && e.target.dataset.billtoggle) { var bl = billById(e.target.dataset.billtoggle); if (bl) toggleBill(bl, e.target.checked, e.target.dataset.occ); return; }
+    if (e.target.dataset && e.target.dataset.cardminamt) { var ca = cardById(e.target.dataset.cardminamt); if (ca) setCardMinEdit(ca, e.target.dataset.occ, e.target.value); return; }
+    if (e.target.dataset && e.target.dataset.cardmin) { var cb = cardById(e.target.dataset.cardmin); if (cb) toggleCardMin(cb, e.target.checked, e.target.dataset.occ); return; }
+    if (e.target.dataset && e.target.dataset.pdcardmin) { var cc = cardById(e.target.dataset.pdcardmin); if (cc) toggleCardMin(cc, true, e.target.dataset.occ, true); return; }
     var id = e.target.dataset && e.target.dataset.budget;
     if (id) { var c = catById(id); if (c) { c.budget = Math.max(0, parseFloat(e.target.value) || 0); save(); render(); } }
   });
   document.addEventListener("click", function (e) {
     var t = e.target.closest("button"); if (!t) return;
     if (t.dataset.startpay) startPayment(t.dataset.startpay);
+    if (t.dataset.cardminreset) { var rc = cardById(t.dataset.cardminreset); if (rc) setCardMinEdit(rc, t.dataset.occ, ""); }
   });
 
   $("useBudgets").onchange = function () { state.useBudgets = this.checked; save(); render(); if (currentTab === "summary") renderSummary(); };
@@ -2195,6 +2248,60 @@ td.paid { color: var(--ink-soft); }
     var apr = cardAprAt(c, 0);
     return { v: Math.round(estMin(bal, apr, isPH(c)) * 100) / 100, est: true, how: apr > 0 ? "interest + 1%" : "3%" };
   }
+  // ---------- Card minimums in This month's bills ----------
+  // Each card with a balance shows its minimum (from the card's Edit form, or the estimate on the Debts tab) as a bill.
+  // Change the amount in the bill row and that amount is kept for that month instead.
+  function cardInBills(c) { return c.minInBills !== false; }
+  function cardMinEdit(c, ym) { return c.minEdits && c.minEdits[ym] > 0 ? c.minEdits[ym] : null; }
+  function cardMinFor(c, ym) {
+    var e = cardMinEdit(c, ym); if (e != null) return { v: e, src: "edited" };
+    var mp = cardMinPay(c); return { v: mp.v, src: mp.est ? "estimate" : "set" };
+  }
+  function cardMinDate(c, y, m) { var dim = daysInMonth(y, m); return new Date(y, m, Math.min(c.dueDay || dim, dim)); }
+  // The payment that covers a month's minimum: one ticked off in Bills, or any other payment to the card that month
+  function cardMinPaid(c, ym) {
+    var pays = state.tx.filter(function (t) { return t.type === "cardpay" && t.card === c.id; });
+    return pays.find(function (t) { return t.cardMin === ym; }) ||
+      pays.find(function (t) { return !t.cardMin && t.date.slice(0, 7) === ym; }) || null;
+  }
+  function cardMinRows(y, m) {
+    var ym = y + "-" + pad(m + 1), curYm = ymOf(new Date()), out = [];
+    state.cards.forEach(function (c) {
+      if (!cardInBills(c)) return;
+      var p = cardMinPaid(c, ym);
+      if (!p && (ym < curYm || !(cardStats(c, "").balance > 0))) return;
+      out.push({ c: c, key: ym, date: cardMinDate(c, y, m), p: p });
+    });
+    return out;
+  }
+  function setCardMinEdit(c, ym, raw) {
+    var v = Math.round((parseFloat(raw) || 0) * 100) / 100, est = cardMinPay(c).v;
+    c.minEdits = c.minEdits || {};
+    var reset = !(v > 0) || Math.abs(v - est) < 0.005;
+    if (reset) delete c.minEdits[ym]; else c.minEdits[ym] = v;
+    if (!Object.keys(c.minEdits).length) delete c.minEdits;
+    save(); render();
+    toast(reset ? cardLabel(c) + " back to its " + (cardMinPay(c).est ? "estimated " : "") + "minimum" : cardLabel(c) + " set to " + cm(c, v) + " for " + ymLabel(ym));
+  }
+  function toggleCardMin(c, checked, ym, fromPayday) {
+    var existing = cardMinPaid(c, ym);
+    if (!checked) {
+      if (existing) state.tx = state.tx.filter(function (t) { return t !== existing; });
+      save(); render(); toast(cardLabel(c) + " payment removed"); return;
+    }
+    if (existing) return;
+    var el = fromPayday ? null : $("cmin-" + c.id + "_" + ym);
+    var v = el ? parseFloat(el.value) : cardMinFor(c, ym).v;
+    if (!(v > 0)) { render(); toast("Enter the amount you paid " + cardLabel(c)); return; }
+    var ph = isPH(c), rate = 1;
+    if (ph) { if (!state.rate) { toast("Needs an exchange rate first"); render(); return; } rate = state.rate.value; }
+    var dueD = cardMinDate(c, +ym.slice(0, 4), +ym.slice(5, 7) - 1), td = today(), date = ym >= td.slice(0, 7) ? td : dayKey(dueD);
+    var orig = Math.round(v * 100) / 100, gbp = Math.round(orig * rate * 100) / 100;
+    state.tx.push({ id: uid(), type: "cardpay", created: Date.now(), card: c.id, cardMin: ym, from: bankById(c.payFrom) ? c.payFrom : undefined,
+      cur: ph ? "PHP" : "GBP", orig: orig, rate: rate, amount: gbp, cardAmt: ph ? orig : undefined, date: date, category: null,
+      note: cardLabel(c) + " minimum payment" });
+    save(); render(); toast(cardLabel(c) + " minimum marked as paid");
+  }
   // ---------- Loans ----------
   var LOAN_KINDS = [["personal", "Personal loan"], ["car", "Car finance"], ["student", "Student loan"], ["bnpl", "Buy now, pay later"],
     ["mortgage", "Mortgage"], ["family", "Family or friend"], ["other", "Other debt"]];
@@ -2544,9 +2651,11 @@ td.paid { color: var(--ink-soft); }
       ? (totalBudget - spent >= 0 ? money(totalBudget - spent) + " left" : money(spent - totalBudget) + " over")
       : state.categories.length + (state.categories.length === 1 ? " category" : " categories");
     var bs = "";
-    if (state.bills.length) {
+    var cmRows = cardMinRows(view.y, view.m);
+    if (state.bills.length || cmRows.length) {
       var ym = monthKey(), mF = new Date(view.y, view.m, 1), mT = new Date(view.y, view.m + 1, 1), tot = 0, paid = 0;
       state.bills.forEach(function (b) { occurrences(b, mF, mT).forEach(function (o) { if (occPayment(b, o.key)) { tot++; paid++; } else if (!nothingDue(b, o.key) && !billFinished(b)) tot++; }); });
+      cmRows.forEach(function (cr) { tot++; if (cr.p) paid++; });
       if (state.payday && ymOf(new Date()) === ym) {
         var r = dueBeforePayday();
         bs = r.items.length ? r.items.length + " due before payday · " + money(r.total) : "All covered until payday";
@@ -2802,6 +2911,10 @@ td.paid { color: var(--ink-soft); }
         { key: "open", label: "Owed when you added it (" + sym + ")", type: "number", value: c.opening || 0 },
         { key: "limit", label: "Credit limit (" + sym + ")", type: "number", step: "1", value: c.limit || "" },
         { key: "min", label: "Minimum payment a month (" + sym + ")", type: "number", value: c.minPay || "" },
+        { key: "dueDay", label: "Payment due day each month", type: "number", step: "1", value: c.dueDay || "" },
+        { key: "payFrom", label: "Paid from", type: "select", value: bankById(c.payFrom) ? c.payFrom : "",
+          options: [["", "No bank set"]].concat(state.banks.map(function (b) { return [b.id, bankLabel(b)]; })) },
+        { key: "inBills", label: "Show the minimum payment in This month's bills", type: "checkbox", value: cardInBills(c) },
         { key: "apr", label: "Interest rate (APR %)", type: "number", step: "0.01", value: c.apr || "" },
         { key: "promoApr", label: "Promo rate, e.g. 0% balance transfer (%)", type: "number", step: "0.01", value: c.promoEnd ? (c.promoApr || 0) : "", adv: true },
         { key: "promoEnd", label: "Promo ends", type: "date", value: c.promoEnd || "", adv: true },
@@ -2812,7 +2925,11 @@ td.paid { color: var(--ink-soft); }
         if (!v.name.trim()) return "Give the card a name.";
         var l4 = (v.last4 || "").replace(/\D/g, "");
         if (l4 && l4.length !== 4) return "Last 4 digits should be exactly 4 numbers, or leave it blank.";
+        if (v.dueDay && !(v.dueDay >= 1 && v.dueDay <= 31 && v.dueDay % 1 === 0)) return "Due day should be a whole number from 1 to 31, or leave it blank.";
         if (l4) c.last4 = l4; else delete c.last4;
+        if (v.dueDay) c.dueDay = v.dueDay; else delete c.dueDay;
+        if (bankById(v.payFrom)) c.payFrom = v.payFrom; else delete c.payFrom;
+        if (v.inBills) delete c.minInBills; else c.minInBills = false;
         c.name = v.name.trim(); c.opening = Math.max(0, v.open || 0); c.limit = Math.max(0, v.limit || 0); c.minPay = Math.max(0, v.min || 0); c.apr = Math.max(0, v.apr || 0);
         if (v.promoEnd) { c.promoEnd = v.promoEnd; c.promoApr = Math.max(0, v.promoApr || 0); } else { delete c.promoEnd; delete c.promoApr; }
       },
@@ -2861,10 +2978,11 @@ td.paid { color: var(--ink-soft); }
     if (!state.banks.length) return "";
     var groups = {}, order = [];
     items.forEach(function (i) {
-      var pi = payInfo(i.bill.pay), k = pi.kind === "gone" ? "cash" : (i.bill.pay || "cash");
+      var src = i.card ? (bankById(i.card.payFrom) ? i.card.payFrom : "cash") : i.bill.pay;
+      var pi = payInfo(src), k = pi.kind === "gone" ? "cash" : (src || "cash");
       if (!groups[k]) { groups[k] = { pi: pi.kind === "gone" ? payInfo("cash") : pi, gbp: 0, php: 0 }; order.push(k); }
-      var dv = billDue(i.bill, i.key) || 0;
-      if (i.bill.cur === "PHP") groups[k].php += dv; else groups[k].gbp += dv;
+      var dv = (i.card ? cardMinFor(i.card, i.key).v : billDue(i.bill, i.key)) || 0;
+      if (i.card ? isPH(i.card) : i.bill.cur === "PHP") groups[k].php += dv; else groups[k].gbp += dv;
     });
     return '<div class="pd-split"><span>Needed in each account:</span>' + order.map(function (k) {
       var g = groups[k], amt = [g.gbp ? money(g.gbp) : "", g.php ? peso(g.php) : ""].filter(Boolean).join(" + ") || "varies";
