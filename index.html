@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#1D332C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Budget</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -246,17 +253,6 @@ td.inc { color: var(--good); }
 td.neg { color: var(--over); }
 .pay-tag.carry { color: var(--brass); }
 tr.carried-out td { opacity: .6; }
-.cc-group { margin-bottom: 14px; }
-.cc-group:last-child { margin-bottom: 0; }
-.cc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--ink-soft); padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-.cc-head b { color: var(--ink); font-weight: 600; }
-.cc-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
-.cc-row:last-child { border-bottom: 0; }
-.cc-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 500; }
-.cc-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cc-bal { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
-.cc-bal small { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); }
-.cc-bal small.low { color: var(--over); }
 .mini { height: 4px; background: var(--paper); border-radius: 2px; overflow: hidden; margin-top: 4px; }
 .mini i { display: block; height: 100%; }
 .small-btn { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; font-size: 13px; }
@@ -332,6 +328,8 @@ tr.carried-out td { opacity: .6; }
 .bnpl-av small { display: inline; color: var(--ink-soft); }
 .bnpl-av .warn b { color: var(--over); }
 .bnpl-av .mini { margin-top: 4px; }
+.kv-total { font-weight: 600; border-top: 2px solid var(--line); }
+.kv-total span:first-child { color: var(--ink) !important; }
 .ac-sub { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 22px; margin: 28px 0 8px; }
 .acct { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .acct:last-child { border-bottom: 0; }
@@ -340,6 +338,11 @@ tr.carried-out td { opacity: .6; }
 .acct .sub.warn { color: var(--over); }
 .acct .bal { text-align: right; font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
 .acct .acts { grid-column: 2; display: flex; gap: 6px; justify-content: flex-end; }
+.bank-toggle { grid-column: 1 / -1; justify-self: start; background: none; border: 0; padding: 4px 0; font-size: 13px; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+.bank-toggle:hover { color: var(--ink); }
+.bank-bills { grid-column: 1 / -1; background: var(--paper); border-radius: 10px; padding: 6px 12px; }
+.bank-bills .kv { font-size: 14px; }
+.bank-bills small { color: var(--ink-soft); font-size: 12px; }
 .acct .bal.unset { font-weight: 400; font-size: 14px; color: var(--ink-soft); }
 .ca-card small.free { color: var(--good); }
 .ca-card small.over { color: var(--over); font-weight: 600; }
@@ -364,7 +367,8 @@ tr.carried-out td { opacity: .6; }
   #pName { display: none; }
 }
 .ca-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--cc); border-radius: 12px; padding: 10px 14px; min-width: 150px; text-align: left; cursor: pointer; }
-.ca-card[aria-pressed="true"] { border-color: var(--ink); border-left-color: var(--cc); box-shadow: 0 0 0 1px var(--ink) inset; }
+.ca-card[aria-pressed="true"] { background: color-mix(in srgb, var(--cc) 16%, var(--card)); border-color: var(--cc); box-shadow: 0 0 0 2px var(--cc) inset; }
+.ca-card[aria-pressed="true"] b { color: var(--ink); }
 .ca-card span { font-size: 13px; color: var(--ink-soft); }
 .ca-card b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .ca-card small { font-size: 12px; color: var(--ink-soft); }
@@ -401,10 +405,30 @@ tr.carried-out td { opacity: .6; }
 .df-gain { font-size: 15px; margin: 0 0 14px; }
 .df-gain b { color: var(--good); }
 .df-action { background: var(--paper); border-left: 4px solid var(--good); border-radius: 10px; padding: 12px 14px; margin: 0 0 16px; font-size: 15px; }
-.df-order { margin: 0 0 16px; padding-left: 22px; }
-.df-order li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
-.df-order li span { float: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.df-order li.stuck span { color: var(--over); }
+.df-table { width: 100%; font-size: 14px; }
+.df-table th { font-size: 12px; }
+.df-table td, .df-table th { padding: 7px 6px; }
+.df-table .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.df-table small { display: block; font-size: 11px; color: var(--ink-soft); }
+.df-table .na { color: var(--over); font-size: 12px; }
+.df-table tr.focus td { background: color-mix(in srgb, var(--good) 10%, transparent); }
+.df-table tr.tot td { font-weight: 600; border-top: 2px solid var(--line); }
+.df-table b.g { color: var(--good); }
+.df-what tr.pick { cursor: pointer; }
+@media (max-width: 560px) {
+  .df-table thead { display: none; }
+  .df-table, .df-table tbody { display: block; }
+  .df-table tr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; padding: 8px 6px; border-bottom: 1px solid var(--line); border-radius: 8px; }
+  .df-table td { display: block; padding: 0 !important; border: 0 !important; text-align: left !important; background: none !important; }
+  .df-table td:first-child { grid-column: 1 / -1; font-weight: 600; }
+  .df-table td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; color: var(--ink-soft); font-weight: 400; }
+  .df-table td.hide-sm { display: none; }
+  .df-table tr.focus, .df-what tr.cur { background: color-mix(in srgb, var(--good) 12%, transparent); }
+  .df-what td:nth-child(5) { display: none; }
+  .df-what td:nth-child(5):has(b) { display: block; }
+}
+.df-what tr.pick:hover td { background: var(--paper); }
+.df-what tr.cur td { background: color-mix(in srgb, var(--good) 12%, transparent); font-weight: 600; }
 .df-chart svg { display: block; width: 100%; height: auto; }
 .df-warn { font-size: 13px; color: var(--over); margin: 4px 0 0; }
 .ca-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -462,9 +486,6 @@ span.bill-amt.none { border: 0; background: transparent; }
 .not-due { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 12px 0 2px; font-size: 14px; color: var(--ink-soft); border-top: 1px solid var(--line); }
 .nd-item { color: var(--ink); }
 .nd-item small { color: var(--ink-soft); }
-.bank-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
-.bank-row span.c { color: var(--ink-soft); font-size: 13px; }
-.bank-row .edit-btn { margin-left: auto; }
 .bank-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .bank-add input { flex: 1; min-width: 120px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
 .bank-add select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
@@ -681,14 +702,15 @@ td.paid { color: var(--ink-soft); }
       <div class="left" id="acBig">–</div>
       <div class="hero-figs" id="acFigs"></div>
     </section>
-    <section class="panel wide">
-      <h2>Bank accounts</h2>
+    <section class="panel wide fold" data-sec="banks">
+      <h2><button class="sec-toggle" aria-expanded="true"><span>Bank accounts</span><span class="sec-sum" id="sum-banks"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
       <div id="bankList"></div>
       <details class="add-bill" id="addBankBox">
         <summary>Add a bank account</summary>
         <div class="bank-add">
           <input id="bankName" type="text" maxlength="30" placeholder="e.g. HSBC, BPI" aria-label="Bank account name">
           <select id="bankCur" aria-label="Bank country"><option value="GBP">UK bank (£)</option><option value="PHP">PH bank (₱)</option></select>
+          <input id="bankLast4" type="text" inputmode="numeric" maxlength="4" placeholder="Card last 4" aria-label="Last 4 digits of the debit card (optional)">
           <input id="bankBal" type="number" step="0.01" inputmode="decimal" placeholder="Balance now" aria-label="Balance right now">
           <button class="ghost" id="addBank">Add account</button>
         </div>
@@ -706,7 +728,8 @@ td.paid { color: var(--ink-soft); }
       <p class="hero-caption" id="caCaption">Card activity</p>
       <div class="ca-cards" id="caCards"></div>
     </section>
-    <section class="panel wide">
+    <section class="panel wide fold" data-sec="cardst">
+      <h2><button class="sec-toggle" aria-expanded="true"><span>Card statement</span><span class="sec-sum" id="sum-cardst"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
       <div id="cardAct"></div>
     </section>
     <section class="panel wide">
@@ -1026,6 +1049,7 @@ td.paid { color: var(--ink-soft); }
     state.tx.forEach(function (t) { var d = bankDelta(b, t); if (d && bankCounts(b, t)) v += d; });
     return Math.round(v * 100) / 100;
   }
+  function bankLabel(b) { return b.name + (b.last4 ? " ••" + b.last4 : ""); }
   function bankMoney(b, n) { return b.cur === "PHP" ? peso(n) : money(n); }
   function bankToGbp(b, n) { return b.cur === "PHP" ? (state.rate ? n * state.rate.value : 0) : n; }
   function accountsTotal() {
@@ -1034,7 +1058,7 @@ td.paid { color: var(--ink-soft); }
   }
   function bankOptionsHtml(blank) {
     return (blank ? '<option value="">' + blank + "</option>" : "") + state.banks.map(function (b) {
-      return '<option value="' + b.id + '">' + esc(b.name) + (b.cur === "PHP" ? " (₱)" : "") + "</option>"; }).join("");
+      return '<option value="' + b.id + '">' + esc(bankLabel(b)) + (b.cur === "PHP" ? " (₱)" : "") + "</option>"; }).join("");
   }
   function usingBudgets() { return state.useBudgets != null ? !!state.useBudgets : mainCats().some(function (c) { return c.budget > 0; }); }
   function bnplById(id) { return state.loans.find(function (l) { return l.id === id && l.kind === "bnpl"; }); }
@@ -1055,14 +1079,14 @@ td.paid { color: var(--ink-soft); }
   function payInfo(p) {
     if (!p || p === "cash") return { kind: "cash", name: "Cash or debit" };
     var c = cardById(p); if (c) return { kind: "card", name: cardLabel(c) };
-    var b = bankById(p); if (b) return { kind: "bank", name: b.name };
+    var b = bankById(p); if (b) return { kind: "bank", name: bankLabel(b) };
     var n = bnplById(p); if (n) return { kind: "card", name: n.name, bnpl: true };
     return { kind: "gone", name: "Removed account" };
   }
   function payOptionsHtml(sel) {
     var o = '<option value="cash">Cash or debit (no bank set)</option>';
     if (state.banks.length) o += '<optgroup label="Bank accounts (debit)">' + state.banks.map(function (b) {
-      return '<option value="' + b.id + '">' + esc(b.name) + (b.cur === "PHP" ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
+      return '<option value="' + b.id + '">' + esc(bankLabel(b)) + (b.cur === "PHP" ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
     if (state.cards.length) o += '<optgroup label="Credit cards">' + state.cards.map(function (c) {
       return '<option value="' + c.id + '">' + esc(cardLabel(c)) + (isPH(c) ? " (PH)" : "") + "</option>"; }).join("") + "</optgroup>";
     if (bnplLoans().length) o += '<optgroup label="Buy now, pay later">' + bnplLoans().map(function (l) {
@@ -2138,12 +2162,18 @@ td.paid { color: var(--ink-soft); }
 
 
   // ---------- Debt to income ----------
+  // Estimated minimum when you haven't entered one. With an APR: this month's interest + 1% of the balance
+  // (how most UK cards work), otherwise 3%. At least £5 on UK cards, and never more than you owe.
+  function estMin(bal, apr, ph) {
+    if (!(bal > 0)) return 0;
+    var raw = apr > 0 ? bal * (0.01 + monthlyRate(apr)) : bal * 0.03;
+    return Math.min(bal, Math.max(raw, ph ? 0 : 5));
+  }
   function cardMinPay(c) {
     var bal = Math.max(0, cardStats(c, "").balance);
     if (c.minPay > 0) return { v: c.minPay, est: false };
-    // Typical UK minimum: 3% of the balance or £5, whichever is higher (never more than the balance)
-    var floor = isPH(c) ? 0 : 5;
-    return { v: Math.round(Math.min(bal, Math.max(bal * 0.03, bal > 0 ? floor : 0)) * 100) / 100, est: true };
+    var apr = cardAprAt(c, 0);
+    return { v: Math.round(estMin(bal, apr, isPH(c)) * 100) / 100, est: true, how: apr > 0 ? "interest + 1%" : "3%" };
   }
   // ---------- Loans ----------
   var LOAN_KINDS = [["personal", "Personal loan"], ["car", "Car finance"], ["student", "Student loan"], ["bnpl", "Buy now, pay later"],
@@ -2366,7 +2396,7 @@ td.paid { color: var(--ink-soft); }
     state.cards.forEach(function (c) {
       var mp = cardMinPay(c);
       cardPay += cardToGbp(c, mp.v); cardOwed += cardToGbp(c, Math.max(0, cardStats(c, "").balance));
-      cardRows += '<div class="kv"><span>' + esc(cardLabel(c)) + (mp.est ? " <small>(estimated: " + (isPH(c) ? "3%" : "3% or £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
+      cardRows += '<div class="kv"><span>' + esc(cardLabel(c)) + (mp.est ? " <small>(estimated: " + mp.how + (isPH(c) ? "" : ", at least £5") + ")</small>" : "") + "</span><span>" + cm(c, mp.v) + "</span></div>";
     });
 
     var L = loanSummary(false), loanOwed = L.owed, loanPay = L.pay, loanPayDti = L.payDti, loanInt = L.interest, loanRows = L.rows, billTotal = L.legacyTotal;
@@ -2400,7 +2430,7 @@ td.paid { color: var(--ink-soft); }
     }
     var right = "<h3>Card minimum payments</h3>" +
       (state.cards.some(function (c) { return !(c.minPay > 0); }) ? '<p class="hint" style="margin:0 0 4px">Estimates are rough. For exact figures, add each minimum from your statement in the card\'s Edit form on the Cards tab.</p>' : "") +
-      (state.cards.length ? cardRows : '<p class="empty">No credit cards added.</p>') +
+      (state.cards.length ? cardRows + '<div class="kv kv-total"><span>Card minimums total</span><span>' + money(cardPay) + "</span></div>" : '<p class="empty">No credit cards added.</p>') +
       '<h3 style="margin-top:16px">Loan and BNPL payments</h3>' + (function () {
         var live = state.loans.filter(function (l) { return loanState(l).balance > 0; });
         if (!live.length) return '<p class="empty">No loans with a balance.</p>';
@@ -2410,7 +2440,7 @@ td.paid { color: var(--ink-soft); }
           else if (!(pm > 0)) note = " <small>(" + (bill && isVar(bill) ? "varies, counted after first payment" : "no payment set") + ")</small>";
           else if (bill && freqOf(bill) !== "monthly") note = " <small>(" + freqLabel(bill).toLowerCase() + ", shown a month)</small>";
           return '<div class="kv"><span>' + esc(l.name) + note + "</span><span" + (l.exclude ? ' style="text-decoration:line-through;color:var(--ink-soft)"' : "") + ">" + money(loanToGbp(l, pm)) + "</span></div>";
-        }).join("");
+        }).join("") + '<div class="kv kv-total"><span>Loan and BNPL payments total</span><span>' + money(loanPayDti + billTotal) + "</span></div>";
       })() + (L.legacyTotal > 0 ? '<div class="kv"><span>Bills marked as debt</span><span>' + money(L.legacyTotal) + "</span></div>" : "") +
       '<p class="hint" style="margin-top:12px">Everything listed is added up as your monthly debt repayments. Rent, utilities and subscriptions count as living costs, not debt.</p>';
 
@@ -2604,7 +2634,7 @@ td.paid { color: var(--ink-soft); }
   }
   function payOptions() {
     return [["cash", "Cash or debit (no bank set)"]]
-      .concat(state.banks.map(function (b) { return [b.id, b.name + (b.cur === "PHP" ? " (PH bank, debit)" : " (debit)")]; }))
+      .concat(state.banks.map(function (b) { return [b.id, bankLabel(b) + (b.cur === "PHP" ? " (PH bank, debit)" : " (debit)")]; }))
       .concat(state.cards.map(function (c) { return [c.id, cardLabel(c) + (isPH(c) ? " (PH credit card)" : " (credit card)")]; }))
       .concat(bnplLoans().map(function (l) { return [l.id, l.name + " (buy now, pay later)"]; }));
   }
@@ -2822,29 +2852,54 @@ td.paid { color: var(--ink-soft); }
       return "<span>" + esc(label) + " <b>" + amt + "</b></span>";
     }).join("") + "</div>";
   }
+  var openBanks = {};
+  function bankBillsHtml(b) {
+    var bl = state.bills.filter(function (x) { return x.pay === b.id; });
+    if (!bl.length) return '<div class="bank-bills"><p class="empty" style="padding:4px 0">No bills are paid from ' + esc(b.name) + " yet.</p></div>";
+    var t0 = new Date(), monthly = 0; t0.setHours(0, 0, 0, 0);
+    var rows = bl.map(function (x) {
+      var nx = null; if (!billFinished(x)) { var occ = occurrences(x, t0, new Date(t0.getFullYear() + 1, t0.getMonth(), t0.getDate())); nx = occ.find(function (o) { return !occPayment(x, o.key) && !nothingDue(x, o.key); }); }
+      var pm = perMonth(x) || 0; monthly += billGbp(x, pm);
+      return '<div class="kv"><span>' + esc(x.name) + " <small>" + freqLabel(x).toLowerCase() + (x.auto ? " · automatic" : "") + (nx ? " · next " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "") + "</small></span><span>" +
+        (nx ? (billDue(x, nx.key) > 0 ? (x.cur === "PHP" ? peso(billDue(x, nx.key)) : money(billDue(x, nx.key))) : "Varies") : '<small>done</small>') + "</span></div>";
+    }).join("");
+    return '<div class="bank-bills">' + rows + '<div class="kv kv-total"><span>About a month</span><span>' + money(monthly) + "</span></div></div>";
+  }
   function renderBanks() {
     var t0 = new Date(); t0.setHours(0, 0, 0, 0);
     $("bankList").innerHTML = state.banks.length ? state.banks.map(function (b) {
       var bal = bankBalance(b), n = state.bills.filter(function (x) { return x.pay === b.id; }).length, sub = [];
       sub.push(b.cur === "PHP" ? "PH bank (₱)" : "UK bank (£)");
-      if (n) sub.push(n + (n === 1 ? " bill" : " bills"));
       var chk = "";
       if (b.checkedAt) {
         var days = Math.round((t0 - new Date(new Date(b.checkedAt).setHours(0, 0, 0, 0))) / 864e5);
         chk = "Checked " + (days === 0 ? "today" : days === 1 ? "yesterday" : days + " days ago") + (b.lastDiff && Math.abs(b.lastDiff) >= 0.01 ? " · was " + bankMoney(b, Math.abs(b.lastDiff)) + " out" : " · matched");
       }
       var stale = bal != null && (!b.checkedAt || (t0 - b.checkedAt) / 864e5 > 14);
-      return '<div class="acct"><span class="nm">' + esc(b.name) + "</span>" +
+      return '<div class="acct"><span class="nm">' + esc(bankLabel(b)) + "</span>" +
         (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : '<span class="bal unset">Balance not set</span>') +
         '<span class="sub">' + sub.join(" · ") + "</span>" +
         '<span class="acts"><button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></span>' +
+        (n ? '<button class="bank-toggle" data-bankbills="' + b.id + '" aria-expanded="' + (openBanks[b.id] ? "true" : "false") + '" title="' + esc(state.bills.filter(function (x) { return x.pay === b.id; }).map(function (x) { return x.name; }).join(", ")) + '">' + (openBanks[b.id] ? "Hide bills ▴" : "Show " + n + (n === 1 ? " bill" : " bills") + " ▾") + "</button>" : "") +
+        (openBanks[b.id] ? bankBillsHtml(b) : "") +
         (chk || stale ? '<span class="sub' + (stale && !chk ? " warn" : "") + '" style="grid-column:1/-1">' + (chk || "Not checked against your bank yet") + (stale && chk ? " · time for a check" : "") + "</span>" : "") +
         "</div>";
     }).join("") : '<p class="empty">Add the bank accounts you use, with the balance in each right now. The tracker then keeps each balance up to date as you log spending, income and transfers.</p>';
     var tot = accountsTotal();
     $("acBig").textContent = tot ? money(tot.gbp) : "–";
+    var ym = ymOf(new Date()), inn = 0, out = 0;
+    state.banks.forEach(function (b) {
+      state.tx.forEach(function (t) {
+        if (t.date.slice(0, 7) !== ym || t.type === "transfer") return;
+        var d = bankDelta(b, t); if (!d) return;
+        if (d > 0) inn += bankToGbp(b, d); else out -= bankToGbp(b, d);
+      });
+    });
+    $("sum-banks").textContent = tot ? money(tot.gbp) : "";
     var cardsOwed = state.cards.reduce(function (a, c) { return a + cardToGbp(c, Math.max(0, cardStats(c, "").balance)); }, 0);
-    $("acFigs").innerHTML = (tot ? "<span>Accounts tracked <b>" + tot.n + " of " + state.banks.length + "</b></span>" : "<span>Set a balance on each account to see your total</span>") +
+    $("acFigs").innerHTML = (tot ? "" : "<span>Set a balance on each account to see your total</span>") +
+      (inn || out ? "<span>In this month <b>" + money(inn) + "</b></span><span>Out this month <b>" + money(out) + "</b></span>" : "") +
+      (tot && tot.n < state.banks.length ? "<span>Accounts tracked <b>" + tot.n + " of " + state.banks.length + "</b></span>" : "") +
       (state.cards.length ? "<span>Owed on cards <b>" + money(cardsOwed) + "</b></span>" : "") +
       (tot && state.cards.length ? "<span>After paying cards off <b" + (tot.gbp - cardsOwed < 0 ? ' style="color:var(--over)"' : "") + ">" + money(tot.gbp - cardsOwed) + "</b></span>" : "") +
       (state.banks.some(function (b) { return b.cur === "PHP"; }) ? "<span><small>Peso accounts in £ at today's rate</small></span>" : "");
@@ -2880,9 +2935,15 @@ td.paid { color: var(--ink-soft); }
       fields: [
         { key: "name", label: "Account name", type: "text", value: b.name, max: 30 },
         { key: "cur", label: "Country", type: "select", value: b.cur, options: [["GBP", "UK bank (£)"], ["PHP", "PH bank (₱)"]] },
+        { key: "last4", label: "Debit card last 4 digits (optional)", type: "text", value: b.last4 || "", max: 4 },
         { key: "n", label: "To change the balance, use Check on the Accounts tab. That keeps the history of what's been logged.", type: "note" }
       ],
-      onSave: function (v) { if (!v.name.trim()) return "Give the account a name."; b.name = v.name.trim(); b.cur = v.cur; },
+      onSave: function (v) {
+        if (!v.name.trim()) return "Give the account a name.";
+        var d4 = String(v.last4 || "").replace(/\D/g, "");
+        if (d4 && d4.length !== 4) return "Last 4 digits should be exactly 4 numbers, or leave it blank.";
+        b.name = v.name.trim(); b.cur = v.cur; if (d4) b.last4 = d4; else delete b.last4;
+      },
       onDelete: function () { state.banks = state.banks.filter(function (x) { return x !== b; }); },
       deleteLabel: "Remove account",
       confirmDelete: 'Remove "' + b.name + '"? Bills and expenses paid from it will show "Removed account" until you pick another.',
@@ -2892,10 +2953,13 @@ td.paid { color: var(--ink-soft); }
   $("addBank").onclick = function () {
     var name = $("bankName").value.trim();
     if (!name) { toast("Give the account a name"); $("bankName").focus(); return; }
+    var l4b = $("bankLast4").value.replace(/\D/g, "");
+    if (l4b && l4b.length !== 4) { toast("Last 4 digits should be exactly 4 numbers"); $("bankLast4").focus(); return; }
     var nb = { id: uid(), name: name, cur: $("bankCur").value }, bv = $("bankBal").value;
+    if (l4b) nb.last4 = l4b;
     if (bv !== "" && !isNaN(parseFloat(bv))) { nb.bal = r2(parseFloat(bv)); nb.balAt = Date.now(); nb.balDate = today(); nb.checkedAt = Date.now(); nb.lastDiff = 0; }
     state.banks.push(nb);
-    $("bankName").value = ""; $("bankBal").value = ""; save(); render(); toast(name + " added");
+    $("bankName").value = ""; $("bankBal").value = ""; $("bankLast4").value = ""; save(); render(); toast(name + " added");
   };
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-editloan]"); if (b) { editLoan(b.dataset.editloan); return; }
@@ -2909,7 +2973,8 @@ td.paid { color: var(--ink-soft); }
   $("bankName").addEventListener("keydown", function (e) { if (e.key === "Enter") $("addBank").click(); });
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-editbank]"); if (b) { editBank(b.dataset.editbank); return; }
-    var c = e.target.closest("[data-checkbank]"); if (c) checkBank(c.dataset.checkbank);
+    var c = e.target.closest("[data-checkbank]"); if (c) { checkBank(c.dataset.checkbank); return; }
+    var bb = e.target.closest("[data-bankbills]"); if (bb) { openBanks[bb.dataset.bankbills] = !openBanks[bb.dataset.bankbills]; renderBanks(); }
   });
 
   // ---------- Backup reminder ----------
@@ -3282,6 +3347,7 @@ td.paid { color: var(--ink-soft); }
     var chT = charges.reduce(function (a, x) { return a + x.v; }, 0), pyT = payments.reduce(function (a, x) { return a + x.v; }, 0);
     var closing = opening + chT - pyT, label = ymLabel(mk);
     var rows = charges.concat(payments).sort(function (a, b) { return b.t.date.localeCompare(a.t.date); });
+    $("sum-cardst").textContent = cardLabel(c) + " · " + cm(c, closing) + " at month end";
     box.innerHTML = '<div class="st-head"><h2>' + esc(cardLabel(c)) + (isPH(c) ? " (PH)" : "") + '</h2><span class="acts"><button class="small-btn" data-startpay="card:' + c.id + '">Pay</button><button class="edit-btn" data-editcard="' + c.id + '">Edit</button></span></div>' +
       '<div class="ca-flow">' +
         "<div><span>Start of " + label + "</span><b>" + cm(c, opening) + "</b></div>" +
@@ -3641,7 +3707,7 @@ td.paid { color: var(--ink-soft); }
       if (bal < 0.01) return;
       var fixed = c.minPay > 0 ? cardToGbp(c, c.minPay) : 0, floor = isPH(c) ? 0 : 5;
       list.push({ id: c.id, name: cardLabel(c), kind: "card", bal: bal, apr: cardAprAt(c, 0), aprAt: function (m) { return cardAprAt(c, m); }, promo: promoText(c), noApr: !(c.apr > 0) && !c.promoEnd,
-        min: function (b) { return Math.min(b, fixed > 0 ? fixed : Math.max(b * 0.03, floor)); } });
+        min: function (b) { return Math.min(b, fixed > 0 ? fixed : estMin(b, this.apr, floor === 0)); } });
     });
     state.loans.forEach(function (l) {
       var st = loanState(l); if (st.balance < 0.01) return;
@@ -3669,11 +3735,12 @@ td.paid { color: var(--ink-soft); }
     for (m = 1; m <= 600; m++) {
       var active = ds.filter(function (d) { return d.left > 0.005; }); if (!active.length) break;
       active.forEach(function (d) { if (d.aprAt) d.apr = d.aprAt(m - 1); var i = d.left * monthlyRate(d.apr); d.left += i; interest += i; });
+      if (m === 1 && !minimumsOnly) pool = active.reduce(function (x, d) { return x + d.min(d.left); }, 0) + extra;
       var budget = minimumsOnly ? Infinity : pool;
-      active.forEach(function (d) { var p = Math.min(d.left, d.min(d.left), budget); d.left -= p; budget -= p; });
+      active.forEach(function (d) { var p = Math.min(d.left, d.min(d.left), budget); d.left -= p; budget -= p; if (m === 1) { d.m1min = p; d.m1extra = 0; } });
       if (!minimumsOnly && budget > 0.005) {
         active.slice().sort(dfOrder(strategy)).forEach(function (d) {
-          if (budget <= 0.005 || d.left <= 0.005) return; var p = Math.min(d.left, budget); d.left -= p; budget -= p;
+          if (budget <= 0.005 || d.left <= 0.005) return; var p = Math.min(d.left, budget); d.left -= p; budget -= p; if (m === 1) d.m1extra += p;
         });
       }
       ds.forEach(function (d) { if (d.left <= 0.005 && d.paidOff == null) { d.left = 0; d.paidOff = m; } });
@@ -3724,16 +3791,34 @@ td.paid { color: var(--ink-soft); }
     var order = a.debts.filter(function (d) { return d.bal > 0; }).slice().sort(plan.strategy === "snowball"
       ? function (x, y) { return x.bal - y.bal || y.apr - x.apr; } : function (x, y) { return y.apr - x.apr || x.bal - y.bal; });
     var target = order[0];
-    var mins = debts.reduce(function (s2, d) { return s2 + d.min(d.bal); }, 0);
+    var mins = a.debts.reduce(function (s2, d) { return s2 + (d.m1min || 0); }, 0);
     html += '<div class="df-action">' + (plan.extra > 0
       ? "This month: pay the minimum on everything (" + money(mins) + "), and put the extra <b>" + money(plan.extra) + "</b> towards <b>" + esc(target.name) + "</b>" + (plan.strategy === "avalanche" ? (target.apr ? " (" + target.apr + "% APR, your most expensive)" : "") : " (your smallest balance)") + ". That's " + money(mins + plan.extra) + " in total."
       : "Keep paying the same total, <b>" + money(mins) + " a month</b>, even as each debt clears and its minimum drops. Putting what's freed up onto the next debt is what gets you there" + (a.months != null ? " by " + monthsFromNow(a.months) : "") + ". Add an extra amount above to see how much sooner you could be debt-free.") + "</div>";
-    // order
+    // This month: what each debt gets, and when it clears
     var sorted = a.debts.slice().sort(function (x, y) { return (x.paidOff || 9999) - (y.paidOff || 9999); });
-    html += "<h3 style=\"font-size:14px;margin:0 0 6px\">The order they clear</h3><ol class=\"df-order\">" + sorted.map(function (d) {
-      var flag = d.kind === "card" && d.noApr ? ' <small style="color:var(--ink-soft)">(no APR set)</small>' : d.noPay ? ' <small style="color:var(--ink-soft)">(no payment set)</small>' : d.promo ? ' <small style="color:var(--ink-soft)">(' + esc(d.promo) + ")</small>" : "";
-      return "<li" + (d.paidOff ? "" : ' class="stuck"') + ">" + esc(d.name) + flag + "<span>" + (d.paidOff ? monthsFromNow(d.paidOff) : "not cleared") + "</span></li>";
-    }).join("") + "</ol>";
+    var tm = 0, te = 0;
+    html += '<h3 style="font-size:14px;margin:0 0 6px">This month, debt by debt</h3><div class="tx-scroll"><table class="df-table"><thead><tr><th>Debt</th><th class="r">APR</th><th class="r">Owed</th><th class="r">Minimum</th><th class="r">Extra</th><th class="r">Pay</th><th class="r">Cleared</th></tr></thead><tbody>' +
+      sorted.map(function (d) {
+        var mn = d.m1min || 0, ex = d.m1extra || 0; tm += mn; te += ex;
+        var aprTxt = d.kind === "card" && d.noApr ? '<span class="na">not set</span>' : (d.promo ? (d.apr || 0) + '%<small>' + esc(d.promo) + "</small>" : (d.apr || 0) + "%");
+        return "<tr" + (ex > 0 ? ' class="focus"' : "") + "><td>" + esc(d.name) + (d.noPay ? ' <small>(no payment set)</small>' : "") + '</td><td class="r" data-l="APR">' + aprTxt + '</td><td class="r" data-l="Owed">' + money(d.bal) +
+          '</td><td class="r" data-l="Minimum">' + money(mn) + '</td><td class="r" data-l="Extra">' + (ex > 0 ? "<b>" + money(ex) + "</b>" : "–") + '</td><td class="r" data-l="Pay"><b>' + money(mn + ex) + '</b></td><td class="r" data-l="Cleared">' + (d.paidOff ? monthsFromNow(d.paidOff) : '<span class="na">not cleared</span>') + "</td></tr>";
+      }).join("") + '<tr class="tot"><td>Total</td><td class="hide-sm"></td><td class="r" data-l="Owed">' + money(debts.reduce(function (x, d) { return x + d.bal; }, 0)) + '</td><td class="r" data-l="Minimum">' + money(tm) + '</td><td class="r" data-l="Extra">' + money(te) + '</td><td class="r" data-l="Pay">' + money(tm + te) + '</td><td class="hide-sm"></td></tr></tbody></table></div>';
+    if (!(plan.extra > 0) && te > 0.005) html += '<p class="hint" style="margin:4px 0 0">The "Extra" here is money freed up from minimums that have dropped, kept going to your debts.</p>';
+
+    // What different extra amounts would do
+    var opts2 = [0, 25, 50, 100, 200, 300];
+    if (plan.extra > 0 && opts2.indexOf(plan.extra) < 0) opts2.push(plan.extra);
+    opts2.sort(function (x, y) { return x - y; });
+    var baseI = dfSimulate(plan.strategy, 0, false);
+    html += '<h3 style="font-size:14px;margin:16px 0 6px">What extra gets you</h3><div class="tx-scroll"><table class="df-table df-what"><thead><tr><th>Extra a month</th><th class="r">Total a month</th><th class="r">Debt-free by</th><th class="r">Interest</th><th class="r">Saves</th></tr></thead><tbody>' +
+      opts2.map(function (x) {
+        var r = x === (plan.extra || 0) ? a : dfSimulate(plan.strategy, x, false), cur = x === (plan.extra || 0);
+        return '<tr class="pick' + (cur ? " cur" : "") + '" data-dfextra="' + x + '" tabindex="0" role="button" aria-label="Use ' + money(x) + ' extra"><td>' + (x ? "+" + money(x) : "Nothing extra") + (cur ? " <small>(your plan)</small>" : "") +
+          '</td><td class="r" data-l="Total a month">' + money(r.pool) + '</td><td class="r" data-l="Debt-free by">' + (r.months != null ? monthsFromNow(r.months) : "never") + '</td><td class="r" data-l="Interest">' + money(r.interest) +
+          '</td><td class="r" data-l="Saves">' + (x && r.interest < baseI.interest ? '<b class="g">' + money(baseI.interest - r.interest) + "</b>" : "–") + "</td></tr>";
+      }).join("") + '</tbody></table></div><p class="hint" style="margin:4px 0 12px">Tap a row to use that amount. "Saves" is interest saved compared with nothing extra.</p>';
     var a2 = a.series, b2 = b.series.slice(0, Math.max(a2.length, Math.min(b.series.length, 240)));
     html += '<div class="df-chart">' + dfChart(a2, b2) + '</div><div class="legend" style="margin-top:6px"><span><i style="background:var(--good)"></i>Your plan</span><span><i style="background:transparent;border:2px dashed var(--ink-soft)"></i>Minimums only</span></div>';
     var noApr = debts.filter(function (d) { return d.kind === "card" && d.noApr; }).length;
@@ -3753,6 +3838,10 @@ td.paid { color: var(--ink-soft); }
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-dfs]"); if (!b) return;
     state.dfPlan = Object.assign(state.dfPlan || {}, { strategy: b.dataset.dfs }); save(); renderDebtFree(); renderCalc();
+  });
+  document.addEventListener("click", function (e) {
+    var r = e.target.closest("[data-dfextra]"); if (!r) return;
+    state.dfPlan = Object.assign(state.dfPlan || { strategy: "avalanche" }, { extra: +r.dataset.dfextra }); save(); renderDebtFree(); renderCalc();
   });
   var dfTimer = null;
   $("dfExtra").addEventListener("input", function () {
@@ -3989,6 +4078,8 @@ td.paid { color: var(--ink-soft); }
 
   setType("expense"); defaultDate(); render(); renderRate(); updatePreview(); renderProfiles(); applyFolds(); renderBackupNag(); applyLock(); if (!lockedView) fetchRate(false);
   cloudInit();
+  // Installable app: register the offline helper (only works on the real https site, not when opened as a file)
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(function () {});
 })();
 </script>
 </body>
