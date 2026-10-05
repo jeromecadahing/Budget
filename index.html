@@ -342,6 +342,7 @@ tr.carried-out td { opacity: .6; }
 .acct:last-child { border-bottom: 0; }
 .a-main { display: flex; align-items: center; gap: 8px; }
 .a-main .nm { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-main .digits { font-weight: 400; font-size: 12px; color: var(--ink-soft); margin-left: 4px; font-variant-numeric: tabular-nums; }
 .a-main .tag { font-size: 10px; font-weight: 600; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: 2px; }
 .a-main .bal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .a-main .small-btn { padding: 3px 10px; }
@@ -731,6 +732,7 @@ td.paid { color: var(--ink-soft); }
         <div class="bank-add">
           <input id="bankName" type="text" maxlength="30" placeholder="e.g. HSBC, BPI" aria-label="Bank account name">
           <select id="bankCur" aria-label="Bank country"><option value="GBP">UK bank (£)</option><option value="PHP">PH bank (₱)</option></select>
+          <input id="bankAcct4" type="text" inputmode="numeric" maxlength="4" placeholder="Account no. last 4" aria-label="Last 4 digits of the account number (optional)">
           <input id="bankLast4" type="text" inputmode="numeric" maxlength="4" placeholder="Card last 4" aria-label="Last 4 digits of the debit card (optional)">
           <input id="bankBal" type="number" step="0.01" inputmode="decimal" placeholder="Balance now" aria-label="Balance right now">
           <button class="ghost" id="addBank">Add account</button>
@@ -945,10 +947,15 @@ td.paid { color: var(--ink-soft); }
     if (!Array.isArray(st.bills)) st.bills = []; // { id, name, amount, cur, due, category, pay }
     if (!Array.isArray(st.banks)) st.banks = []; // { id, name, cur } debit accounts
     if (!Array.isArray(st.loans)) st.loans = []; // { id, name, kind, cur, balance, asOf, payment, apr, billId, exclude }
+    // Card minimums in Bills start the month after a card is set up: its balance is already up to date for the current month
+    var nowD = new Date(), nextMonth = nextYm(nowD.getFullYear() + "-" + pad(nowD.getMonth() + 1));
+    st.cards.forEach(function (c) { if (!c.minFrom) { c.minFrom = nextMonth; cardsMigrated = true; } });
     if (!(st.payday >= 1 && st.payday <= 31)) st.payday = null; // day of month you get paid
     return st;
   }
   var state = migrate(load());
+  var cardsMigrated;   // set by migrate(): save once so the cards' first month in Bills stays fixed
+  if (cardsMigrated) { cardsMigrated = false; setTimeout(function () { save(); }, 0); }
   var now = new Date();
   var view = { y: now.getFullYear(), m: now.getMonth() };
   var txType = "expense";
@@ -1070,7 +1077,9 @@ td.paid { color: var(--ink-soft); }
     state.tx.forEach(function (t) { var d = bankDelta(b, t); if (d && bankCounts(b, t)) v += d; });
     return Math.round(v * 100) / 100;
   }
-  function bankLabel(b) { return b.name + (b.last4 ? " ••" + b.last4 : ""); }
+  // Short label for menus: the account number's last 4 if set, otherwise the debit card's
+  function bankLabel(b) { var d = b.acct4 || b.last4; return b.name + (d ? " ••" + d : ""); }
+  function bankDigits(b) { return [b.acct4 ? "account ••" + b.acct4 : "", b.last4 ? "card ••" + b.last4 : ""].filter(Boolean).join(" · "); }
   function bankMoney(b, n) { return b.cur === "PHP" ? peso(n) : money(n); }
   function bankToGbp(b, n) { return b.cur === "PHP" ? (state.rate ? n * state.rate.value : 0) : n; }
   function accountsTotal() {
@@ -1319,7 +1328,7 @@ td.paid { color: var(--ink-soft); }
     state.cards.forEach(function (c) {
       if (!cardInBills(c) || !(cardStats(c, "").balance > 0)) return;
       [curYm, nextYm(curYm)].forEach(function (ym) {
-        if (ym > pdYm || cardMinPaid(c, ym)) return;
+        if (ym > pdYm || ym < cardMinFrom(c) || cardMinPaid(c, ym)) return;
         var d = cardMinDate(c, +ym.slice(0, 4), +ym.slice(5, 7) - 1);
         if (c.dueDay ? d >= pd : ym !== curYm) return;
         items.push({ card: c, key: ym, due: d, late: !!c.dueDay && d < t0 });
@@ -1870,6 +1879,7 @@ td.paid { color: var(--ink-soft); }
     var nc = { id: uid(), name: name, cur: $("cardCur").value, opening: Math.max(0, parseFloat($("cardOpen").value) || 0),
       limit: Math.max(0, parseFloat($("cardLimit").value) || 0), color: PALETTE[(state.cards.length + 2) % PALETTE.length] };
     if (l4) nc.last4 = l4;
+    nc.minFrom = nextYm(ymOf(new Date()));   // this month's balance is entered as it stands, so minimums start next month
     state.cards.push(nc);
     $("cardName").value = ""; $("cardLast4").value = ""; $("cardOpen").value = ""; $("cardLimit").value = "";
     save(); render(); toast("Card added");
@@ -2260,7 +2270,8 @@ td.paid { color: var(--ink-soft); }
   // Change the amount in the bill row and that amount is kept for that month instead. For the current month
   // it is also used everywhere else (Debts tab, debt to income, debt-free plan); other months follow the estimate.
   function cardInBills(c) { return c.minInBills !== false; }
-  function cardMinEdit(c, ym) { return c.minEdits && c.minEdits[ym] > 0 ? c.minEdits[ym] : null; }
+  function cardMinFrom(c) { return c.minFrom || "0000-00"; }
+  function cardMinEdit(c, ym) { if (ym < cardMinFrom(c)) return null; return c.minEdits && c.minEdits[ym] > 0 ? c.minEdits[ym] : null; }
   function cardMinFor(c, ym) {
     var e = cardMinEdit(c, ym); if (e != null) return { v: e, src: "edited" };
     var mp = cardMinBase(c); return { v: mp.v, src: mp.est ? "estimate" : "set" };
@@ -2277,7 +2288,9 @@ td.paid { color: var(--ink-soft); }
     state.cards.forEach(function (c) {
       if (!cardInBills(c)) return;
       var p = cardMinPaid(c, ym);
-      if (!p && (ym < curYm || !(cardStats(c, "").balance > 0))) return;
+      // Before the card's first month in Bills: only show a payment ticked here, so it can be unticked
+      if (ym < cardMinFrom(c)) { if (!(p && p.cardMin === ym)) return; }
+      else if (!p && (ym < curYm || !(cardStats(c, "").balance > 0))) return;
       out.push({ c: c, key: ym, date: cardMinDate(c, y, m), p: p });
     });
     return out;
@@ -2924,6 +2937,12 @@ td.paid { color: var(--ink-soft); }
         { key: "payFrom", label: "Paid from", type: "select", value: bankById(c.payFrom) ? c.payFrom : "",
           options: [["", "No bank set"]].concat(state.banks.map(function (b) { return [b.id, bankLabel(b)]; })) },
         { key: "inBills", label: "Show the minimum payment in This month's bills", type: "checkbox", value: cardInBills(c) },
+        { key: "minFrom", label: "First month in Bills", type: "select", value: cardMinFrom(c) <= ymOf(new Date()) ? ymOf(new Date()) : cardMinFrom(c),
+          options: (function () {
+            var cur = ymOf(new Date()), o = [[cur, ymLabel(cur, { month: "long", year: "numeric" }) + " (this month)"], [nextYm(cur), ymLabel(nextYm(cur), { month: "long", year: "numeric" })]];
+            if (c.minFrom > nextYm(cur)) o.push([c.minFrom, ymLabel(c.minFrom, { month: "long", year: "numeric" })]);
+            return o;
+          })() },
         { key: "apr", label: "Interest rate (APR %)", type: "number", step: "0.01", value: c.apr || "" },
         { key: "promoApr", label: "Promo rate, e.g. 0% balance transfer (%)", type: "number", step: "0.01", value: c.promoEnd ? (c.promoApr || 0) : "", adv: true },
         { key: "promoEnd", label: "Promo ends", type: "date", value: c.promoEnd || "", adv: true },
@@ -2939,6 +2958,7 @@ td.paid { color: var(--ink-soft); }
         if (v.dueDay) c.dueDay = v.dueDay; else delete c.dueDay;
         if (bankById(v.payFrom)) c.payFrom = v.payFrom; else delete c.payFrom;
         if (v.inBills) delete c.minInBills; else c.minInBills = false;
+        if (v.minFrom) c.minFrom = v.minFrom;
         c.name = v.name.trim(); c.opening = Math.max(0, v.open || 0); c.limit = Math.max(0, v.limit || 0); c.minPay = Math.max(0, v.min || 0); c.apr = Math.max(0, v.apr || 0);
         if (v.promoEnd) { c.promoEnd = v.promoEnd; c.promoApr = Math.max(0, v.promoApr || 0); } else { delete c.promoEnd; delete c.promoApr; }
       },
@@ -3025,7 +3045,8 @@ td.paid { color: var(--ink-soft); }
       var stale = bal != null && (!b.checkedAt || (t0 - b.checkedAt) / 864e5 > 14);
       var bnames = state.bills.filter(function (x) { return x.pay === b.id; }).map(function (x) { return x.name; }).join(", ");
       var status = chk || (bal != null ? "Not checked against your bank yet" : "");
-      return '<div class="acct"><div class="a-main"><span class="nm">' + esc(bankLabel(b)) + (b.cur === "PHP" ? ' <small class="tag">PH</small>' : "") + "</span>" +
+      return '<div class="acct"><div class="a-main"><span class="nm">' + esc(b.name) + (b.cur === "PHP" ? ' <small class="tag">PH</small>' : "") +
+        (bankDigits(b) ? ' <small class="digits">' + esc(bankDigits(b)) + "</small>" : "") + "</span>" +
         (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : "") +
         '<button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></div>' +
         ((status || n) ? '<div class="a-sub"><span class="' + (stale ? "warn" : "") + '">' + esc(status) + (stale && chk ? " · time for a check" : "") + "</span>" +
@@ -3082,14 +3103,16 @@ td.paid { color: var(--ink-soft); }
       fields: [
         { key: "name", label: "Account name", type: "text", value: b.name, max: 30 },
         { key: "cur", label: "Country", type: "select", value: b.cur, options: [["GBP", "UK bank (£)"], ["PHP", "PH bank (₱)"]] },
+        { key: "acct4", label: "Account number last 4 digits (optional)", type: "text", value: b.acct4 || "", max: 4 },
         { key: "last4", label: "Debit card last 4 digits (optional)", type: "text", value: b.last4 || "", max: 4 },
         { key: "n", label: "To change the balance, use Check on the Accounts tab. That keeps the history of what's been logged.", type: "note" }
       ],
       onSave: function (v) {
         if (!v.name.trim()) return "Give the account a name.";
-        var d4 = String(v.last4 || "").replace(/\D/g, "");
-        if (d4 && d4.length !== 4) return "Last 4 digits should be exactly 4 numbers, or leave it blank.";
-        b.name = v.name.trim(); b.cur = v.cur; if (d4) b.last4 = d4; else delete b.last4;
+        var d4 = String(v.last4 || "").replace(/\D/g, ""), a4 = String(v.acct4 || "").replace(/\D/g, "");
+        if (a4 && a4.length !== 4) return "Account number last 4 should be exactly 4 numbers, or leave it blank.";
+        if (d4 && d4.length !== 4) return "Card last 4 digits should be exactly 4 numbers, or leave it blank.";
+        b.name = v.name.trim(); b.cur = v.cur; if (d4) b.last4 = d4; else delete b.last4; if (a4) b.acct4 = a4; else delete b.acct4;
       },
       onDelete: function () { state.banks = state.banks.filter(function (x) { return x !== b; }); },
       deleteLabel: "Remove account",
@@ -3101,12 +3124,15 @@ td.paid { color: var(--ink-soft); }
     var name = $("bankName").value.trim();
     if (!name) { toast("Give the account a name"); $("bankName").focus(); return; }
     var l4b = $("bankLast4").value.replace(/\D/g, "");
-    if (l4b && l4b.length !== 4) { toast("Last 4 digits should be exactly 4 numbers"); $("bankLast4").focus(); return; }
+    if (l4b && l4b.length !== 4) { toast("Card last 4 digits should be exactly 4 numbers"); $("bankLast4").focus(); return; }
+    var a4b = $("bankAcct4").value.replace(/\D/g, "");
+    if (a4b && a4b.length !== 4) { toast("Account number last 4 should be exactly 4 numbers"); $("bankAcct4").focus(); return; }
     var nb = { id: uid(), name: name, cur: $("bankCur").value }, bv = $("bankBal").value;
     if (l4b) nb.last4 = l4b;
+    if (a4b) nb.acct4 = a4b;
     if (bv !== "" && !isNaN(parseFloat(bv))) { nb.bal = r2(parseFloat(bv)); nb.balAt = Date.now(); nb.balDate = today(); nb.checkedAt = Date.now(); nb.lastDiff = 0; }
     state.banks.push(nb);
-    $("bankName").value = ""; $("bankBal").value = ""; $("bankLast4").value = ""; save(); render(); toast(name + " added");
+    $("bankName").value = ""; $("bankBal").value = ""; $("bankLast4").value = ""; $("bankAcct4").value = ""; save(); render(); toast(name + " added");
   };
   document.addEventListener("click", function (e) {
     var b = e.target.closest("[data-editloan]"); if (b) { editLoan(b.dataset.editloan); return; }
