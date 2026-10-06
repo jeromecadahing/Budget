@@ -805,6 +805,7 @@ td.paid { color: var(--ink-soft); }
           <label>Category<select id="bCat"></select></label>
           <label>Paid from<select id="bPay"></select></label>
           <p class="m-note" id="bBeginHint" style="grid-column:1/-1">Starting later? Pick the date of the first payment and the bill won't show as due before then.</p>
+          <label class="auto-check"><input type="checkbox" id="bLoan"> This pays off a loan or debt (also adds it to Debts, linked to this bill)</label>
           <label class="auto-check"><input type="checkbox" id="bAuto"> Paid automatically (direct debit, standing order or recurring card payment)</label>
         </div>
         <button class="ghost" id="addBill">Add bill</button>
@@ -1628,6 +1629,25 @@ td.paid { color: var(--ink-soft); }
   }
   function daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
 
+  // A bill filed under a loan-type category (e.g. "Loan", "Car finance", "Debts")
+  function looksLikeLoanBill(b) { return !!catById(b.category) && /\bloans?\b|debt|financ|mortgage/i.test(catLabel(b.category)); }
+  // Everything in Bills for a month: what was paid, plus what's still expected (card minimums included)
+  function monthBillsTotal(y, m) {
+    var mFrom = new Date(y, m, 1), mTo = new Date(y, m + 1, 1), total = 0, varies = 0;
+    state.bills.forEach(function (b) {
+      occurrences(b, mFrom, mTo).forEach(function (o) {
+        var p = occPayment(b, o.key);
+        if (p) { total += p.amount || 0; return; }
+        if (billFinished(b) || nothingDue(b, o.key)) return;
+        var d = billDue(b, o.key);
+        if (d > 0) total += billGbp(b, d); else varies++;
+      });
+    });
+    cardMinRows(y, m).forEach(function (cr) {
+      total += cr.p ? (cr.p.amount || 0) : cardToGbp(cr.c, cardMinFor(cr.c, cr.key).v);
+    });
+    return { total: total, varies: varies };
+  }
   function renderBills(ym) {
     var opts = catSelectHtml();
     var cprev = $("bCat").value; $("bCat").innerHTML = opts; if (cprev && catById(cprev)) $("bCat").value = cprev;
@@ -1857,6 +1877,12 @@ td.paid { color: var(--ink-soft); }
       (hasOpening ? "<span>" + (opening > 0 ? "Already in accounts" : "Adjusted to match accounts") + " <b>" + money(opening) + "</b><small>when you started</small></span>" : "") +
       (totalBudget > 0 && (income > 0 || hasOpening) ? "<span>Income left <b" + (incLeft < 0 ? ' style="color:var(--over)"' : "") + ">" + money(incLeft) + "</b></span>" : "") +
       (acct ? "<span>In your accounts <b>" + money(acct.gbp) + "</b></span>" : "") +
+      (function () {
+        if (!state.bills.length && !state.cards.length) return "";
+        var mb = monthBillsTotal(view.y, view.m);
+        if (!(mb.total > 0) && !mb.varies) return "";
+        return "<span>Bills this month <b>" + money(mb.total) + "</b><small>" + (mb.varies ? "+ " + mb.varies + (mb.varies === 1 ? " bill that varies" : " bills that vary") : "expected to go out") + "</small></span>";
+      })() +
       (state.payday && (state.bills.length || state.cards.length) && ymOf(new Date()) === monthKey() && dueBeforePayday().total > 0
         ? "<span>Bills before payday <b>" + money(dueBeforePayday().total) + "</b></span>" : "") +
       fxOrder.map(function (k) { return fxSpent[k].o > 0 ? "<span>Spent in " + (k === "PHP" ? "pesos" : k) + " <b>" + fmt(k, fxSpent[k].o) + "</b><small>" + money(fxSpent[k].g) + "</small></span>" : ""; }).join("");
@@ -2102,6 +2128,7 @@ td.paid { color: var(--ink-soft); }
     if (!monthly && !$("bStart").value) $("bStart").value = today();
     $("bStartWrap").firstChild.nodeValue = this.value === "once" ? "Date it's due" : "First or next due date";
   };
+  $("bCat").addEventListener("change", function () { $("bLoan").checked = looksLikeLoanBill({ category: this.value }); });
   $("addBill").onclick = function () {
     var name = $("bName").value.trim(), amt = parseFloat($("bAmt").value), due = parseInt($("bDue").value, 10), freq = $("bFreq").value, start = $("bStart").value, begin = $("bBegin").value;
     if (freq === "monthly" && begin && !(due >= 1 && due <= 31)) due = parseDay(begin).getDate();   // no due day given: use the first payment's day
@@ -2116,8 +2143,15 @@ td.paid { color: var(--ink-soft); }
     if (freq !== "monthly") nb.start = start;
     else if (begin) nb.begins = begin;
     state.bills.push(nb);
+    var makeLoan = $("bLoan").checked; $("bLoan").checked = false;
     $("bName").value = ""; $("bAmt").value = ""; $("bDue").value = ""; $("bStart").value = ""; $("bBegin").value = ""; $("bAuto").checked = false;
     var firstDue = billNotStarted(nb) ? nextOccurrence(nb, parseDay(nb.begins || nb.start)) : null;
+    if (makeLoan) {
+      save(); render();
+      editLoan(null, { name: nb.name, cur: nb.cur, payment: nb.amount, billId: nb.id, kind: "personal" });
+      toast("Bill added · now enter what you owe to add it to Debts");
+      return;
+    }
     save(); render(); toast(firstDue ? "Bill added · starts " + firstDue.date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : nb.amount > 0 ? "Bill added" : "Bill added · amount varies");
   };
 
@@ -2775,6 +2809,13 @@ td.paid { color: var(--ink-soft); }
         (editable ? '<div class="loan-acts"><button class="edit-btn" data-editloan="' + l.id + '" aria-label="Edit ' + esc(l.name) + '">Edit</button></div>' : "") + "</div>";
     }).join("");
     // Bills marked as debt in an older version, not yet set up as a loan
+    state.bills.forEach(function (b) {
+      if (linked[b.id] || b.debt || b.debt === false || !looksLikeLoanBill(b) || billFinished(b)) return;
+      out.legacy += '<div class="legacy"><p><b>' + esc(b.name) + "</b> (" + billAmtText(b) +
+        ") is in your " + esc(catLabel(b.category)) + " category but isn't linked to a debt. Add it so each payment lowers what you owe.</p>" +
+        '<button class="small-btn" data-loanfrom="' + b.id + '">Add as a loan</button>' +
+        '<button class="small-btn" data-undebt="' + b.id + '">Not a loan</button></div>';
+    });
     state.bills.forEach(function (b) {
       if (!b.debt || linked[b.id]) return;
       out.legacyTotal += billGbp(b, perMonth(b));
