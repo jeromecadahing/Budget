@@ -348,8 +348,9 @@ tr.carried-out td { opacity: .6; }
 .acct { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .acct:last-child { border-bottom: 0; }
 .a-main { display: flex; align-items: center; gap: 8px; }
-.a-main .nm { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.a-main .digits { font-weight: 400; font-size: 12px; color: var(--ink-soft); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.a-main .nm { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.a-main .nm-t { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.a-main .digits { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: normal; }
 .a-main .tag { font-size: 10px; font-weight: 600; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: 2px; }
 .a-main .bal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .a-main .small-btn { padding: 3px 10px; }
@@ -391,11 +392,27 @@ tr.carried-out td { opacity: .6; }
 .cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; margin-top: 6px; max-width: 760px; }
 .ca-card.cc-tile { min-width: 0; width: 100%; padding: 8px 10px; gap: 1px; border-radius: 10px; }
 .cc-tile .cc-name { font-size: 12px; color: var(--ink-soft); width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-tile .cc-digits { font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-top: -1px; }
 .cc-tile b { font-size: 16px; line-height: 1.25; }
 .cc-tile small { font-size: 11.5px; line-height: 1.35; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cc-util { display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--paper); overflow: hidden; margin: 4px 0 3px; }
 .cc-util i { display: block; height: 100%; background: var(--ink-soft); border-radius: 2px; }
-.cc-util.hi i { background: var(--brass); } .cc-util.over i { background: var(--over); }
+.cc-util.ok i { background: var(--good); } .cc-util.hi i { background: var(--brass); } .cc-util.over i { background: var(--over); }
+.cc-tile small.u-ok { color: var(--good); } .cc-tile small.u-hi { color: var(--brass); } .cc-tile small.u-over { color: var(--over); font-weight: 600; }
+/* Credit utilisation: all cards together, with the 30% line credit agencies look for */
+.util { max-width: 760px; margin: 0 0 14px; }
+.util-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.util-head b { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.util-head span { font-size: 14px; color: var(--ink-soft); }
+.util-head .verdict { font-weight: 600; }
+.util.ok .verdict { color: var(--good); } .util.hi .verdict { color: var(--brass); } .util.over .verdict { color: var(--over); }
+.util-bar { position: relative; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 10%, transparent); margin: 8px 0 4px; }
+.util-bar > i { display: block; height: 100%; border-radius: 4px; background: var(--good); max-width: 100%; }
+.util.hi .util-bar > i { background: var(--brass); } .util.over .util-bar > i { background: var(--over); }
+.util-bar .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); opacity: .55; border-radius: 1px; }
+.util-scale { position: relative; height: 16px; font-size: 11.5px; color: var(--ink-soft); }
+.util-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.util p { margin: 2px 0 0; font-size: 13px; color: var(--ink-soft); }
 /* Debts: loans and BNPL in separate groups */
 .d-group + .d-group { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .d-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin: 0 0 8px; }
@@ -475,6 +492,18 @@ tr.carried-out td { opacity: .6; }
 .df-chart svg { display: block; width: 100%; height: auto; }
 .df-warn { font-size: 13px; color: var(--over); margin: 4px 0 0; }
 .ca-flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+/* Loans: how much is paid off */
+.ln-prog { display: block; width: 100%; height: 5px; border-radius: 3px; background: var(--paper); overflow: hidden; margin: 5px 0 1px; }
+.ln-prog i { display: block; height: 100%; background: var(--good); border-radius: 3px; }
+.ca-card small.ln-pct { color: var(--good); font-weight: 600; }
+.ln-big { background: color-mix(in srgb, var(--good) 9%, var(--card)); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+.ln-big-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.ln-big-head b { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--good); font-variant-numeric: tabular-nums; }
+.ln-big-head span { font-size: 14px; color: var(--ink-soft); }
+.ln-bar { position: relative; height: 10px; border-radius: 5px; background: var(--paper); margin: 8px 0 6px; overflow: hidden; }
+.ln-bar > i { display: block; height: 100%; background: var(--good); border-radius: 5px; }
+.ln-bar .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); opacity: .9; }
+.ln-big p { margin: 0; font-size: 14px; color: var(--ink-soft); }
 @media (max-width: 620px) { .ca-flow { grid-template-columns: 1fr 1fr; } }
 .ca-flow div { background: var(--paper); border-radius: 10px; padding: 9px 11px; }
 .ca-flow span { display: block; font-size: 12px; color: var(--ink-soft); }
@@ -523,6 +552,22 @@ span.bill-amt.none { border: 0; background: transparent; }
 }
 .add-bill { margin-top: 14px; }
 .all-bills { margin-top: 4px; }
+/* The full month list under the payday box: compact rows */
+.all-bills .bill { gap: 4px 8px; padding: 6px 0; font-size: 14px; }
+.all-bills .bill-name { font-size: 14px; }
+.all-bills .bill-meta { font-size: 12px; }
+.all-bills .bill-check { width: 20px; height: 20px; }
+.all-bills .bill-check:checked::after { width: 5px; height: 9px; border-width: 0 2px 2px 0; }
+.all-bills .status { font-size: 11.5px; padding: 1px 8px; }
+.all-bills .bill-amt { width: 84px; padding: 3px 6px; }
+.all-bills .edit-btn { padding: 2px 8px; font-size: 12px; }
+.all-bills .auto-tag { font-size: 10px; }
+.all-bills .not-due { font-size: 12.5px; padding-top: 8px; gap: 4px 12px; }
+@media (max-width: 620px) {
+  .all-bills .bill { grid-template-columns: auto 1fr auto; row-gap: 2px; }
+  .all-bills .bill .status { grid-column: 2; grid-row: 2; }
+  .all-bills .bill .edit-btn { grid-column: 3; grid-row: 2; }
+}
 .all-bills > summary { cursor: pointer; font-weight: 500; padding: 6px 0; }
 .all-bills > summary span { font-weight: 400; color: var(--ink-soft); font-size: 14px; margin-left: 6px; }
 .bills-sum:empty { display: none; }
@@ -541,6 +586,7 @@ span.bill-amt.none { border: 0; background: transparent; }
 .bill-form .auto-check { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
 .bill-form .auto-check input { width: 18px; height: 18px; accent-color: var(--ink); }
 .mini-link { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; cursor: pointer; }
+.auto-tag.once { color: var(--ink-soft); }
 .auto-tag { font-size: 11px; font-weight: 600; color: var(--good); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; margin-left: 4px; white-space: nowrap; }
 .bill-form label { display: flex; flex-direction: column; font-size: 13px; color: var(--ink-soft); gap: 4px; }
 .bill-form input, .bill-form select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; }
@@ -793,6 +839,7 @@ td.paid { color: var(--ink-soft); }
       </div>
     </header>
     <section class="hero">
+      <div class="util" id="caUtil" hidden></div>
       <p class="hero-caption" id="caCaption">Card activity</p>
       <div class="cc-tiles" id="caCards"></div>
     </section>
@@ -1237,10 +1284,10 @@ td.paid { color: var(--ink-soft); }
   function billById(id) { return state.bills.find(function (b) { return b.id === id; }); }
   // ---------- Bill schedules ----------
   var FREQS = [["monthly", "Monthly"], ["weekly", "Weekly"], ["2weekly", "Every 2 weeks"], ["4weekly", "Every 4 weeks"],
-    ["quarterly", "Every 3 months"], ["6monthly", "Every 6 months"], ["yearly", "Yearly"]];
+    ["quarterly", "Every 3 months"], ["6monthly", "Every 6 months"], ["yearly", "Yearly"], ["once", "One-off (just once)"]];
   var FREQ_DAYS = { weekly: 7, "2weekly": 14, "4weekly": 28 }, FREQ_MONTHS = { quarterly: 3, "6monthly": 6, yearly: 12 };
-  var PER_MONTH = { monthly: 1, weekly: 52 / 12, "2weekly": 26 / 12, "4weekly": 13 / 12, quarterly: 1 / 3, "6monthly": 1 / 6, yearly: 1 / 12 };
-  function freqOf(b) { return b.freq && PER_MONTH[b.freq] ? b.freq : "monthly"; }
+  var PER_MONTH = { monthly: 1, weekly: 52 / 12, "2weekly": 26 / 12, "4weekly": 13 / 12, quarterly: 1 / 3, "6monthly": 1 / 6, yearly: 1 / 12, once: 0 };
+  function freqOf(b) { return b.freq && PER_MONTH[b.freq] != null ? b.freq : "monthly"; }
   function freqLabel(b) { var f = FREQS.find(function (x) { return x[0] === freqOf(b); }); return f ? f[1] : "Monthly"; }
   // A bill with no set amount "varies": its estimate is the average of the last 3 payments
   function isVar(b) { return !(b.amount > 0); }
@@ -1349,6 +1396,7 @@ td.paid { color: var(--ink-soft); }
     }
     if (!b.start) return out;
     var a = parseDay(b.start);
+    if (f === "once") { if (a >= from && a < to) out.push({ date: a, key: dayKey(a) }); return out; }
     if (FREQ_DAYS[f]) {
       var step = FREQ_DAYS[f], n = from > a ? Math.ceil(Math.round((from - a) / 86400000) / step) : 0;
       var x = new Date(a.getFullYear(), a.getMonth(), a.getDate() + n * step);
@@ -1488,7 +1536,7 @@ td.paid { color: var(--ink-soft); }
     var mFrom = new Date(y, m, 1), mTo = new Date(y, m + 1, 1);
     state.bills.forEach(function (b) {
       var occ = occurrences(b, mFrom, mTo);
-      if (!occ.length) { notDue.push(b); return; }
+      if (!occ.length) { if (freqOf(b) !== "once" || nextOccurrence(b, mTo)) notDue.push(b); return; }
       occ.forEach(function (o) { rows.push({ b: b, o: o }); });
     });
     cardMins.forEach(function (cr) { rows.push({ cr: cr, b: { name: cardLabel(cr.c) }, o: { date: cr.date, key: cr.key } }); });
@@ -1518,7 +1566,7 @@ td.paid { color: var(--ink-soft); }
       return '<div class="bill' + (p ? " is-paid" : "") + '">' +
         (planZero ? '<span class="bill-check none" aria-hidden="true"></span>' :
         '<input type="checkbox" class="bill-check" data-billtoggle="' + b.id + '" data-occ="' + o.key + '"' + (p ? " checked" : "") + ' aria-label="Mark ' + esc(b.name) + " due " + o.date.toLocaleDateString() + ' as paid">') +
-        '<div><div class="bill-name">' + esc(b.name) + '</div><div class="bill-meta">' + meta + "</div></div>" +
+        '<div><div class="bill-name">' + esc(b.name) + (b.auto ? '<span class="auto-tag">auto</span>' : "") + (f === "once" ? '<span class="auto-tag once">one-off</span>' : "") + '</div><div class="bill-meta">' + meta + "</div></div>" +
         '<span class="status ' + cls + '">' + status + "</span>" +
         (planZero ? '<span class="bill-amt none"></span>' : '<input class="bill-amt" type="number" step="0.01" min="0" inputmode="decimal" id="bamt-' + idk + '" value="' + (shown != null ? shown.toFixed(2) : "") + '"' + (shown == null ? ' placeholder="Varies"' : "") + (p ? " disabled" : "") +
         ' aria-label="Amount for ' + esc(b.name) + ' in ' + b.cur + '" title="' + (b.cur === "PHP" ? "Pesos" : "Pounds") + '">') +
@@ -1935,6 +1983,7 @@ td.paid { color: var(--ink-soft); }
     var monthly = this.value === "monthly";
     $("bDueWrap").hidden = !monthly; $("bStartWrap").hidden = monthly; $("bBeginWrap").hidden = !monthly; $("bBeginHint").hidden = !monthly;
     if (!monthly && !$("bStart").value) $("bStart").value = today();
+    $("bStartWrap").firstChild.nodeValue = this.value === "once" ? "Date it's due" : "First or next due date";
   };
   $("addBill").onclick = function () {
     var name = $("bName").value.trim(), amt = parseFloat($("bAmt").value), due = parseInt($("bDue").value, 10), freq = $("bFreq").value, start = $("bStart").value, begin = $("bBegin").value;
@@ -2483,6 +2532,7 @@ td.paid { color: var(--ink-soft); }
         { key: "minAmt", label: "Minimum amount", type: "number", value: l.minAmt || "", showIf: function (v) { return v.mode === "min"; } },
         { key: "minPct", label: "or % of balance", type: "number", step: "0.1", value: l.minPct || "", showIf: function (v) { return v.mode === "min"; } },
         { key: "nmin", label: "Use your statement: many store cards take a set amount or a % of the balance, whichever is higher. Fill in one or both.", type: "note", showIf: function (v) { return v.mode === "min"; } },
+        { key: "orig", label: "Amount originally borrowed (optional, shows how much you've paid off)", type: "number", step: "0.01", value: l.original || "", full: true, showIf: function (v) { return v.kind !== "bnpl"; } },
         { key: "apr", label: "Interest rate (APR %, optional)", type: "number", step: "0.01", value: l.apr || "", full: true },
         { key: "limit", label: "Overall spending limit (optional)", type: "number", step: "1", value: l.limit || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
         { key: "feePct", label: "Usual fee per purchase (%, optional)", type: "number", step: "0.01", value: l.feePct || "", full: true, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
@@ -2494,7 +2544,7 @@ td.paid { color: var(--ink-soft); }
         { key: "track", label: "I'll record purchases on it (choose it under Paid with)", type: "checkbox", value: l.trackBuys !== undefined ? !!l.trackBuys : !!l.limit, showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
         { key: "nb", label: "With this ticked, purchases count as spending when you make them and lower what's available. Its payments then work like paying off a credit card, so they aren't counted as spending twice. Leave it unticked if you only track the repayments.", type: "note", showIf: function (v) { return v.kind === "bnpl"; } , adv: true },
         { key: "bill", label: "Payments in Bills", type: "select", value: forceNew ? "__new" : (l.billId || (isNew && !l.billId ? "__new" : "")), options: billOpts, full: true },
-        { key: "bfreq", label: "How often", type: "select", value: "monthly", options: FREQS, full: true, showIf: function (v) { return v.bill === "__new"; } },
+        { key: "bfreq", label: "How often", type: "select", value: "monthly", options: FREQS.filter(function (x) { return x[0] !== "once"; }), full: true, showIf: function (v) { return v.bill === "__new"; } },
         { key: "due", label: "Payment due day each month", type: "number", step: "1", value: l.dueDay || "", showIf: function (v) { return v.bill === "__new" && v.bfreq === "monthly"; } },
         { key: "bstart", label: "Next payment date", type: "date", value: today(), showIf: function (v) { return v.bill === "__new" && v.bfreq !== "monthly"; } },
         { key: "bpay", label: "Paid from", type: "select", value: l.payWith && validPay(l.payWith) ? l.payWith : "cash", options: payOptions(), showIf: function (v) { return v.bill === "__new"; } },
@@ -2522,6 +2572,7 @@ td.paid { color: var(--ink-soft); }
         if (v.mode !== "fixed") v.pay = 0;
         l.payMode = v.mode; l.minAmt = v.mode === "min" ? Math.max(0, v.minAmt || 0) : 0; l.minPct = v.mode === "min" ? Math.max(0, v.minPct || 0) : 0;
         l.name = v.name.trim(); l.kind = v.kind; l.payment = Math.max(0, v.pay || 0); l.apr = Math.max(0, v.apr || 0); l.exclude = v.excl;
+        if (v.kind !== "bnpl" && v.orig > 0) l.original = r2(v.orig); else delete l.original;
         if (v.kind === "bnpl") {
           l.limit = Math.max(0, v.limit || 0); l.trackBuys = !!v.track; l.feePct = Math.max(0, v.feePct || 0);
           l.limits = { 0: Math.max(0, v.lim0 || 0), 3: Math.max(0, v.lim3 || 0), 6: Math.max(0, v.lim6 || 0), 12: Math.max(0, v.lim12 || 0) };
@@ -3001,7 +3052,7 @@ td.paid { color: var(--ink-soft); }
 
   function editBill(id) {
     var b = billById(id); if (!b) return;
-    var bc = catById(b.category), bsum = freqLabel(b) + (freqOf(b) !== "monthly" ? " · about " + (b.cur === "PHP" ? peso(perMonth(b)) : money(perMonth(b))) + " a month" : "") +
+    var bc = catById(b.category), bsum = freqLabel(b) + (freqOf(b) !== "monthly" && freqOf(b) !== "once" ? " · about " + (b.cur === "PHP" ? peso(perMonth(b)) : money(perMonth(b))) + " a month" : "") +
       (bc ? " · " + catLabel(bc.id) : "");
     openEditor({
       title: "Edit bill",
@@ -3013,7 +3064,7 @@ td.paid { color: var(--ink-soft); }
         { key: "freq", label: "How often", type: "select", value: freqOf(b), options: FREQS },
         { key: "due", label: "Due day each month (1–31)", type: "number", step: "1", value: b.due, showIf: function (v) { return v.freq === "monthly"; } },
         { key: "begins", label: "Starts from (blank if it already has)", type: "date", value: b.begins || "", showIf: function (v) { return v.freq === "monthly"; } },
-        { key: "start", label: "A due date (past, next, or first one if it starts later)", type: "date", value: b.start || dayKey(nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))) ? nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))).date : new Date()),
+        { key: "start", label: "Due date (for repeating bills: any past or upcoming one)", type: "date", value: b.start || dayKey(nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))) ? nextOccurrence(b, new Date(new Date().setHours(0, 0, 0, 0))).date : new Date()),
           showIf: function (v) { return v.freq !== "monthly"; } },
         { key: "cat", label: "Category", type: "select", value: b.category, options: catOptions() },
         { key: "auto", label: "Paid automatically (direct debit, standing order or recurring card payment)", type: "checkbox", value: !!b.auto },
@@ -3178,8 +3229,8 @@ td.paid { color: var(--ink-soft); }
       var stale = bal != null && (!b.checkedAt || (t0 - b.checkedAt) / 864e5 > 14);
       var bnames = state.bills.filter(function (x) { return x.pay === b.id; }).map(function (x) { return x.name; }).join(", ");
       var status = chk || (bal != null ? "Not checked against your bank yet" : "");
-      return '<div class="acct"><div class="a-main"><span class="nm">' + esc(b.name) + (b.cur === "PHP" ? ' <small class="tag">PH</small>' : "") +
-        (bankDigits(b) ? ' <small class="digits">' + esc(bankDigits(b)) + "</small>" : "") + "</span>" +
+      return '<div class="acct"><div class="a-main"><span class="nm"><span class="nm-t">' + esc(b.name) + (b.cur === "PHP" ? ' <small class="tag">PH</small>' : "") + "</span>" +
+        (bankDigits(b) ? '<small class="digits">' + esc(bankDigits(b)) + "</small>" : "") + "</span>" +
         (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : "") +
         '<button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></div>' +
         ((status || n) ? '<div class="a-sub"><span class="' + (stale ? "warn" : "") + '">' + esc(status) + (stale && chk ? " · time for a check" : "") + "</span>" +
@@ -3673,11 +3724,39 @@ td.paid { color: var(--ink-soft); }
         : '<p class="empty">No charges or payments on ' + esc(c.name) + " in " + label + ". Choose " + esc(c.name) + " under Paid with when you add an expense.</p>");
   }
 
+  // ---------- Credit utilisation (how much of your credit limits you're using) ----------
+  // UK credit agencies generally like this under 30%, and better still under 10%.
+  function utilClass(pct) { return pct > 50 ? "over" : pct > 30 ? "hi" : "ok"; }
+  function renderUtil() {
+    var box = $("caUtil"), withLim = state.cards.filter(function (c) { return c.limit > 0; });
+    if (!withLim.length) {
+      box.hidden = !state.cards.length; box.className = "util";
+      box.innerHTML = state.cards.length ? "<p>Add a credit limit to your cards (Edit on the card's statement) to see how much of your credit you're using.</p>" : "";
+      return;
+    }
+    var owed = 0, lim = 0;
+    withLim.forEach(function (c) { owed += cardToGbp(c, Math.max(0, cardStats(c, "").balance)); lim += cardToGbp(c, c.limit); });
+    if (!(lim > 0)) { box.hidden = true; return; }
+    var pct = owed / lim * 100, cls = utilClass(pct), r = Math.round(pct);
+    var verdict = pct <= 10 ? "Excellent" : pct <= 30 ? "Healthy" : pct <= 50 ? "A bit high" : "High";
+    var target = Math.max(0, owed - lim * 0.3);
+    box.hidden = false; box.className = "util " + cls;
+    box.innerHTML = '<div class="util-head"><b>' + r + '%</b><span>of your credit used</span><span class="verdict">' + verdict + "</span></div>" +
+      '<div class="util-bar" role="img" aria-label="' + r + '% of your credit limit used. Under 30% is healthy."><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i><span class="mark" style="left:30%"></span></div>' +
+      '<div class="util-scale"><span style="left:0;transform:none">0%</span><span style="left:30%">30%</span><span style="left:100%;transform:translateX(-100%)">100%</span></div>' +
+      "<p>" + money(owed) + " owed of " + money(lim) + " total limit. " +
+      (pct <= 10 ? "Credit agencies like to see under 30%, and you're under 10%." :
+        pct <= 30 ? "Credit agencies like to see under 30%. Getting under 10% is even better." :
+        "Credit agencies like to see under 30%. Paying " + money(target) + " off would get you there.") +
+      (withLim.length < state.cards.length ? " Cards without a limit aren't counted." : "") + "</p>";
+  }
+
   // ---------- Cards page ----------
   function renderCardsPage() {
     var mk = monthKey();
     renderBanks(); renderRecon();
     $("caMonth").textContent = new Date(view.y, view.m, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    renderUtil();
     if (!state.cards.length) {
       $("caCaption").textContent = "No credit cards yet. Add one below.";
       $("caCards").innerHTML = ""; renderCardActivity(mk); return;
@@ -3688,8 +3767,9 @@ td.paid { color: var(--ink-soft); }
       var ch = 0; state.tx.forEach(function (t) { if (t.type === "expense" && t.pay === c.id && t.date.slice(0, 7) === mk) ch += inCard(c, t); });
       var bal = cardStats(c, "").balance, pct = c.limit > 0 ? Math.max(0, bal / c.limit * 100) : null, promo = promoText(c);
       return '<button class="ca-card cc-tile" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '"' + (promo ? ' title="' + esc(promo) + '"' : "") + ">" +
-        '<span class="cc-name">' + esc(cardLabel(c)) + "</span><b>" + cm(c, bal) + "</b>" +
-        (pct != null ? '<i class="cc-util' + (pct > 100 ? " over" : pct >= 75 ? " hi" : "") + '" aria-hidden="true"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></i>' : "") +
+        '<span class="cc-name">' + esc(c.name) + "</span>" + (c.last4 ? '<span class="cc-digits">••' + esc(c.last4) + "</span>" : "") + "<b>" + cm(c, bal) + "</b>" +
+        (pct != null ? '<i class="cc-util ' + utilClass(pct) + '" aria-hidden="true"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></i>' +
+          '<small class="u-' + utilClass(pct) + '">' + Math.round(pct) + "% used</small>" : "") +
         "<small>" + (c.limit > 0 ? (bal > c.limit ? '<span class="over">' + cm(c, bal - c.limit) + " over limit</span>" : cm(c, c.limit - bal) + " free") : "owed now") + "</small>" +
         "<small>" + cm(c, ch) + " charged in " + esc(ymLabel(mk, { month: "short" })) + "</small></button>";
     }).join("");
@@ -3729,6 +3809,15 @@ td.paid { color: var(--ink-soft); }
     var k = Object.keys(pj).filter(function (x) { return !occPayment(bill, x) && pj[x] !== 0; }).sort()[0];
     return k ? { key: k, date: pj._dates[k], amt: pj[k] } : null;
   }
+  // How much of a loan is paid off: against the amount originally borrowed, or else since you started tracking it
+  function loanProgress(l, bal) {
+    if (isBnplDebt(l)) return null;
+    var base = l.original > 0 ? l.original : (l.balance > 0 ? l.balance : 0), since = !(l.original > 0);
+    if (!(base > 0)) return null;
+    var paid = Math.max(0, base - Math.max(0, bal)), pct = bal <= 0 ? 100 : Math.min(100, paid / base * 100);
+    return { base: base, paid: paid, pct: pct, since: since };
+  }
+  function pctText(p) { return p.pct >= 100 ? "100" : p.pct < 1 && p.pct > 0 ? "<1" : String(Math.floor(p.pct)); }
   function renderDebtsPage() {
     var o = renderDebt(yearData(view.y));
     $("dBig").textContent = money(o.totalDebt);
@@ -3751,8 +3840,10 @@ td.paid { color: var(--ink-soft); }
       var line = st.balance <= 0 ? '<small style="color:var(--good)">Paid off</small>'
         : nx ? '<small class="nx' + (nx.date < new Date(new Date().setHours(0, 0, 0, 0)) ? " warn" : "") + '">Next ' + (nx.amt != null ? loanMoney(l, nx.amt) : "payment") + " · " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + "</small>"
         : "<small>" + (loanBill(l) ? "No upcoming payment" : "Not in Bills yet") + "</small>";
+      var pg = loanProgress(l, st.balance);
+      var prog = pg && st.balance > 0 ? '<i class="ln-prog" aria-hidden="true"><i style="width:' + pg.pct.toFixed(1) + '%"></i></i><small class="ln-pct">' + pctText(pg) + "% paid off" + (pg.since ? " since tracking" : "") + "</small>" : "";
       return '<button class="ca-card" data-dsel="' + l.id + '" aria-pressed="' + (l.id === dSel ? "true" : "false") + '">' +
-        "<span>" + esc(l.name) + "</span><b>" + loanMoney(l, st.balance) + "</b>" + line + "</button>";
+        "<span>" + esc(l.name) + "</span><b>" + loanMoney(l, st.balance) + "</b>" + prog + line + "</button>";
     };
     var groups = [
       { title: "Loans", items: state.loans.filter(function (l) { return !isBnplDebt(l); }) },
@@ -3781,6 +3872,17 @@ td.paid { color: var(--ink-soft); }
       (l.kind === "bnpl" && l.limit > 0 ? '<div class="end"><span>Available to use</span><b>' + f(l.limit - st.balance) + "</b><span>of " + f(l.limit) + "</span></div>"
         : st.monthlyInterest > 0 ? '<div class="end"><span>Interest a month</span><b>≈ ' + f(st.monthlyInterest) + "</b></div>" : "<div><span>Interest</span><b>None</b></div>") +
       "</div>";
+    var pg = loanProgress(l, st.balance), progHtml = "";
+    if (pg) {
+      var nextM = [25, 50, 75, 100].find(function (m) { return pg.pct < m; });
+      var cheer = pg.pct >= 100 ? "Paid off. Well done!"
+        : nextM ? f(pg.base * nextM / 100 - pg.paid) + " more to reach " + (nextM === 100 ? "paid off" : nextM + "%") + "." : "";
+      progHtml = '<div class="ln-big"><div class="ln-big-head"><b>' + pctText(pg) + '%</b><span>paid off' + (pg.since ? " since you started tracking" : "") + "</span></div>" +
+        '<div class="ln-bar" role="img" aria-label="' + pctText(pg) + '% paid off"><i style="width:' + pg.pct.toFixed(1) + '%"></i>' +
+        [25, 50, 75].map(function (m) { return '<span class="tick' + (pg.pct >= m ? " hit" : "") + '" style="left:' + m + '%"></span>'; }).join("") + "</div>" +
+        "<p>" + f(pg.paid) + " paid of " + f(pg.base) + (pg.since ? "" : " borrowed") + ". " + cheer +
+        (pg.since && st.balance > 0 ? ' <button class="mini-link" data-editloan="' + l.id + '">Add the amount you first borrowed</button> to see your full progress.' : "") + "</p></div>";
+    }
     var addBill = !bill && st.balance > 0 ? '<p class="hint">This debt isn\'t in Bills yet, so payments won\'t lower it automatically. <button class="small-btn" data-loanbill="' + l.id + '">Add to Bills</button></p>' : "";
     // upcoming payments
     var up = "";
@@ -3806,7 +3908,7 @@ td.paid { color: var(--ink-soft); }
       var terms = [0, 3, 6, 12].filter(function (m) { return l.limits && l.limits[m] > 0; });
       if (terms.length) plans += terms.map(function (m) { return '<div class="kv"><span>Left on ' + (m ? m + "-month plans" : "pay in full") + "</span><span>" + f(Math.max(0, l.limits[m] - termUsed(l, m))) + "</span></div>"; }).join("");
     }
-    return head + flow + addBill +
+    return head + progHtml + flow + addBill +
       '<div class="dd-cols"><div class="dd-list"><h3>Next payments</h3>' + (up || '<p class="empty">' + (st.balance > 0 ? "None scheduled." : "Nothing left to pay.") + "</p>") +
         (plans ? '<div style="margin-top:14px">' + plans + "</div>" : "") + "</div>" +
       '<div class="dd-list"><h3>Recent payments</h3>' + (pays.length ? pays.map(function (t) { return row(t, true); }).join("") : '<p class="empty">No payments recorded yet.</p>') +
