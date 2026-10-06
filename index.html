@@ -228,6 +228,13 @@ td.inc { color: var(--good); }
 .pactions + .pactions { margin-top: 10px; }
 .cloud-row { border-top: 0; padding-top: 0; margin-bottom: 10px; }
 .profile summary .cloud-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; margin-left: -4px; }
+.bg-row { align-items: center; }
+.bg-swatches { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.bg-sw { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); padding: 0; box-shadow: inset 0 0 0 2px var(--card); }
+.bg-sw:hover { border-color: var(--ink-soft); }
+.bg-sw[aria-pressed="true"] { border: 2px solid var(--ink); }
+.bg-custom { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-soft); }
+.bg-custom input { width: 34px; height: 26px; padding: 0 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--field); cursor: pointer; }
 .cloud-dot.ok { background: var(--good); } .cloud-dot.busy { background: var(--brass); } .cloud-dot.err { background: var(--over); }
 .small-btn.danger { color: var(--over); }
 .tabs button { background: none; border: 0; border-radius: 999px; padding: 7px 18px; font-weight: 500; color: var(--ink-soft); }
@@ -544,6 +551,17 @@ td.paid { color: var(--ink-soft); }
 .toast.show { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 </style>
+<script>
+  // Background colour chosen in the profile menu: one for light mode, one for dark mode (this device only)
+  window.applyBg = function (bg) {
+    var el = document.getElementById("bgStyle");
+    if (!el) { el = document.createElement("style"); el.id = "bgStyle"; document.head.appendChild(el); }
+    var ok = function (c) { return /^#[0-9a-fA-F]{6}$/.test(c || ""); };
+    el.textContent = (bg && ok(bg.light) ? ":root { --paper: " + bg.light + "; }" : "") +
+      (bg && ok(bg.dark) ? "@media (prefers-color-scheme: dark) { :root:not([data-theme=\"light\"]) { --paper: " + bg.dark + "; } } :root[data-theme=\"dark\"] { --paper: " + bg.dark + "; }" : "");
+  };
+  try { var u0 = JSON.parse(localStorage.getItem("budget-tracker-ui")); if (u0 && u0.bg) window.applyBg(u0.bg); } catch (e) {}
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -567,6 +585,12 @@ td.paid { color: var(--ink-soft); }
       <div class="pactions cloud-row" id="cloudRow">
         <span class="pbackup" id="cloudStatus">Cloud sync is not set up</span>
         <button class="small-btn" id="cloudBtn" hidden>Sign in with Google</button>
+      </div>
+      <div class="pactions bg-row">
+        <span class="pbackup" id="bgLabel">Background colour</span>
+        <div class="bg-swatches" id="bgSwatches" role="group" aria-labelledby="bgLabel"></div>
+        <label class="bg-custom">Your own<input type="color" id="bgCustom" aria-label="Pick your own background colour"></label>
+        <button class="small-btn" id="bgReset">Reset</button>
       </div>
       <div id="pActions">
       <div class="pactions">
@@ -2712,6 +2736,46 @@ td.paid { color: var(--ink-soft); }
     try { var u = JSON.parse(localStorage.getItem(UIKEY)); if (u && u.collapsed) return u; } catch (e) {}
     return { collapsed: { budgets: true, cards: true, loans: true, sphp: true, scards: true } };
   })();
+  // ---------- Background colour ----------
+  var BG_PRESETS = [
+    ["Sage", "#DDE4DF", "#0F1815"], ["Pale sage", "#E6ECE7", "#121B18"], ["Deep sage", "#D3DDD6", "#0B1210"],
+    ["Stone", "#E5E2DB", "#181614"], ["Sky", "#DDE6EE", "#0E151C"], ["Lilac", "#E5E1EC", "#15131C"],
+    ["Blush", "#EFE3E0", "#1C1413"], ["White", "#F7F8F7", "#000000"]
+  ];
+  var darkMq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function isDarkMode() { return !!(darkMq && darkMq.matches); }
+  function curBg() { return ui.bg || { light: BG_PRESETS[0][1], dark: BG_PRESETS[0][2] }; }
+  function saveBg(bg) {
+    if (bg) ui.bg = bg; else delete ui.bg;
+    try { localStorage.setItem(UIKEY, JSON.stringify(ui)); } catch (e) {}
+    window.applyBg(ui.bg || null); renderBgPicker();
+  }
+  function renderBgPicker() {
+    var bg = curBg(), mode = isDarkMode() ? "dark" : "light", idx = mode === "dark" ? 2 : 1;
+    $("bgLabel").textContent = "Background colour" + (isDarkMode() ? " (dark mode)" : "");
+    // build the swatches once, then only update them (rebuilding would close the menu mid-click)
+    if (!$("bgSwatches").children.length) $("bgSwatches").innerHTML = BG_PRESETS.map(function (p, i) {
+      return '<button type="button" class="bg-sw" data-bg="' + i + '" aria-label="' + p[0] + '" title="' + p[0] + '"></button>';
+    }).join("");
+    [].forEach.call($("bgSwatches").children, function (el, i) {
+      var p = BG_PRESETS[i]; el.style.background = p[idx];
+      el.setAttribute("aria-pressed", p[idx].toLowerCase() === String(bg[mode]).toLowerCase() ? "true" : "false");
+    });
+    $("bgCustom").value = String(bg[mode]).toLowerCase();
+  }
+  $("bgSwatches").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-bg]"); if (!b) return;
+    var p = BG_PRESETS[+b.dataset.bg];
+    saveBg({ light: p[1], dark: p[2] });
+  });
+  $("bgCustom").addEventListener("input", function () {
+    var bg = { light: curBg().light, dark: curBg().dark };
+    bg[isDarkMode() ? "dark" : "light"] = this.value.toUpperCase();
+    saveBg(bg);
+  });
+  $("bgReset").onclick = function () { saveBg(null); toast("Background reset"); };
+  if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", renderBgPicker);
+  renderBgPicker();
   function applyFolds() {
     document.querySelectorAll(".panel.fold").forEach(function (p) {
       var c = !!ui.collapsed[p.dataset.sec];
