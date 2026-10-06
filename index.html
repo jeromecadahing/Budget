@@ -367,6 +367,7 @@ tr.carried-out td { opacity: .6; }
 .a-main .digits { display: block; font-weight: 400; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: normal; }
 .a-main .tag { font-size: 10px; font-weight: 600; color: var(--ink-soft); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; vertical-align: 2px; }
 .a-main .bal { font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.a-main .bal.neg, #acBig.neg, #sum-banks.neg { color: var(--over); }
 .a-main .small-btn { padding: 3px 10px; }
 .a-sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 .a-sub .warn { color: var(--over); }
@@ -3424,7 +3425,7 @@ td.paid { color: var(--ink-soft); }
       var status = chk || (bal != null ? "Not checked against your bank yet" : "");
       return '<div class="acct"><div class="a-main"><span class="nm"><span class="nm-t">' + esc(b.name) + (isForeign(b) ? ' <small class="tag">' + curTag(curOf(b)) + "</small>" : "") + "</span>" +
         (bankDigits(b) ? '<small class="digits">' + esc(bankDigits(b)) + "</small>" : "") + "</span>" +
-        (bal != null ? '<span class="bal">' + bankMoney(b, bal) + "</span>" : "") +
+        (bal != null ? '<span class="bal' + (bal < 0 ? " neg" : "") + '">' + bankMoney(b, bal) + "</span>" : "") +
         '<button class="small-btn" data-checkbank="' + b.id + '">' + (bal != null ? "Check" : "Set balance") + '</button><button class="edit-btn" data-editbank="' + b.id + '">Edit</button></div>' +
         ((status || n) ? '<div class="a-sub"><span class="' + (stale ? "warn" : "") + '">' + esc(status) + (stale && chk ? " · time for a check" : "") + "</span>" +
           (n ? '<button class="bank-toggle" data-bankbills="' + b.id + '" aria-expanded="' + (openBanks[b.id] ? "true" : "false") + '" title="' + esc(bnames) + '">' + (openBanks[b.id] ? "Hide bills ▴" : n + (n === 1 ? " bill" : " bills") + " ▾") + "</button>" : "") + "</div>" : "") +
@@ -3435,6 +3436,7 @@ td.paid { color: var(--ink-soft); }
   function renderBankTotals() {
     var tot = accountsTotal();
     $("acBig").textContent = tot ? money(tot.gbp) : "–";
+    $("acBig").classList.toggle("neg", !!tot && tot.gbp < 0); $("sum-banks").classList.toggle("neg", !!tot && tot.gbp < 0);
     var ym = ymOf(new Date()), inn = 0, out = 0;
     state.banks.forEach(function (b) {
       state.tx.forEach(function (t) {
