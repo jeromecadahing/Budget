@@ -898,6 +898,7 @@ td.paid { color: var(--ink-soft); }
     <button class="small-btn" id="footBackup">Back up this profile</button>
     <button class="small-btn" id="footRestore">Restore from backup</button>
     <button class="small-btn" id="exportCsv">Export month (CSV)</button>
+    <button class="small-btn" id="footBg">Change background colour</button>
     <button class="small-btn" id="exportYear" hidden>Export year (CSV)</button></p>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -2773,6 +2774,13 @@ td.paid { color: var(--ink-soft); }
     bg[isDarkMode() ? "dark" : "light"] = this.value.toUpperCase();
     saveBg(bg);
   });
+  $("footBg").onclick = function (e) {
+    e.stopPropagation();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    $("profileMenu").open = true;
+    var on = $("bgSwatches").querySelector('[aria-pressed="true"]') || $("bgSwatches").firstElementChild;
+    setTimeout(function () { if (on) on.focus({ preventScroll: true }); $("bgLabel").scrollIntoView({ block: "nearest" }); }, 350);
+  };
   $("bgReset").onclick = function () { saveBg(null); toast("Background reset"); };
   if (darkMq && darkMq.addEventListener) darkMq.addEventListener("change", renderBgPicker);
   renderBgPicker();
