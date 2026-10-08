@@ -86,6 +86,7 @@ header.top { display: flex; justify-content: space-between; align-items: center;
 .hero-figs span { display: flex; flex-direction: column; gap: 2px; }
 .hero-figs b { color: var(--ink); font-weight: 600; font-size: 17px; font-variant-numeric: tabular-nums; }
 .hero-figs small { font-size: 12px; color: var(--ink-soft); }
+.hero-figs b small { display: block; font-weight: 400; margin-top: 2px; }
 #debtsView .left { font-size: clamp(44px, 9vw, 84px); }
 #cardsView .panel + .panel, #debtsView .panel + .panel { margin-top: 16px; }
 
@@ -403,19 +404,34 @@ tr.carried-out td { opacity: .6; }
 .ca-card:hover { border-color: var(--ink-soft); background: color-mix(in srgb, var(--ink) 5%, var(--card)); }
 .ca-card[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 8%, var(--card)); border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink) inset; }
 @media (prefers-reduced-motion: reduce) { .ca-card { transition: none; } }
-/* Credit cards: compact tiles */
-.cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: 8px; margin-top: 6px; max-width: 760px; }
-.ca-card.cc-tile { min-width: 0; width: 100%; padding: 8px 10px; gap: 1px; border-radius: 10px; }
-.cc-tile .cc-name { font-size: 12px; color: var(--ink-soft); width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cc-tile .cc-digits { font-size: 11.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; margin-top: -1px; }
-.cc-tile b { font-size: 16px; line-height: 1.25; }
-.cc-tile small { font-size: 11.5px; line-height: 1.35; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cc-util { display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--paper); overflow: hidden; margin: 4px 0 3px; }
-.cc-util i { display: block; height: 100%; background: var(--ink-soft); border-radius: 2px; }
-.cc-util.ok i { background: var(--good); } .cc-util.hi i { background: var(--brass); } .cc-util.over i { background: var(--over); }
-.cc-tile small.u-ok { color: var(--good); } .cc-tile small.u-hi { color: var(--brass); } .cc-tile small.u-over { color: var(--over); font-weight: 600; }
+/* Credit cards: one tile per card. Name and balance first, then the limit bar (with the 30% mark), then two figures */
+.cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 10px; margin-top: 8px; }
+.cc-tiles .reorder { grid-column: 1 / -1; }
+.ca-card.cc-tile { display: grid; grid-template-rows: auto auto auto auto; align-content: start; gap: 0; min-width: 0; width: 100%; padding: 14px 16px 13px; border-radius: 12px; }
+.cc-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.ca-card .cc-name { font-size: 14px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ca-card .cc-digits { margin-left: auto; flex: none; font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.ca-card.cc-tile b.cc-bal { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 8px 0 10px; }
+.cc-meter { display: flex; align-items: center; gap: 10px; min-height: 18px; }
+.cc-util { position: relative; flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.cc-util > i { display: block; height: 100%; border-radius: 3px; background: var(--good); }
+.cc-util.hi > i { background: var(--brass); } .cc-util.over > i { background: var(--over); }
+.cc-util .mk { position: absolute; left: 30%; top: -2px; bottom: -2px; width: 1.5px; background: var(--ink); opacity: .35; }
+.cc-util.none { background: none; border-top: 1px dashed var(--line); height: 0; border-radius: 0; }
+.ca-card .cc-pct { flex: none; min-width: 3ch; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--good); }
+.ca-card .cc-pct.hi { color: var(--brass); } .ca-card .cc-pct.over { color: var(--over); } .ca-card .cc-pct.none { color: var(--ink-soft); font-weight: 400; }
+.cc-figs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.cc-figs > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ca-card .cc-figs em { font-style: normal; font-size: 11.5px; color: var(--ink-soft); }
+.ca-card .cc-figs strong { font-size: 14px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ca-card .cc-figs strong.over { color: var(--over); }
+.ca-card .cc-figs strong.quiet { color: var(--ink-soft); font-weight: 400; }
+.ca-card.cc-tile.is-over { border-color: color-mix(in srgb, var(--over) 55%, var(--line)); }
+.ca-card.cc-tile[aria-pressed="true"] { border-color: var(--ink); }
+@media (max-width: 480px) { .cc-tiles { grid-template-columns: 1fr 1fr; gap: 8px; } .ca-card.cc-tile { padding: 12px; } .ca-card.cc-tile b.cc-bal { font-size: 20px; } .cc-figs { grid-template-columns: 1fr; gap: 6px; } }
 /* Credit utilisation: all cards together, with the 30% line credit agencies look for */
-.util { max-width: 760px; margin: 0 0 14px; }
+.util { margin: 0 0 14px; }
 .util-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .util-head b { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .util-head span { font-size: 14px; color: var(--ink-soft); }
@@ -606,6 +622,27 @@ span.bill-amt.none { border: 0; background: transparent; }
 .bill-form label { display: flex; flex-direction: column; font-size: 13px; color: var(--ink-soft); gap: 4px; }
 .bill-form input, .bill-form select { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; }
 .pay-tag { display: block; font-size: 12px; color: var(--ink-soft); }
+.pay-tag.charge { color: var(--brass); }
+.view-sec { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 26px; margin: 40px 0 16px; padding-top: 24px; border-top: 1px solid var(--line); }
+#findView .f-result { margin-top: 24px; }
+#findView .f-result .left { font-size: clamp(40px, 8vw, 72px); }
+#findView .grid + .grid { margin-top: 20px; }
+#planView .panel + .panel { margin-top: 16px; }
+.f-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.f-quick button { background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--ink); }
+.f-quick button:hover { border-color: var(--ink-soft); }
+.f-quick button[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.f-fields { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 620px) { .f-fields { grid-template-columns: 1fr 1fr; } }
+.f-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.f-hint { font-size: 13px; color: var(--ink-soft); margin: 10px 0 0; }
+.f-groups td:first-child { width: 42%; }
+.f-groups button.f-pick { background: none; border: 0; padding: 0; text-align: left; color: var(--ink); font: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.f-groups button.f-pick:hover { text-decoration-color: var(--ink-soft); }
+.f-bar { height: 6px; border-radius: 3px; background: var(--line); min-width: 60px; }
+.f-bar i { display: block; height: 100%; border-radius: 3px; background: var(--brass); }
+.f-groups .orig, #fList .orig { display: block; font-size: 12px; color: var(--ink-soft); }
+.f-groups tr.tot td { font-weight: 600; border-top: 2px solid var(--line); }
 td.paid { color: var(--ink-soft); }
 .foot { margin-top: 28px; font-size: 13px; color: var(--ink-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 9px 16px; border-radius: 8px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -631,8 +668,7 @@ td.paid { color: var(--ink-soft); }
     <button role="tab" id="tabMonth" aria-selected="true"><span class="lg-only">This month</span><span class="sm-only">Month</span></button>
     <button role="tab" id="tabCards" aria-selected="false">Accounts</button>
     <button role="tab" id="tabDebts" aria-selected="false">Debts</button>
-    <button role="tab" id="tabPlan" aria-selected="false">Plan</button>
-    <button role="tab" id="tabSummary" aria-selected="false"><span class="lg-only">Summary</span><span class="sm-only">Year</span></button>
+    <button role="tab" id="tabSummary" aria-selected="false">Insights</button>
   </nav>
   <details class="profile" id="profileMenu">
     <summary><span class="avatar" id="pAvatar"></span><span class="cloud-dot" id="cloudDot" aria-hidden="true"></span><span id="pName"></span><span class="caret">▾</span></summary>
@@ -717,7 +753,7 @@ td.paid { color: var(--ink-soft); }
         <button type="button" data-type="transfer" aria-pressed="false">Transfer</button>
       </div>
       <div class="fields">
-        <label class="full" id="linkWrap">Payment for<select id="link"></select></label>
+        <label class="full" id="linkWrap">What is this?<select id="link"></select></label>
         <label>Amount<input id="amt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
         <label>Currency<select id="cur"><option value="GBP">£ GBP</option><option value="PHP">₱ PHP</option></select></label>
         <label>Date<input id="date" type="date"></label>
@@ -880,10 +916,26 @@ td.paid { color: var(--ink-soft); }
     </section>
   </div>
 
-  <div id="planView" hidden>
+  <div id="debtsView" hidden>
     <section class="hero">
-      <p class="hero-caption">Your plan to be debt-free</p>
+      <p class="hero-caption">Total debt</p>
+      <div class="left" id="dBig"></div>
+      <div class="hero-figs" id="dFigs"></div>
+      <button class="small-btn" id="toPlan" style="margin-top:14px">Jump to your debt-free plan</button>
     </section>
+    <div id="dLegacy"></div>
+    <p class="hero-caption" id="dCaption" style="margin:4px 0 8px">Tap a debt to see its payments and details</p>
+    <div class="d-tiles" id="dTiles"></div>
+    <div class="d-actions"><button class="ghost" id="addLoan">Add a loan or debt</button></div>
+    <section class="panel wide" id="dDetailWrap"><div id="dDetail"></div></section>
+    <section class="panel wide fold" data-sec="ddti">
+      <h2><button class="sec-toggle" aria-expanded="true"><span>Debt to income</span><span class="sec-sum" id="sum-ddti"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
+      <div id="sDebt"></div>
+    </section>
+  </div>
+
+  <div id="planView" hidden>
+    <h2 class="view-sec">Your plan to be debt-free</h2>
     <section class="panel wide fold" data-sec="dfree">
       <h2><button class="sec-toggle" aria-expanded="true"><span>Debt-free plan</span><span class="sec-sum" id="sum-dfree"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
       <div class="df-controls">
@@ -905,24 +957,6 @@ td.paid { color: var(--ink-soft); }
         <button type="button" data-calc="bt" aria-pressed="false">Balance transfer</button>
       </div>
       <div id="calcOut"></div>
-    </section>
-  </div>
-
-  <div id="debtsView" hidden>
-    <section class="hero">
-      <p class="hero-caption">Total debt</p>
-      <div class="left" id="dBig"></div>
-      <div class="hero-figs" id="dFigs"></div>
-      <button class="small-btn" id="toPlan" style="margin-top:14px">See your debt-free plan</button>
-    </section>
-    <div id="dLegacy"></div>
-    <p class="hero-caption" id="dCaption" style="margin:4px 0 8px">Tap a debt to see its payments and details</p>
-    <div class="d-tiles" id="dTiles"></div>
-    <div class="d-actions"><button class="ghost" id="addLoan">Add a loan or debt</button></div>
-    <section class="panel wide" id="dDetailWrap"><div id="dDetail"></div></section>
-    <section class="panel wide fold" data-sec="ddti">
-      <h2><button class="sec-toggle" aria-expanded="true"><span>Debt to income</span><span class="sec-sum" id="sum-ddti"></span><span class="chev" aria-hidden="true">▾</span></button></h2>
-      <div id="sDebt"></div>
     </section>
   </div>
 
@@ -955,6 +989,75 @@ td.paid { color: var(--ink-soft); }
       <section class="panel wide">
         <h2>Where the money went <span class="sec-sum" id="sum-scats" style="float:right"></span></h2>
         <div id="sCats"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="findView" hidden>
+    <h2 class="view-sec">Search and totals</h2>
+    <div class="grid">
+      <section class="panel wide">
+        <h2>Ask a question</h2>
+        <div class="f-quick" id="fQuick" role="group" aria-label="Common questions">
+          <button type="button" data-q="interest">Interest paid on each card</button>
+          <button type="button" data-q="fees">Fees on each card</button>
+          <button type="button" data-q="shops">Spending by shop</button>
+          <button type="button" data-q="cats">Spending by category</button>
+          <button type="button" data-q="months">Month by month</button>
+          <button type="button" data-q="payoffs">Card and loan repayments</button>
+        </div>
+        <div class="fields f-fields">
+          <label class="full">Shop, note or category<input id="fQ" type="search" placeholder="e.g. Tesco  ·  separate with commas to match any: Tesco, Aldi" autocomplete="off"></label>
+          <label>Show<select id="fKind">
+            <option value="spend">All spending</option>
+            <option value="interest">Interest charged</option>
+            <option value="fee">Fees charged</option>
+            <option value="charges">Interest and fees</option>
+            <option value="payoff">Paying off cards and loans</option>
+            <option value="income">Income</option>
+            <option value="transfer">Transfers</option>
+          </select></label>
+          <label>Card or account<select id="fAcct"></select></label>
+          <label>Category<select id="fCat"></select></label>
+          <label>Period<select id="fPeriod">
+            <option value="all">All time</option>
+            <option value="month">This month</option>
+            <option value="lastmonth">Last month</option>
+            <option value="year">This year</option>
+            <option value="lastyear">Last year</option>
+            <option value="12m">Last 12 months</option>
+            <option value="custom">Choose dates</option>
+          </select></label>
+          <label id="fFromW" hidden>From<input id="fFrom" type="date"></label>
+          <label id="fToW" hidden>To<input id="fTo" type="date"></label>
+          <label>Group by<select id="fGroup">
+            <option value="acct">Card or account</option>
+            <option value="shop">Shop (note)</option>
+            <option value="cat">Category</option>
+            <option value="month">Month</option>
+            <option value="none">Don't group</option>
+          </select></label>
+        </div>
+        <div class="f-actions">
+          <button class="small-btn" id="fReset">Clear search</button>
+          <button class="small-btn" id="fExport">Export these results (CSV)</button>
+        </div>
+        <p class="f-hint" id="fHint"></p>
+      </section>
+    </div>
+    <section class="hero f-result" aria-live="polite">
+      <p class="hero-caption" id="fCaption">Total spending, all time</p>
+      <div class="left" id="fBig">–</div>
+      <div class="hero-figs" id="fFigs"></div>
+    </section>
+    <div class="grid">
+      <section class="panel wide" id="fGroupsPanel">
+        <h2 id="fGroupTitle">By card or account</h2>
+        <div class="tx-scroll f-groups" id="fGroups"></div>
+      </section>
+      <section class="panel wide">
+        <h2>Matching transactions <span class="sec-sum" id="fCount" style="float:right"></span></h2>
+        <div class="tx-scroll" id="fList"></div>
       </section>
     </div>
   </div>
@@ -1948,6 +2051,7 @@ td.paid { color: var(--ink-soft); }
             : t.type === "cardpay" ? '<span class="cat-tag"><span class="dot" style="background:' + (card ? card.color : "#999") + '"></span>Paid ' + esc(cardName) + "</span>" + (bankById(t.from) ? '<span class="pay-tag">From ' + esc(bankById(t.from).name) + "</span>" : "")
             : '<span class="cat-tag"><span class="dot" style="background:' + catColor(t.category) + '"></span>' + esc(catLabel(t.category)) + "</span>" +
               (function () { var pi = payInfo(t.pay); return pi.kind === "cash" ? "" : '<span class="pay-tag">' + (pi.kind === "bank" ? "From " : pi.kind === "card" ? "On " : "") + esc(pi.name) + "</span>"; })() +
+              (t.charge ? '<span class="pay-tag charge">' + (t.charge === "interest" ? "Interest charged" : "Fee charged") + "</span>" : "") +
               (t.loan ? (function () { var ln = state.loans.find(function (x) { return x.id === t.loan; }); return '<span class="pay-tag">Pays off ' + esc(ln ? ln.name : "removed loan") + "</span>"; })() : "") +
               (isTransfer(t) ? '<span class="pay-tag">Paying off ' + esc(payTargetLoan(t).name) + " · not counted as spending</span>" : "") + carryTag;
           var d = new Date(t.date + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -1969,7 +2073,7 @@ td.paid { color: var(--ink-soft); }
       if (keep && [].some.call(el.options, function (o) { return o.value === keep; })) el.value = keep;
       else if (id === "tTo" && state.banks.length > 1 && el.value === $("tFrom").value) el.value = state.banks[1].id;
     });
-    renderPaydayBar(); renderLinkOptions(); updatePlanRow(); if (currentTab === "cards") renderCardsPage(); if (currentTab === "debts") renderDebtsPage(); if (currentTab === "plan") { renderDebtFree(); renderCalc(); }
+    renderPaydayBar(); renderLinkOptions(); updatePlanRow(); if (currentTab === "cards") renderCardsPage(); if (currentTab === "debts") { renderDebtsPage(); renderDebtFree(); renderCalc(); } if (currentTab === "summary") renderFind();
     updateSums(txs, spent, totalBudget);
   }
 
@@ -2039,6 +2143,8 @@ td.paid { color: var(--ink-soft); }
       render(); toast("Transfer added · " + fb.name + " → " + tb.name); return;
     }
     if (txType === "expense" && !state.categories.length) { $("err").textContent = "Add a category first."; return; }
+    var L0 = txType === "expense" ? parseLink($("link").value) : null;
+    if (L0 && L0.kind === "charge" && !cardById($("pay").value) && !bnplById($("pay").value)) { $("err").textContent = "Choose the card that charged the " + (L0.what === "interest" ? "interest" : "fee") + "."; return; }
     var cur = $("cur").value, rate = 1;
     if (cur !== "GBP") {
       rate = rateFor(cur);
@@ -2062,6 +2168,10 @@ td.paid { color: var(--ink-soft); }
         into: txType === "income" && $("into").value ? $("into").value : undefined,
         cardAmt: txType === "expense" ? cardAmtFor($("pay").value, cur, orig, gbp) : undefined,
         note: $("note").value.trim() };
+      if (L && L.kind === "charge") {
+        tx.charge = L.what;
+        msg = (L.what === "interest" ? "Interest" : "Fee") + " added to " + payInfo(tx.pay).name;
+      }
       if (L && L.kind === "bill") {
         if (occPayment(L.b, L.key)) { $("err").textContent = L.b.name + " is already marked as paid for that date."; return; }
         var dueD = L.key.length === 7 ? new Date(+L.key.slice(0, 4), +L.key.slice(5, 7) - 1, Math.min(L.b.due || 1, daysInMonth(+L.key.slice(0, 4), +L.key.slice(5, 7) - 1))) : parseDay(L.key);
@@ -2895,19 +3005,220 @@ td.paid { color: var(--ink-soft); }
   }
 
 
+  // ---------- Search: answer questions like "interest paid per card" or "spent at Tesco" from the data you already have ----------
+  var F = { q: "", kind: "spend", acct: "", cat: "", period: "all", from: "", to: "", group: "acct", quick: "" };
+  function isInterestTx(t) { return t.type === "expense" && (t.charge === "interest" || (!t.charge && /interest/i.test(t.note || ""))); }
+  function isFeeTx(t) { return t.type === "expense" && (t.charge === "fee" || (!t.charge && /\bfees?\b/i.test(t.note || "") && !/interest/i.test(t.note || ""))); }
+  function findAcct(t) { return t.type === "cardpay" ? t.card : t.type === "income" ? (t.into || "") : t.type === "transfer" ? t.from : (t.pay || "cash"); }
+  function findAcctName(id) {
+    if (!id) return "Not tracked";
+    var pi = payInfo(id); return pi.name;
+  }
+  function findRange() {
+    var td = today(), y = +td.slice(0, 4), ym = td.slice(0, 7);
+    if (F.period === "month") return [ym + "-01", ym + "-31"];
+    if (F.period === "lastmonth") { var d = new Date(y, +td.slice(5, 7) - 2, 1), k = d.getFullYear() + "-" + pad(d.getMonth() + 1); return [k + "-01", k + "-31"]; }
+    if (F.period === "year") return [y + "-01-01", y + "-12-31"];
+    if (F.period === "lastyear") return [(y - 1) + "-01-01", (y - 1) + "-12-31"];
+    if (F.period === "12m") { var a = new Date(); a.setFullYear(a.getFullYear() - 1); a.setDate(a.getDate() + 1); return [a.getFullYear() + "-" + pad(a.getMonth() + 1) + "-" + pad(a.getDate()), td]; }
+    if (F.period === "custom") return [F.from || "0000-01-01", F.to || "9999-12-31"];
+    return ["0000-01-01", "9999-12-31"];
+  }
+  function kindMatch(t) {
+    switch (F.kind) {
+      case "spend": return t.type === "expense" && !isTransfer(t);
+      case "interest": return isInterestTx(t);
+      case "fee": return isFeeTx(t);
+      case "charges": return isInterestTx(t) || isFeeTx(t);
+      case "payoff": return t.type === "cardpay" || (t.type === "expense" && isTransfer(t));
+      case "income": return t.type === "income";
+      case "transfer": return t.type === "transfer";
+    }
+    return true;
+  }
+  function findMatches() {
+    var r = findRange(), terms = F.q.split(",").map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
+    return state.tx.filter(function (t) {
+      if (!kindMatch(t)) return false;
+      if (t.date < r[0] || t.date > r[1]) return false;
+      if (F.acct) {
+        var a = findAcct(t);
+        if (!(a === F.acct || (t.type === "transfer" && t.to === F.acct) || (t.type === "cardpay" && t.from === F.acct) || (F.acct === "cash" && t.type === "expense" && !t.pay))) return false;
+      }
+      if (F.cat) { var c = catById(t.category); if (!c || (c.id !== F.cat && c.parent !== F.cat)) return false; }
+      if (terms.length) {
+        var hay = ((t.note || "") + " " + (t.category ? catLabel(t.category) : "")).toLowerCase();
+        if (!terms.some(function (w) { return hay.indexOf(w) !== -1; })) return false;
+      }
+      return true;
+    });
+  }
+  function shopKey(t) { var n = (t.note || "").trim().replace(/\s+/g, " "); return n ? n.toLowerCase() : ""; }
+  function groupOf(t) {
+    if (F.group === "acct") { var a = findAcct(t); return { k: a, name: findAcctName(a) }; }
+    if (F.group === "shop") { var k = shopKey(t); return { k: k, name: k ? (t.note || "").trim().replace(/\s+/g, " ") : "No note" }; }
+    if (F.group === "cat") { var c = catById(t.category), m = c ? mainOf(c) : null; return { k: m ? m.id : "", name: m ? m.name : t.type === "income" ? "Income" : t.type === "transfer" ? "Transfer" : t.type === "cardpay" ? "Card payment" : "No category" }; }
+    if (F.group === "month") { var ym = t.date.slice(0, 7); return { k: ym, name: ymLabel(ym, { month: "long", year: "numeric" }) }; }
+    return null;
+  }
+  function txGbp(t) { return t.type === "transfer" ? (t.amount || 0) : (t.amount || 0); }
+  var KIND_WORD = { spend: "spending", interest: "interest charged", fee: "fees charged", charges: "interest and fees", payoff: "paid off cards and loans", income: "income", transfer: "transferred" };
+  var PERIOD_WORD = { all: "all time", month: "this month", lastmonth: "last month", year: "this year", lastyear: "last year", "12m": "last 12 months" };
+  function fillFindSelects() {
+    var a = $("fAcct"), c = $("fCat");
+    a.innerHTML = '<option value="">Any</option>' + payOptionsHtml();
+    a.value = [].some.call(a.options, function (o) { return o.value === F.acct; }) ? F.acct : "";
+    c.innerHTML = '<option value="">Any</option>' + mainCats().map(function (m) {
+      return '<option value="' + m.id + '">' + esc(m.name) + "</option>" + subsOf(m.id).map(function (sc) { return '<option value="' + sc.id + '">\u00a0\u00a0' + esc(sc.name) + "</option>"; }).join("");
+    }).join("");
+    c.value = catById(F.cat) ? F.cat : "";
+    F.acct = a.value; F.cat = c.value;
+  }
+  function syncFindInputs() {
+    $("fQ").value = F.q; $("fKind").value = F.kind; $("fPeriod").value = F.period; $("fGroup").value = F.group;
+    $("fFrom").value = F.from; $("fTo").value = F.to;
+    $("fFromW").hidden = $("fToW").hidden = F.period !== "custom";
+    document.querySelectorAll("#fQuick button").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.q === F.quick ? "true" : "false"); });
+  }
+  function renderFind() {
+    fillFindSelects(); syncFindInputs();
+    var rows = findMatches().sort(function (a, b) { return b.date.localeCompare(a.date) || (b.created || 0) - (a.created || 0); });
+    var total = rows.reduce(function (s2, t) { return s2 + txGbp(t); }, 0);
+    var per = F.period === "custom" ? (F.from || F.to ? (F.from ? "from " + parseDay(F.from).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "") + (F.to ? " to " + parseDay(F.to).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "") : "any date") : PERIOD_WORD[F.period];
+    var bits = [];
+    if (F.q) bits.push("matching \u201c" + F.q + "\u201d");
+    if (F.acct) bits.push("on " + findAcctName(F.acct));
+    if (F.cat) bits.push("in " + catLabel(F.cat));
+    var w = KIND_WORD[F.kind];
+    $("fCaption").textContent = w.charAt(0).toUpperCase() + w.slice(1) + (bits.length ? " " + bits.join(", ") : "") + ", " + per;
+    $("fBig").textContent = money(total);
+    var biggest = rows.reduce(function (m, t) { return !m || txGbp(t) > txGbp(m) ? t : m; }, null);
+    var months = {}; rows.forEach(function (t) { months[t.date.slice(0, 7)] = 1; });
+    var nM = Object.keys(months).length;
+    $("fFigs").innerHTML = rows.length ? [
+      ["Transactions", String(rows.length)],
+      ["Average each", money(total / rows.length)],
+      nM > 1 ? ["Average a month", money(total / nM) + "<small>across " + nM + " months</small>"] : null,
+      biggest ? ["Biggest", money(txGbp(biggest)) + "<small>" + (biggest.note ? esc(biggest.note) + ", " : "") + parseDay(biggest.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) + "</small>"] : null
+    ].filter(Boolean).map(function (x) { return "<span>" + x[0] + " <b>" + x[1] + "</b></span>"; }).join("") : "<span>Nothing matches yet. Try a wider period or clear the search.</span>";
+
+    var hint = "";
+    if (F.kind === "interest" || F.kind === "fee" || F.kind === "charges") {
+      var legacy = rows.filter(function (t) { return !t.charge; }).length;
+      hint = legacy ? legacy + (legacy === 1 ? " older entry was" : " older entries were") + " found by the word \u201c" + (F.kind === "fee" ? "fee" : "interest") + "\u201d in the note. New ones you add as \u201cInterest charged\u201d or \u201cFee charged\u201d are picked up automatically, whatever the note says." : "";
+    }
+    $("fHint").textContent = hint;
+
+    // Groups
+    var GT = { acct: "By card or account", shop: "By shop (note)", cat: "By category", month: "By month" };
+    $("fGroupsPanel").hidden = F.group === "none" || !rows.length;
+    if (F.group !== "none" && rows.length) {
+      var g = {}, order = [];
+      rows.forEach(function (t) {
+        var x = groupOf(t);
+        if (!g[x.k]) { g[x.k] = { k: x.k, name: x.name, n: 0, gbp: 0, curs: {}, orig: 0 }; order.push(x.k); }
+        var G = g[x.k]; G.n++; G.gbp += txGbp(t);
+        var cu = t.type === "transfer" ? (bankById(t.from) ? curOf(bankById(t.from)) : "GBP") : (t.cur || "GBP");
+        G.curs[cu] = 1; G.orig += t.type === "transfer" ? (t.amtFrom || 0) : (t.orig != null ? t.orig : t.amount);
+      });
+      var list = order.map(function (k) { return g[k]; });
+      if (F.group === "month") list.sort(function (a, b) { return b.k.localeCompare(a.k); }); else list.sort(function (a, b) { return b.gbp - a.gbp; });
+      var max = list.reduce(function (m, x) { return Math.max(m, x.gbp); }, 0) || 1;
+      $("fGroupTitle").textContent = GT[F.group] + " (" + list.length + ")";
+      $("fGroups").innerHTML = '<table><thead><tr><th>' + { acct: "Card or account", shop: "Shop", cat: "Category", month: "Month" }[F.group] + '</th><th style="text-align:right">Times</th><th style="text-align:right">Total</th><th>Share</th></tr></thead><tbody>' +
+        list.map(function (x) {
+          var cs = Object.keys(x.curs), native = cs.length === 1 && cs[0] !== "GBP" ? '<span class="orig">' + fmt(cs[0], x.orig) + "</span>" : "";
+          return '<tr><td><button type="button" class="f-pick" data-fk="' + esc(x.k) + '">' + esc(x.name) + '</button></td><td class="num">' + x.n + '</td><td class="num">' + money(x.gbp) + native +
+            '</td><td><div class="f-bar"><i style="width:' + Math.max(2, Math.round(x.gbp / max * 100)) + '%"></i></div></td></tr>';
+        }).join("") +
+        (list.length > 1 ? '<tr class="tot"><td>Total</td><td class="num">' + rows.length + '</td><td class="num">' + money(total) + "</td><td></td></tr>" : "") + "</tbody></table>";
+    }
+
+    // Transactions
+    var LIMIT = 300;
+    $("fCount").textContent = rows.length ? rows.length + (rows.length === 1 ? " transaction" : " transactions") : "";
+    $("fList").innerHTML = !rows.length ? '<p class="empty">No transactions match.</p>' :
+      "<table><thead><tr><th>Date</th><th>What</th><th>Note</th><th style='text-align:right'>Amount</th><th></th></tr></thead><tbody>" +
+      rows.slice(0, LIMIT).map(function (t) {
+        var what;
+        if (t.type === "transfer") { var fb = bankById(t.from), tb = bankById(t.to); what = '<span class="cat-tag">Transfer</span><span class="pay-tag">' + esc(fb ? fb.name : "Removed account") + " \u2192 " + esc(tb ? tb.name : "Removed account") + "</span>"; }
+        else if (t.type === "cardpay") { var cd = cardById(t.card); what = '<span class="cat-tag"><span class="dot" style="background:' + (cd ? cd.color : "#999") + '"></span>Paid ' + esc(cd ? cd.name : "Removed card") + "</span>" + (bankById(t.from) ? '<span class="pay-tag">From ' + esc(bankById(t.from).name) + "</span>" : ""); }
+        else if (t.type === "income") what = "Income" + (bankById(t.into) ? '<span class="pay-tag">Into ' + esc(bankById(t.into).name) + "</span>" : "");
+        else {
+          var pi = payInfo(t.pay);
+          what = '<span class="cat-tag"><span class="dot" style="background:' + catColor(t.category) + '"></span>' + esc(catLabel(t.category)) + "</span>" +
+            (pi.kind === "cash" ? "" : '<span class="pay-tag">' + (pi.kind === "bank" ? "From " : "On ") + esc(pi.name) + "</span>") +
+            (isInterestTx(t) ? '<span class="pay-tag charge">Interest</span>' : isFeeTx(t) ? '<span class="pay-tag charge">Fee</span>' : "");
+        }
+        var d = parseDay(t.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "2-digit" });
+        var amt = t.type === "transfer" ? money(t.amount || 0) : money(t.amount) + (t.cur && t.cur !== "GBP" ? '<span class="orig">' + fmt(t.cur, t.orig) + "</span>" : "");
+        return "<tr><td>" + d + "</td><td>" + what + "</td><td>" + esc(t.note || "") + '</td><td class="num' + (t.type === "income" ? " inc" : "") + '">' + amt + "</td>" +
+          '<td><button class="edit-btn" data-edittx="' + t.id + '" aria-label="Edit transaction">Edit</button></td></tr>';
+      }).join("") + "</tbody></table>" +
+      (rows.length > LIMIT ? '<p class="f-hint">Showing the newest ' + LIMIT + ". The totals above include all " + rows.length + ", and so does the export.</p>" : "");
+  }
+  function findSet(patch) { for (var k in patch) F[k] = patch[k]; renderFind(); }
+  $("fQ").addEventListener("input", function () { F.q = this.value; F.quick = ""; clearTimeout(renderFind._t); renderFind._t = setTimeout(function () { var pos = $("fQ").selectionStart; renderFind(); $("fQ").focus(); try { $("fQ").setSelectionRange(pos, pos); } catch (e) {} }, 180); });
+  $("fKind").onchange = function () { findSet({ kind: this.value, quick: "" }); };
+  $("fAcct").onchange = function () { findSet({ acct: this.value, quick: "" }); };
+  $("fCat").onchange = function () { findSet({ cat: this.value, quick: "" }); };
+  $("fPeriod").onchange = function () { findSet({ period: this.value }); };
+  $("fFrom").onchange = function () { findSet({ from: this.value }); };
+  $("fTo").onchange = function () { findSet({ to: this.value }); };
+  $("fGroup").onchange = function () { findSet({ group: this.value }); };
+  $("fReset").onclick = function () { findSet({ q: "", kind: "spend", acct: "", cat: "", period: "all", from: "", to: "", group: "acct", quick: "" }); };
+  var QUICK = {
+    interest: { kind: "interest", group: "acct", q: "", acct: "", cat: "" },
+    fees: { kind: "fee", group: "acct", q: "", acct: "", cat: "" },
+    shops: { kind: "spend", group: "shop", q: "", acct: "", cat: "" },
+    cats: { kind: "spend", group: "cat", q: "", acct: "", cat: "" },
+    months: { group: "month" },
+    payoffs: { kind: "payoff", group: "acct", q: "", acct: "", cat: "" }
+  };
+  $("fQuick").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-q]"); if (!b) return;
+    var p = QUICK[b.dataset.q], patch = { quick: b.dataset.q }; for (var k in p) patch[k] = p[k]; findSet(patch);
+  });
+  $("fGroups").addEventListener("click", function (e) {
+    var b = e.target.closest(".f-pick"); if (!b) return;
+    var k = b.dataset.fk;
+    if (F.group === "acct") findSet({ acct: k || "", group: "month", quick: "" });
+    else if (F.group === "cat") findSet({ cat: k, group: "shop", quick: "" });
+    else if (F.group === "shop") findSet({ q: b.textContent === "No note" ? "" : b.textContent, group: "month", quick: "" });
+    else if (F.group === "month") findSet({ period: "custom", from: k + "-01", to: k + "-31", group: "shop", quick: "" });
+    $("fList").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("fExport").onclick = function () {
+    var rows = [["Date", "Type", "Category", "Card or account", "Note", "Original amount", "Currency", "Amount (GBP)", "Interest or fee"]];
+    findMatches().sort(function (a, b) { return a.date.localeCompare(b.date); }).forEach(function (t) {
+      rows.push([t.date, t.type === "cardpay" ? "card payment" : t.type, t.category ? catLabel(t.category).replace(" \u203a ", " > ") : "", findAcctName(findAcct(t)), t.note || "",
+        t.type === "transfer" ? t.amtFrom : t.orig, t.cur || "GBP", t.amount, isInterestTx(t) ? "interest" : isFeeTx(t) ? "fee" : ""]);
+    });
+    download("search-" + today() + ".csv", rows.map(function (r) { return r.map(csvCell).join(","); }).join("\n"), "text/csv");
+  };
+
   var currentTab = "month";
+  // Four tabs: This month, Accounts, Debts (with the debt-free plan underneath), Insights (year summary with search underneath)
+  function syncViews() {
+    var t = currentTab;
+    $("monthView").hidden = t !== "month"; $("cardsView").hidden = t !== "cards";
+    $("debtsView").hidden = $("planView").hidden = t !== "debts";
+    $("summaryView").hidden = $("findView").hidden = t !== "summary";
+  }
   function showTab(which) {
+    var jump = which === "plan" ? "planView" : which === "find" ? "findView" : null;
+    if (which === "plan") which = "debts";
+    if (which === "find") which = "summary";
     currentTab = which;
-    var sum = which === "summary", cards = which === "cards", debts = which === "debts", plan = which === "plan";
-    $("monthView").hidden = which !== "month"; $("summaryView").hidden = !sum; $("cardsView").hidden = !cards; $("debtsView").hidden = !debts; $("planView").hidden = !plan;
-    $("tabPlan").setAttribute("aria-selected", plan ? "true" : "false");
+    var sum = which === "summary", cards = which === "cards", debts = which === "debts";
+    syncViews();
     $("tabDebts").setAttribute("aria-selected", debts ? "true" : "false");
     $("tabMonth").setAttribute("aria-selected", which === "month" ? "true" : "false");
     $("tabSummary").setAttribute("aria-selected", sum ? "true" : "false");
     $("tabCards").setAttribute("aria-selected", cards ? "true" : "false");
     $("exportCsv").hidden = which !== "month"; $("exportYear").hidden = !sum;
-    if (sum) { sYear = view.y; renderSummary(); } else render();
-    window.scrollTo(0, 0);
+    if (sum) { sYear = view.y; renderSummary(); renderFind(); } else render();
+    if (jump) $(jump).scrollIntoView({ behavior: "smooth", block: "start" }); else window.scrollTo(0, 0);
   }
   function openMonth(i) { view.y = sYear; view.m = i; defaultDate(); showTab("month"); }
 
@@ -2915,8 +3226,7 @@ td.paid { color: var(--ink-soft); }
   $("tabSummary").onclick = function () { showTab("summary"); };
   $("tabCards").onclick = function () { showTab("cards"); };
   $("tabDebts").onclick = function () { showTab("debts"); };
-  $("tabPlan").onclick = function () { showTab("plan"); };
-  $("toPlan").onclick = function () { showTab("plan"); };
+  $("toPlan").onclick = function () { $("planView").scrollIntoView({ behavior: "smooth", block: "start" }); };
   $("caPrev").onclick = function () { view.m--; if (view.m < 0) { view.m = 11; view.y--; } defaultDate(); renderCardsPage(); };
   $("caNext").onclick = function () { view.m++; if (view.m > 11) { view.m = 0; view.y++; } defaultDate(); renderCardsPage(); };
   $("yPrev").onclick = function () { sYear--; renderSummary(); };
@@ -3168,6 +3478,7 @@ td.paid { color: var(--ink-soft); }
         { key: "rate", label: "Rate used: how much £1 was in that currency (blank for today's rate)", type: "number", step: "0.0001", value: curRate, full: true, showIf: function (v) { return v.cur !== "GBP"; } },
         { key: "cat", label: "Category", type: "select", value: t.category, options: catOptions(), showIf: function (v) { return v.type === "expense"; } },
         { key: "pay", label: "Paid with", type: "select", value: t.pay || "cash", options: payOptions(), showIf: function (v) { return v.type === "expense"; } },
+        { key: "charge", label: "What is this?", type: "select", value: t.charge || "", full: true, options: [["", "A purchase"], ["interest", "Interest charged"], ["fee", "Fee charged"]], showIf: function (v) { return v.type === "expense"; } },
         { key: "into", label: "Paid into", type: "select", value: t.into || "", options: [["", "Not tracked"]].concat(state.banks.map(function (b) { return [b.id, b.name]; })), showIf: function (v) { return v.type === "income"; } },
         { key: "note", label: "Note", type: "text", value: t.note || "", full: true, max: 80 },
         { key: "forMonth", label: "Counts towards", type: "select", value: countsFor(t), full: true,
@@ -3197,12 +3508,13 @@ td.paid { color: var(--ink-soft); }
         if (v.type === "expense") {
           t.category = v.cat || (state.categories[0] && state.categories[0].id) || null;
           t.pay = v.pay; t.cardAmt = cardAmtFor(v.pay, v.cur, t.orig, t.amount);
+          if (v.charge === "interest" || v.charge === "fee") t.charge = v.charge; else delete t.charge;
           if (state.loans.length) {
             if (v.loan && v.loan !== t.loan) { t.loan = v.loan; if (!t.created) t.created = new Date(t.date + "T12:00:00").getTime(); }
             else if (!v.loan) delete t.loan;
           }
           delete t.into;
-        } else { t.category = null; t.pay = undefined; t.cardAmt = undefined; delete t.loan; if (v.into) t.into = v.into; else delete t.into; }
+        } else { t.category = null; t.pay = undefined; t.cardAmt = undefined; delete t.loan; delete t.charge; if (v.into) t.into = v.into; else delete t.into; }
         if (t.plan && v.plan != null) t.plan.months = +v.plan;
         var dm = v.date.slice(0, 7), fm = v.forMonth, def = defaultMonthFor(v.type, v.date);
         if (fm !== dm && fm !== nextYm(dm)) fm = def;
@@ -3605,9 +3917,9 @@ td.paid { color: var(--ink-soft); }
     var cp = currentProfile();
     lockedView = !!cp.locked;
     $("lockScreen").hidden = !lockedView;
-    if (lockedView) { $("monthView").hidden = true; $("summaryView").hidden = true; $("cardsView").hidden = true; $("debtsView").hidden = true; $("planView").hidden = true; $("backupNag").hidden = true; }
+    if (lockedView) { $("monthView").hidden = true; $("summaryView").hidden = true; $("cardsView").hidden = true; $("debtsView").hidden = true; $("planView").hidden = true; $("findView").hidden = true; $("backupNag").hidden = true; }
     else {
-      $("monthView").hidden = currentTab !== "month"; $("summaryView").hidden = currentTab !== "summary"; $("cardsView").hidden = currentTab !== "cards"; $("debtsView").hidden = currentTab !== "debts"; $("planView").hidden = currentTab !== "plan";
+      syncViews();
     }
     document.querySelector(".tabs").style.visibility = lockedView ? "hidden" : "";
     document.querySelector(".foot").hidden = lockedView;
@@ -3855,10 +4167,13 @@ td.paid { color: var(--ink-soft); }
   }
   function renderLinkOptions() {
     var sel = $("link"), prev = sel.value, T = linkTargets(), fmt = function (d) { return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
-    var h = '<option value="">Everyday spending (not a bill or card)</option>';
+    var h = '<option value="">A purchase (shopping, food, anything you bought)</option>';
+    if (state.cards.length || bnplLoans().length) h += '<optgroup label="Charged by a card or lender">' +
+      '<option value="charge:interest">Interest charged</option>' +
+      '<option value="charge:fee">Fee charged (late, annual, cash advance…)</option></optgroup>';
     if (T.bills.length) h += '<optgroup label="Bills not paid yet">' + T.bills.map(function (x) {
       return '<option value="bill:' + x.b.id + ":" + x.o.key + '">' + esc(x.b.name) + " · due " + fmt(x.o.date) + " · " + ((planLoanFor(x.b) || anyLoanFor(x.b)) && billDue(x.b, x.o.key) > 0 ? "≈ " + money(billDue(x.b, x.o.key)) : billAmtText(x.b)) + "</option>"; }).join("") + "</optgroup>";
-    if (T.cards.length) h += '<optgroup label="Paying off a credit card">' + T.cards.map(function (c) {
+    if (T.cards.length) h += '<optgroup label="Paying off a credit card (money from your bank)">' + T.cards.map(function (c) {
       return '<option value="card:' + c.id + '">' + esc(cardLabel(c)) + " · " + cm(c, cardStats(c, "").balance) + " owed</option>"; }).join("") + "</optgroup>";
     sel.innerHTML = h;
     if (prev && [].some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
@@ -3870,14 +4185,27 @@ td.paid { color: var(--ink-soft); }
     if (p[0] === "bill") { var b = billById(p[1]); return b ? { kind: "bill", b: b, key: p.slice(2).join(":") } : null; }
     if (p[0] === "loan") { var l = state.loans.find(function (x) { return x.id === p[1]; }); return l ? { kind: "loan", l: l } : null; }
     if (p[0] === "card") { var c = cardById(p[1]); return c ? { kind: "card", c: c } : null; }
+    if (p[0] === "charge" && (p[1] === "interest" || p[1] === "fee")) return { kind: "charge", what: p[1] };
     return null;
   }
   function applyLink() {
     var L = parseLink($("link").value);
-    $("cur").disabled = !!L;
+    $("cur").disabled = !!L && L.kind !== "charge";
     $("catWrap").style.display = L && L.kind === "card" ? "none" : "";
     $("payWrap").style.display = "";
-    $("payLabel").textContent = L && L.kind === "card" ? "Paid from" : "Paid with";
+    $("payLabel").textContent = L && L.kind === "card" ? "Paid from" : L && L.kind === "charge" ? "Charged on which card?" : "Paid with";
+    var oldNote = $("note").value;
+    if (/^(Interest|Card fee)$/.test(oldNote) && !(L && L.kind === "charge")) $("note").value = "";
+    if (L && L.kind === "charge") {
+      var pv = $("pay").value, onCard = !!cardById(pv) || !!bnplById(pv);
+      if (!onCard && state.cards.length) $("pay").value = state.cards[0].id;
+      var chosen = cardById($("pay").value) || bnplById($("pay").value);
+      if (chosen) $("cur").value = curOf(chosen);
+      $("cur").disabled = !!chosen;
+      if (!oldNote || /^(Interest|Card fee)$/.test(oldNote) || /^Paid off |payment$/.test(oldNote)) $("note").value = L.what === "interest" ? "Interest" : "Card fee";
+      $("addTx").textContent = L.what === "interest" ? "Add interest charge" : "Add fee";
+      updatePreview(); return;
+    }
     if (!L) { $("addTx").textContent = "Add expense"; updatePreview(); return; }
     if (L.kind === "bill") {
       var due0 = billDue(L.b, L.key); $("amt").value = due0 > 0 ? due0.toFixed(2) : (isVar(L.b) ? "" : L.b.amount.toFixed(2)); $("cur").value = L.b.cur;
@@ -3896,6 +4224,12 @@ td.paid { color: var(--ink-soft); }
     updatePreview();
   }
   $("link").onchange = function () { applyLink(); updatePlanRow(); };
+  $("pay").addEventListener("change", function () {
+    var L = parseLink($("link").value); if (!L || L.kind !== "charge") return;
+    var c = cardById($("pay").value) || bnplById($("pay").value);
+    if (c) { $("cur").value = curOf(c); $("cur").disabled = true; } else $("cur").disabled = false;
+    updatePreview();
+  });
   function startPayment(v) {
     if (currentTab !== "month") showTab("month");
     setType("expense");
@@ -4010,12 +4344,20 @@ td.paid { color: var(--ink-soft); }
     $("caCards").innerHTML = sortedCards().map(function (c) {
       var ch = 0; state.tx.forEach(function (t) { if (t.type === "expense" && t.pay === c.id && t.date.slice(0, 7) === mk) ch += inCard(c, t); });
       var bal = cardStats(c, "").balance, pct = c.limit > 0 ? Math.max(0, bal / c.limit * 100) : null, promo = promoText(c);
-      return '<button class="ca-card cc-tile" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '"' + (promo ? ' title="' + esc(promo) + '"' : "") + ">" +
-        '<span class="cc-name">' + esc(c.name) + "</span>" + (c.last4 ? '<span class="cc-digits">••' + esc(c.last4) + "</span>" : "") + "<b>" + cm(c, bal) + "</b>" +
-        (pct != null ? '<i class="cc-util ' + utilClass(pct) + '" aria-hidden="true"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></i>' +
-          '<small class="u-' + utilClass(pct) + '">' + Math.round(pct) + "% used</small>" : "") +
-        "<small>" + (c.limit > 0 ? (bal > c.limit ? '<span class="over">' + cm(c, bal - c.limit) + " over limit</span>" : cm(c, c.limit - bal) + " free") : "owed now") + "</small>" +
-        "<small>" + cm(c, ch) + " charged in " + esc(ymLabel(mk, { month: "short" })) + "</small></button>";
+      var cls = pct != null ? utilClass(pct) : "none", over = c.limit > 0 && bal > c.limit, mon = esc(ymLabel(mk, { month: "short" }));
+      var label = esc(c.name) + (c.last4 ? " ending " + esc(c.last4) : "") + ": " + cm(c, bal) + " owed" + (pct != null ? ", " + Math.round(pct) + "% of limit" : "");
+      return '<button class="ca-card cc-tile' + (over ? " is-over" : "") + '" data-cacard="' + c.id + '" aria-pressed="' + (c.id === caCardId ? "true" : "false") + '" aria-label="' + label + '"' + (promo ? ' title="' + esc(promo) + '"' : "") + ">" +
+        '<span class="cc-top"><i class="cc-dot" style="background:' + esc(c.color || "#999") + '" aria-hidden="true"></i><span class="cc-name">' + esc(c.name) + "</span>" + (c.last4 ? '<span class="cc-digits">••' + esc(c.last4) + "</span>" : "") + "</span>" +
+        '<b class="cc-bal">' + cm(c, bal) + "</b>" +
+        '<span class="cc-meter" aria-hidden="true">' + (pct != null
+          ? '<i class="cc-util ' + cls + '"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i><i class="mk"></i></i><span class="cc-pct ' + cls + '">' + Math.round(pct) + "%</span>"
+          : '<i class="cc-util none"></i><span class="cc-pct none">No limit</span>') + "</span>" +
+        '<span class="cc-figs">' +
+          (c.limit > 0
+            ? (over ? '<span><em>Over limit</em><strong class="over">' + cm(c, bal - c.limit) + "</strong></span>" : '<span><em>Available</em><strong>' + cm(c, c.limit - bal) + "</strong></span>")
+            : '<span><em>Limit</em><strong class="quiet">Not set</strong></span>') +
+          '<span><em>Spent in ' + mon + "</em><strong" + (ch > 0 ? "" : ' class="quiet"') + ">" + cm(c, ch) + "</strong></span>" +
+        "</span></button>";
     }).join("");
     renderCardActivity(mk);
   }
@@ -4290,7 +4632,7 @@ td.paid { color: var(--ink-soft); }
   }
   function cloudRefreshUI() {
     renderProfiles(); defaultDate(); renderRate(); updatePreview(); renderBackupNag();
-    if (currentTab === "summary") renderSummary(); else render();
+    if (currentTab === "summary") { renderSummary(); renderFind(); } else render();
   }
   function cloudWatchUser() {
     if (cloud.unsubUser) cloud.unsubUser();
