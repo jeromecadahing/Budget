@@ -116,6 +116,18 @@ header.top { display: flex; justify-content: space-between; align-items: center;
 .plan-row select, .plan-row input { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 16px; width: 100%; }
 .plan-info { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--ink); }
 .plan-info .warn { color: var(--over); }
+.plan-row .check { flex-direction: row; align-items: center; gap: 8px; grid-column: 1 / -1; color: var(--ink); }
+.plan-row .check input { width: auto; }
+.pl-list { display: grid; gap: 8px; margin-top: 6px; }
+.pl-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 12px; background: var(--paper); border-radius: 10px; font-size: 15px; }
+.pl-row small { display: block; color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+.pl-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+.pl-row.done { opacity: .6; }
+.pl-row .warn { color: var(--over); }
+.pl-add { margin-top: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pl-add .small-btn { padding: 6px 14px; font-size: 14px; }
+.pl-intro { background: var(--paper); border-radius: 10px; padding: 12px 14px; margin: 10px 0; font-size: 14px; }
+.pl-intro p { margin: 0 0 8px; }
 .plans { margin-top: 6px; font-size: 12px; color: var(--ink-soft); }
 .plans div { padding: 2px 0; }
 .term-av { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
@@ -781,7 +793,12 @@ td.paid { color: var(--ink-soft); }
         <label id="tToWrap" hidden>To<select id="tTo"></select></label>
         <label class="full" id="tRecvWrap" hidden><span id="tRecvLabel">Amount received</span><input id="tRecv" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></label>
         <div class="full plan-row" id="planWrap" hidden>
-          <label>Pay over<select id="planTerm"><option value="0">In full (next payment)</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
+          <label id="planTermWrap">Pay over<select id="planTerm"><option value="0">In full (next payment)</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
+          <label id="planTypeWrap" hidden>Plan<select id="planType"><option value="in4">Pay in 4</option><option value="full">Pay in full</option><option value="m3">3 months</option><option value="m6">6 months</option><option value="m12">12 months</option><option value="other">Something else</option></select></label>
+          <label id="planNWrap" hidden>Number of payments<input id="planN" type="number" min="1" step="1" inputmode="numeric" value="4"></label>
+          <label id="planFreqWrap" hidden>How often<select id="planFreq"><option value="weekly">Weekly</option><option value="2weekly" selected>Every 2 weeks</option><option value="4weekly">Every 4 weeks</option><option value="monthly">Monthly</option></select></label>
+          <label id="planFirstWrap" hidden>First payment<input id="planFirst" type="date"></label>
+          <label class="check" id="planUpfrontWrap" hidden><input id="planUpfront" type="checkbox" checked> First payment was taken when I bought it</label>
           <label>Fee (£)<input id="planFee" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00"></label>
           <p class="plan-info" id="planInfo"></p>
         </div>
@@ -1443,11 +1460,12 @@ td.paid { color: var(--ink-soft); }
   // A payment towards a BNPL whose purchases you record isn't new spending (the purchases already were), like paying off a card
   function payTargetLoan(t) {
     if (t.loan) return state.loans.find(function (l) { return l.id === t.loan; }) || null;
-    if (t.bill) return state.loans.find(function (l) { return l.billId === t.bill; }) || null;
+    if (t.bill) { var pb = billById(t.bill); if (pb && pb.planOf) return planOwner(pb); return state.loans.find(function (l) { return l.billId === t.bill; }) || null; }
     return null;
   }
   function isTransfer(t) {
     if (t.type !== "expense") return false;
+    if (t.bill) { var pb = billById(t.bill); if (pb && pb.planOf) return !!pb.planSpent && !!planOwner(pb); }
     var l = payTargetLoan(t);
     return !!(l && l.kind === "bnpl" && l.trackBuys);
   }
@@ -1544,6 +1562,143 @@ td.paid { color: var(--ink-soft); }
     }, 0);
   }
   function termUsed(l, m) { return planPurchases(l).filter(function (t) { return (t.plan.months || 0) === m; }).reduce(function (s2, t) { return s2 + planInfo(l, t).remaining; }, 0); }
+  // ---------- Plan-by-plan BNPL (e.g. Zilch): each plan is its own bill with its own amount, schedule and end ----------
+  // A plan bill: { planOf: loan id, planName, planCount (payments it covers from `begins`), planType, planAdded, planSpent }
+  var PLAN_TYPES = { in4: ["Pay in 4", 4, "2weekly", -1], full: ["Pay in full", 1, "monthly", 0], m3: ["3 months", 3, "monthly", 3],
+    m6: ["6 months", 6, "monthly", 6], m12: ["12 months", 12, "monthly", 12], other: ["Something else", 0, "", -1] };
+  var PLAN_FREQS = [["weekly", "Weekly"], ["2weekly", "Every 2 weeks"], ["4weekly", "Every 4 weeks"], ["monthly", "Monthly"]];
+  function usesPlans(l) { return !!(l && l.kind === "bnpl" && l.plansOn); }
+  function planBills(l) { return state.bills.filter(function (b) { return b.planOf === l.id; }); }
+  function planOwner(b) { return b && b.planOf ? state.loans.find(function (l) { return l.id === b.planOf; }) || null : null; }
+  function planTerm(b) { var t = PLAN_TYPES[b.planType]; return t ? t[3] : -1; }
+  function planStatus(l, b) {
+    var count = Math.max(1, b.planCount || 1), total = r2((b.amount || 0) * count);
+    var pays = state.tx.filter(function (t) { return t.type === "expense" && t.bill === b.id; });
+    var paid = pays.reduce(function (s2, t) { return s2 + inLoanCur(l, t); }, 0), left = Math.max(0, r2(total - paid)), due = [];
+    if (left > 0.005 && (b.begins || b.start)) {
+      var first = parseDay(b.begins || b.start), owed = left;
+      occurrences(b, first, new Date(first.getFullYear() + 4, first.getMonth(), first.getDate())).some(function (o) {
+        if (occPayment(b, o.key)) return false;
+        var a = r2(Math.min(b.amount > 0 ? b.amount : owed, owed));
+        due.push({ bill: b, key: o.key, date: o.date, amt: a }); owed = r2(owed - a);
+        return owed <= 0.005;
+      });
+    }
+    return { count: count, total: total, paid: r2(paid), left: left, done: pays.length, due: due, active: left > 0.005 };
+  }
+  // Every unpaid plan payment, soonest first
+  function planSchedule(l) {
+    var out = [];
+    planBills(l).forEach(function (b) { out = out.concat(planStatus(l, b).due); });
+    return out.sort(function (a, c) { return a.date - c.date; });
+  }
+  function planMonthly(l) { return planBills(l).reduce(function (s2, b) { return planStatus(l, b).active ? s2 + (b.amount || 0) * PER_MONTH[freqOf(b)] : s2; }, 0); }
+  function planTermLeft(l, m) { return planBills(l).reduce(function (s2, b) { return planTerm(b) === m ? s2 + planStatus(l, b).left : s2; }, 0); }
+  // Set a plan's dates: `n` payments from `first`, at the bill's frequency
+  function setPlanDates(b, first, n) {
+    delete b.ends; delete b.start;
+    var d = parseDay(first);
+    b.begins = first; b.due = d.getDate();
+    if (b.freq !== "monthly") b.start = first;
+    var occ = occurrences(b, d, new Date(d.getFullYear() + 4, d.getMonth(), d.getDate()));
+    var last = occ[Math.min(occ.length, Math.max(1, n)) - 1];
+    if (last) b.ends = dayKey(last.date);
+  }
+  function makePlanBill(l, o) {
+    var b = { id: uid(), name: l.name + " · " + o.name, planName: o.name, amount: r2(o.amount), cur: curOf(l), freq: o.freq,
+      category: o.category, pay: o.pay, planOf: l.id, planCount: o.count, planType: o.type, planAdded: o.added || today(), debt: false };
+    if (o.spent) b.planSpent = true;
+    setPlanDates(b, o.first, o.count);
+    return b;
+  }
+  // When a debt stops using plans (or is removed): drop plan bills nobody paid, and end the others after today
+  function retirePlanBills(l) {
+    var y = new Date(); y.setDate(y.getDate() - 1);
+    planBills(l).forEach(function (b) {
+      if (state.tx.some(function (t) { return t.bill === b.id; })) { b.ends = dayKey(y); delete b.planOf; }
+      else state.bills = state.bills.filter(function (x) { return x !== b; });
+    });
+  }
+  // Switching a debt to plans: its single bill stops after today (or goes, if it was never paid)
+  function retireLoanBill(l) {
+    var b = loanBill(l); l.billId = "";
+    if (!b || state.loans.some(function (x) { return x !== l && x.billId === b.id; })) return;
+    if (state.tx.some(function (t) { return t.bill === b.id; })) { var y = new Date(); y.setDate(y.getDate() - 1); b.ends = dayKey(y); }
+    else state.bills = state.bills.filter(function (x) { return x !== b; });
+  }
+  function planDefaultCat(l) {
+    if (l.category && catById(l.category)) return l.category;
+    var hit = catOptions().find(function (o) { return /debt|loan|bnpl|pay later/i.test(o[1]); });
+    return hit ? hit[0] : (state.categories[0] ? state.categories[0].id : "");
+  }
+  function editPlan(loanId, billId) {
+    var l = state.loans.find(function (x) { return x.id === loanId; }); if (!l) return;
+    var b = billId ? billById(billId) : null, isNew = !b, s = b ? planStatus(l, b) : null;
+    var nxt = s && s.due.length ? dayKey(s.due[0].date) : today();
+    var leftN = s ? Math.max(1, s.count - s.done) : 4;
+    var payOpts = payOptions().filter(function (o) { return o[0] !== l.id; });
+    var cur = sym(curOf(l));
+    openEditor({
+      title: isNew ? "Add a " + l.name + " plan" : "Edit plan: " + (b.planName || b.name),
+      fields: [
+        isNew ? { key: "n0", label: "Copy these from the plan in your " + l.name + " app. Each plan gets its own payments in Bills, weekly or monthly.", type: "note" }
+          : { key: "n0", label: s.done + " of " + s.count + " paid · " + loanMoney(l, s.left) + " left", type: "note" },
+        { key: "name", label: "What it's for", type: "text", value: b ? (b.planName || b.name) : "", max: 40, full: true },
+        { key: "type", label: "Plan", type: "select", value: b ? (b.planType || "other") : "in4", options: Object.keys(PLAN_TYPES).map(function (k) { return [k, PLAN_TYPES[k][0]]; }), full: true },
+        { key: "amt", label: "Each payment (" + cur + ")", type: "number", value: b ? b.amount : "" },
+        { key: "left", label: "Payments left", type: "number", step: "1", value: leftN },
+        { key: "freq", label: "How often", type: "select", value: b ? freqOf(b) : "2weekly", options: PLAN_FREQS },
+        { key: "next", label: "Next payment date", type: "date", value: nxt },
+        { key: "pay", label: "Paid from", type: "select", value: b ? b.pay : (l.payWith && validPay(l.payWith) && l.payWith !== l.id ? l.payWith : "cash"), options: payOpts, full: true },
+        { key: "cat", label: "Category for the payments", type: "select", value: b && catById(b.category) ? b.category : planDefaultCat(l), options: catOptions(), full: true, adv: true },
+        { key: "spent", label: "I already logged this purchase as spending", type: "checkbox", value: b ? !!b.planSpent : false, adv: true },
+        { key: "ns", label: "Tick this if you added the purchase itself as an expense, so its payments aren't counted as spending a second time.", type: "note", adv: true }
+      ],
+      saveLabel: isNew ? "Add plan" : "Save changes",
+      onSave: function (v) {
+        if (!v.name.trim()) return "Say what the plan is for, e.g. Trainers.";
+        if (!(v.amt > 0)) return "Enter how much each payment is.";
+        var n = Math.round(v.left);
+        if (!(n >= 1)) return "Enter how many payments are left (1 or more).";
+        if (!v.next) return "Pick the date of the next payment.";
+        if (isNew) {
+          var nb = makePlanBill(l, { name: v.name.trim(), amount: v.amt, count: n, freq: v.freq, first: v.next, type: v.type, pay: v.pay, category: v.cat, spent: v.spent });
+          state.bills.push(nb);
+        } else {
+          var done = s.done, oldNext = nxt, oldFreq = freqOf(b);
+          b.planName = v.name.trim(); b.name = l.name + " · " + b.planName; b.planType = v.type; b.amount = r2(v.amt);
+          b.pay = v.pay; b.category = v.cat; b.freq = v.freq; b.cur = curOf(l); b.debt = false;
+          if (v.spent) b.planSpent = true; else delete b.planSpent;
+          b.planCount = done + n;
+          if (v.next !== oldNext || v.freq !== oldFreq || n !== leftN) setPlanDates(b, v.next, n);
+        }
+        l.payWith = v.pay;
+      },
+      onDelete: isNew ? null : function () { state.bills = state.bills.filter(function (x) { return x !== b; }); },
+      deleteLabel: "Remove plan", confirmDelete: isNew ? null : 'Remove the "' + (b.planName || b.name) + '" plan? Do this if it\'s paid off early or refunded. Payments you already ticked stay in your transactions.',
+      savedMsg: isNew ? "Plan added · " + l.name + " updated" : "Plan updated", deletedMsg: "Plan removed"
+    });
+    // Picking a plan type fills in its usual number of payments and how often
+    var tSel = document.getElementById("m-type");
+    if (tSel && isNew) tSel.addEventListener("change", function () {
+      var t = PLAN_TYPES[tSel.value]; if (!t || !t[1]) return;
+      document.getElementById("m-left").value = t[1]; document.getElementById("m-freq").value = t[2];
+    });
+  }
+  function startPlans(l) {
+    retireLoanBill(l);
+    l.plansOn = true; l.payMode = "varies"; l.balance = 0; l.asOf = Date.now();
+    save(); render(); setTimeout(function () { editPlan(l.id); }, 0);
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("[data-addplan]"); if (a) { editPlan(a.dataset.addplan); return; }
+    var ep = e.target.closest("[data-editplan]"); if (ep) { var pb = billById(ep.dataset.editplan); if (pb) editPlan(pb.planOf, pb.id); return; }
+    var so = e.target.closest("[data-planson]"); if (so) {
+      var sl = state.loans.find(function (x) { return x.id === so.dataset.planson; }); if (!sl) return;
+      if (!confirm("Track " + sl.name + " plan by plan?\n\nYou'll add each plan from the " + sl.name + " app: what it's for, each payment, how many are left and when the next one is. Each plan gets its own payments in Bills (weekly or monthly), and what you owe is added up from them.\n\nThe single " + sl.name + " bill stops after today.")) return;
+      startPlans(sl);
+    }
+  });
   function planLoanFor(b) { var bl = state.loans.find(function (l) { return l.billId === b.id && l.kind === "bnpl"; }); return bl && planPurchases(bl).length ? bl : null; }
   // What's due on a particular due date: plan-driven bills work it out for that month
   function baseDue(b, key) {
@@ -1619,6 +1774,8 @@ td.paid { color: var(--ink-soft); }
     var out = [], f = freqOf(b);
     // A bill that starts in the future has no due dates before its start
     if (b.begins) { var bg = parseDay(b.begins); if (bg > from) from = bg; if (from >= to) return out; }
+    // A bill with a last payment date (e.g. a BNPL plan) has nothing due after it
+    if (b.ends) { var en = parseDay(b.ends); en = new Date(en.getFullYear(), en.getMonth(), en.getDate() + 1); if (en < to) to = en; if (from >= to) return out; }
     if (f === "monthly") {
       var cur = new Date(from.getFullYear(), from.getMonth(), 1);
       while (cur < to) {
@@ -1670,7 +1827,10 @@ td.paid { color: var(--ink-soft); }
     return d;
   }
   function loanForBill(b) { return state.loans.find(function (l) { return l.billId === b.id; }); }
-  function billFinished(b) { var l = loanForBill(b); return !!(l && loanState(l).balance <= 0); }
+  function billFinished(b) {
+    if (b.planOf) { var po = planOwner(b); return !!po && !planStatus(po, b).active; }
+    var l = loanForBill(b); return !!(l && loanState(l).balance <= 0);
+  }
   function billGbp(b, amt) { return toGbp(curOf(b), amt); }
   // Unpaid bills from today until the next payday, plus anything overdue this month
   function dueBeforePayday() {
@@ -1800,7 +1960,7 @@ td.paid { color: var(--ink-soft); }
       var status, cls;
       var planZero = !p && nothingDue(b, o.key);
       if (p) { status = p.auto ? "Paid automatically" : "Paid"; cls = "paid"; paidN++; }
-      else if (billFinished(b)) { status = "Loan paid off"; cls = "paid"; paidN++; }
+      else if (billFinished(b)) { status = b.planOf ? "Plan paid off" : "Loan paid off"; cls = "paid"; paidN++; }
       else if (planZero) { status = planLoanFor(b) ? "Nothing due" : "Nothing left to pay"; cls = "paid"; nothingN++; }
       else {
         owing += billGbp(b, billDue(b, o.key));
@@ -2198,6 +2358,36 @@ td.paid { color: var(--ink-soft); }
         tx.loan = L.l.id; tx.created = Date.now(); L.l.category = tx.category; L.l.payWith = tx.pay;
       }
       var pl = !L && txType === "expense" ? bnplById(tx.pay) : null, feeV = 0;
+      if (pl && usesPlans(pl)) {
+        var pN = Math.round(parseFloat($("planN").value)), pFirst = $("planFirst").value || date;
+        if (!(pN >= 1)) { $("err").textContent = "Enter how many payments the plan has."; return; }
+        feeV = Math.round((parseFloat($("planFee").value) || 0) * 100) / 100;
+        var pTot = inLoanCur(pl, tx) + feeV;
+        var pB = makePlanBill(pl, { name: tx.note || catLabel(tx.category), amount: pTot / pN, count: pN, freq: pN === 1 ? "monthly" : $("planFreq").value, first: pFirst,
+          type: $("planType").value, pay: pl.payWith && validPay(pl.payWith) && pl.payWith !== pl.id ? pl.payWith : "cash", category: tx.category, spent: true, added: date });
+        state.bills.push(pB); tx.planBill = pB.id;
+        state.tx.push(tx);
+        if (feeV > 0) {
+          var pfr = rateFor(curOf(pl)) || 0;
+          state.tx.push({ id: uid(), type: "expense", created: Date.now(), feeOf: tx.id, cur: pl.cur, orig: feeV, rate: pfr, amount: Math.round(feeV * pfr * 100) / 100,
+            date: date, category: tx.category, pay: pl.id, note: pl.name + " fee" + (tx.note ? " · " + tx.note : "") });
+        }
+        // Pay in 4: the first payment went out at checkout
+        if ($("planUpfront").checked && !$("planUpfrontWrap").hidden && pFirst <= today()) {
+          var fo = occurrences(pB, parseDay(pFirst), new Date(parseDay(pFirst).getTime() + 86400000))[0];
+          if (fo) {
+            var fr0 = isForeign(pB) ? rateFor(curOf(pB)) || 0 : 1;
+            state.tx.push({ id: uid(), type: "expense", bill: pB.id, billOcc: fo.key, billMonth: ymOf(fo.date), created: Date.now(), cur: pB.cur, orig: pB.amount, rate: fr0,
+              amount: Math.round(pB.amount * fr0 * 100) / 100, date: pFirst, category: pB.category, pay: pB.pay, note: pB.name });
+          }
+        }
+        msg = "Added as a plan · " + pl.name + " now " + loanMoney(pl, loanState(pl).balance);
+        feeTouched = false; $("planFee").value = ""; $("planFirst").value = "";
+        save();
+        $("amt").value = ""; $("note").value = ""; $("link").value = ""; applyLink(); updatePreview();
+        var pk = date.slice(0, 7); if (pk !== monthKey()) { view.y = +pk.slice(0, 4); view.m = +pk.slice(5, 7) - 1; }
+        render(); toast(msg); $("amt").focus(); return;
+      }
       if (pl) {
         tx.plan = { months: +$("planTerm").value };
         feeV = Math.round((parseFloat($("planFee").value) || 0) * 100) / 100;
@@ -2299,6 +2489,12 @@ td.paid { color: var(--ink-soft); }
 
   $("amt").addEventListener("input", updatePreview);
   $("date").addEventListener("change", updatePreview);
+  function planFirstDefault() {
+    var d0 = $("date").value || today(), t = PLAN_TYPES[$("planType").value];
+    if (t && t[2] === "monthly" && $("planType").value !== "full") { var dd = parseDay(d0); $("planFirst").value = dayKey(addMonthsClamped(dd, 1, dd.getDate())); }
+    else $("planFirst").value = d0;
+  }
+  $("date").addEventListener("change", function () { planFirstDefault(); updatePlanRow(); });
   $("cur").onchange = updatePreview;
   $("refreshRate").onclick = function () { fetchRate(true); };
   $("rateEdit").onclick = function () {
@@ -2429,6 +2625,11 @@ td.paid { color: var(--ink-soft); }
   }
   // Total debt (in £) at the end of each month: actual for the past, projected for the future
   function loanBalanceAt(l, endStr) {
+    if (usesPlans(l)) return planBills(l).reduce(function (s2, b) {
+      if ((b.planAdded || "") > endStr) return s2;
+      var paid = state.tx.reduce(function (s3, t) { return t.type === "expense" && t.bill === b.id && t.date <= endStr ? s3 + inLoanCur(l, t) : s3; }, 0);
+      return s2 + Math.max(0, r2((b.amount || 0) * Math.max(1, b.planCount || 1) - paid));
+    }, 0);
     var bal = l.balance || 0, r = monthlyRate(l.apr || 0);
     state.tx.filter(function (t) {
       if (t.type !== "expense" || t.date > endStr) return false;
@@ -2443,6 +2644,10 @@ td.paid { color: var(--ink-soft); }
     return bal;
   }
   function loanBalanceFuture(l, endDate) {
+    if (usesPlans(l)) {
+      var td = new Date(); td.setHours(0, 0, 0, 0);
+      return Math.max(0, planSchedule(l).reduce(function (s2, d) { return d.date >= td && d.date <= endDate ? s2 - d.amt : s2; }, loanState(l).balance));
+    }
     var now = loanState(l).balance, bill = loanBill(l);
     if (!bill || now <= 0) return now;
     var pj = loanProjection(bill), r = monthlyRate(l.apr || 0), bal = now, t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -2749,11 +2954,18 @@ td.paid { color: var(--ink-soft); }
   function payMode(l) { if (l.payMode) return l.payMode; var b = loanBill(l); return b && b.amount > 0 ? "fixed" : (l.payment > 0 ? "fixed" : "varies"); }
   function minDue(l, bal) { var m = Math.max(l.minAmt || 0, bal * (l.minPct || 0) / 100); return Math.min(bal, m); }
   function loanPayment(l, bal) {
+    if (usesPlans(l)) return planMonthly(l);
     var b = loanBill(l);
     if (payMode(l) === "min") { var bb = bal != null ? bal : (l._balCache || 0); return minDue(l, bb) * (b ? PER_MONTH[freqOf(b)] : 1); }
     return b ? perMonth(b) : (l.payment || 0);
   }
   function loanState(l) {
+    if (usesPlans(l)) {
+      var pbal = r2(planBills(l).reduce(function (s2, b) { return s2 + planStatus(l, b).left; }, 0)), sc = planSchedule(l), pm = null, pdate = null;
+      if (pbal > 0 && sc.length) { pdate = sc[sc.length - 1].date; var dn = new Date(); pm = Math.max(0, (pdate.getFullYear() - dn.getFullYear()) * 12 + pdate.getMonth() - dn.getMonth()); }
+      l._balCache = pbal;
+      return { balance: pbal, monthlyInterest: 0, months: pm, never: false, payoff: pdate, applied: 0 };
+    }
     var bal = l.balance || 0, r = monthlyRate(l.apr || 0), paidCount = 0;
     state.tx.filter(function (t) {
       if (t.type !== "expense") return false;
@@ -2803,6 +3015,9 @@ td.paid { color: var(--ink-soft); }
         { key: "name", label: "Name", type: "text", value: l.name || "", max: 40, full: true },
         { key: "kind", label: "Type", type: "select", value: l.kind, options: LOAN_KINDS },
         { key: "cur", label: "Currency", type: "select", value: curOf(l), options: curOpts() },
+        { key: "style", label: "How you track it", type: "select", value: usesPlans(l) || isNew ? "plans" : "one", full: true,
+          options: [["plans", "Plan by plan, like the app (simplest)"], ["one", "One balance with one bill"]], showIf: function (v) { return v.kind === "bnpl"; } },
+        { key: "nst", label: "Plan by plan: after saving, add each plan from the app (what it's for, each payment, how many are left, weekly or monthly). What you owe is added up from them.", type: "note", showIf: function (v) { return v.kind === "bnpl" && v.style === "plans" && !usesPlans(l); } },
         { key: "bal", label: isNew ? "Balance owed today" : "Balance owed (change only to correct it)", type: "number", value: isNew ? "" : now.toFixed(2) },
         { key: "mode", label: "How you pay it", type: "select", value: payMode(l), full: true,
           options: [["fixed", "A fixed amount each time"], ["min", "A minimum payment (e.g. direct debit)"], ["varies", "It varies — I'll enter it each time"]] },
@@ -2829,9 +3044,25 @@ td.paid { color: var(--ink-soft); }
         { key: "bcat", label: "Category", type: "select", value: l.category && catById(l.category) ? l.category : (state.categories[0] ? state.categories[0].id : ""), options: catOptions(), full: true, showIf: function (v) { return v.bill === "__new"; } },
         { key: "excl", label: "Leave out of debt-to-income (e.g. UK student loan taken from salary)", type: "checkbox", value: !!l.exclude , adv: true },
         { key: "n", label: "You pay it in Bills: ticking its bill lowers this balance automatically. For amounts that vary (like BNPL), change the amount next to the bill before ticking it. If the balance drifts from your statement, type the right figure here.", type: "note" }
-      ].filter(Boolean),
+      ].filter(Boolean).map(function (f) {
+        // With plan-by-plan BNPL, the single balance, payment and bill settings don't apply
+        if (!/^(bal|mode|pay|minAmt|minPct|nmin|apr|bill|bfreq|due|bstart|bpay|bcat|track|nb|n)$/.test(f.key)) return f;
+        var o = f.showIf; f.showIf = function (v) { return !(v.kind === "bnpl" && v.style === "plans") && (!o || o(v)); }; return f;
+      }),
       onSave: function (v) {
         if (!v.name.trim()) return "Give it a name, e.g. Car finance.";
+        var wasPlans = usesPlans(l);
+        if (v.kind === "bnpl" && v.style === "plans") {
+          if (!wasPlans) { retireLoanBill(l); l.balance = 0; l.asOf = Date.now(); }
+          l.name = v.name.trim(); l.kind = "bnpl"; l.cur = v.cur; l.exclude = v.excl; l.plansOn = true; l.payMode = "varies"; l.apr = 0; l.payment = 0;
+          l.limit = Math.max(0, v.limit || 0); l.feePct = Math.max(0, v.feePct || 0);
+          l.limits = { 0: Math.max(0, v.lim0 || 0), 3: Math.max(0, v.lim3 || 0), 6: Math.max(0, v.lim6 || 0), 12: Math.max(0, v.lim12 || 0) };
+          if (isNew) { l.id = uid(); state.loans.push(l); }
+          planBills(l).forEach(function (b) { b.name = l.name + " · " + (b.planName || b.name); b.cur = l.cur; });
+          if (!planBills(l).length) { var lid = l.id; dSel = lid; ui.debtSel = lid; setTimeout(function () { editPlan(lid); }, 0); }
+          return;
+        }
+        if (wasPlans) { retirePlanBills(l); delete l.plansOn; }
         if (v.mode === "fixed" && !(v.pay > 0)) return "Enter the amount you pay each time, or choose another option under How you pay it.";
         if (v.mode === "min" && !(v.minAmt > 0) && !(v.minPct > 0)) return "Enter the minimum amount, the % of balance, or both.";
         if (!(v.bal >= 0)) return "Enter the balance you owe today.";
@@ -2857,11 +3088,11 @@ td.paid { color: var(--ink-soft); }
         } else { delete l.limit; delete l.trackBuys; delete l.feePct; delete l.limits; }
         var curChanged = l.cur !== v.cur; l.cur = v.cur;
         var billChanged = (l.billId || "") !== v.bill; l.billId = v.bill;
-        if (isNew || curChanged || billChanged || Math.abs(v.bal - now) >= 0.005) { l.balance = Math.round(v.bal * 100) / 100; l.asOf = Date.now(); }
+        if (isNew || wasPlans || curChanged || billChanged || Math.abs(v.bal - now) >= 0.005) { l.balance = Math.round(v.bal * 100) / 100; l.asOf = Date.now(); }
         if (isNew) { l.id = uid(); state.loans.push(l); }
         var lb = l.billId && billById(l.billId); if (lb) { lb.debt = false; lb.amount = v.pay > 0 ? r2(v.pay) : 0; }
       },
-      onDelete: isNew ? null : function () { state.loans = state.loans.filter(function (x) { return x !== l; }); },
+      onDelete: isNew ? null : function () { if (usesPlans(l)) retirePlanBills(l); state.loans = state.loans.filter(function (x) { return x !== l; }); },
       deleteLabel: "Remove", confirmDelete: isNew ? null : 'Remove "' + (l.name || "this debt") + '"? Its bill and payments stay as they are.',
       savedMsg: isNew ? "Debt added" : "Changes saved", deletedMsg: "Removed"
     });
@@ -2904,13 +3135,15 @@ td.paid { color: var(--ink-soft); }
         var occ = occurrences(bill, new Date(t0.getFullYear(), t0.getMonth(), 1), new Date(t0.getFullYear() + 1, t0.getMonth(), 1));
         nxt = occ.find(function (o) { return !occPayment(bill, o.key) && !nothingDue(bill, o.key); }) || null;
       }
-      var payCell = bill
+      var payCell = usesPlans(l)
+        ? (st.balance > 0 ? "≈ " + loanMoney(l, planMonthly(l)) + "<small>a month · " + planBills(l).filter(function (b) { return planStatus(l, b).active; }).length + " plans</small>" : "–")
+        : bill
         ? billAmtText(bill) + "<small>" + freqLabel(bill).toLowerCase() + "</small>" +
           (nxt ? "<small" + (nxt.date < t0 ? ' class="warn"' : "") + ">" + (nxt.date < t0 ? "overdue since " : "next due ") + nxt.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + "</small>" : "")
         : (l.payment ? loanMoney(l, l.payment) + "<small>a month</small>" : "–") +
           (editable && st.balance > 0 ? '<small><button class="small-btn" data-loanbill="' + l.id + '" style="margin-top:4px">Add to Bills</button></small>' : "");
       var availHtml = "";
-      if (l.kind === "bnpl") {
+      if (l.kind === "bnpl" && !usesPlans(l)) {
         var act = planPurchases(l).map(function (t) { return { t: t, p: planInfo(l, t) }; }).filter(function (x) { return x.p.active; });
         if (act.length) availHtml += '<div class="plans">' + act.slice(0, 6).map(function (x) {
           var n = x.p.months || 1;
@@ -2928,7 +3161,7 @@ td.paid { color: var(--ink-soft); }
           '<div class="mini"><i style="width:' + used + "%;background:" + (used >= 90 ? "var(--over)" : "var(--brass)") + '"></i></div></div>' + availHtml;
       }
       return '<div class="loan-row' + (editable ? "" : " ro") + '"><div><b>' + esc(l.name) + "</b><small>" + kindLabel(l.kind) + (l.apr ? " · " + l.apr + "% APR" : "") +
-        (bill ? " · paid through Bills" : editable ? " · not in Bills yet" : "") + (l.exclude ? " · not in ratio" : "") + "</small>" +
+        (bill || usesPlans(l) ? " · paid through Bills" : editable ? " · not in Bills yet" : "") + (l.exclude ? " · not in ratio" : "") + "</small>" +
         (shared.length ? '<small class="warn">Shares a bill with ' + esc(shared.map(function (x) { return x.name; }).join(", ")) + ". Tap Edit and create its own bill.</small>" : "") + availHtml + "</div>" +
         '<div class="num"><b>' + loanMoney(l, st.balance) + "</b>" + (isForeign(l) && rateFor(curOf(l)) ? "<small>≈ " + money(gbpBal) + "</small>" : "") + "</div>" +
         '<div class="num">' + payCell + "</div>" +
@@ -3543,6 +3776,7 @@ td.paid { color: var(--ink-soft); }
   }
 
   function editBill(id) {
+    var pbx = billById(id); if (pbx && planOwner(pbx)) { editPlan(pbx.planOf, pbx.id); return; }
     var b = billById(id); if (!b) return;
     var bc = catById(b.category), bsum = freqLabel(b) + (freqOf(b) !== "monthly" && freqOf(b) !== "once" ? " · about " + fmt(curOf(b), perMonth(b)) + " a month" : "") +
       (bc ? " · " + catLabel(bc.id) : "");
@@ -4261,6 +4495,23 @@ td.paid { color: var(--ink-soft); }
     var l = txType === "expense" && !$("link").value ? bnplById($("pay").value) : null;
     $("planWrap").hidden = !l;
     if (!l) return;
+    var pm = usesPlans(l);
+    ["planTypeWrap", "planNWrap", "planFreqWrap", "planFirstWrap", "planUpfrontWrap"].forEach(function (id) { $(id).hidden = !pm; });
+    $("planTermWrap").hidden = pm;
+    if (pm) {
+      $("planFee").previousSibling.textContent = "Fee (" + sym(curOf(l)) + ")";
+      var pa = parseFloat($("amt").value) || 0;
+      if (!feeTouched) $("planFee").value = l.feePct > 0 && pa > 0 ? (pa * l.feePct / 100).toFixed(2) : (l.feePct > 0 ? "" : $("planFee").value);
+      if (!$("planFirst").value) planFirstDefault();
+      var pn = Math.max(1, Math.round(parseFloat($("planN").value) || 1)), pfee = parseFloat($("planFee").value) || 0, ptot = pa + pfee;
+      var pfx = PLAN_FREQS.find(function (x) { return x[0] === $("planFreq").value; });
+      var pinfo = pa > 0 ? (pn === 1 ? loanMoney(l, ptot) + " in one payment" : "≈ " + loanMoney(l, ptot / pn) + " " + (pfx ? pfx[1].toLowerCase() : "") + " × " + pn) + (pfee ? " (incl. " + loanMoney(l, pfee) + " fee)" : "") : "";
+      var pterm = PLAN_TYPES[$("planType").value] ? PLAN_TYPES[$("planType").value][3] : -1;
+      if (pterm >= 0 && l.limits && l.limits[pterm] > 0) { var pleft = l.limits[pterm] - planTermLeft(l, pterm); pinfo += (pinfo ? " · " : "") + '<span class="' + (ptot > pleft ? "warn" : "") + '">' + loanMoney(l, Math.max(0, pleft)) + " left on " + (pterm ? pterm + "-month" : "pay-in-full") + " plans</span>"; }
+      if (l.limit > 0 && ptot > l.limit - loanState(l).balance) pinfo += ' · <span class="warn">over your ' + loanMoney(l, l.limit) + " limit</span>";
+      $("planInfo").innerHTML = pinfo;
+      return;
+    }
     $("planFee").previousSibling.textContent = "Fee (" + sym(curOf(l)) + ")";
     var amt = parseFloat($("amt").value) || 0, m = +$("planTerm").value;
     if (!feeTouched) $("planFee").value = l.feePct > 0 && amt > 0 ? (amt * l.feePct / 100).toFixed(2) : (l.feePct > 0 ? "" : $("planFee").value);
@@ -4273,6 +4524,14 @@ td.paid { color: var(--ink-soft); }
   }
   $("pay").addEventListener("change", function () { feeTouched = false; updatePlanRow(); });
   $("planTerm").addEventListener("change", updatePlanRow);
+  // Plan type fills in its usual number of payments and how often; Pay in 4 usually takes the first payment at checkout
+  $("planType").addEventListener("change", function () {
+    var t = PLAN_TYPES[$("planType").value];
+    if (t && t[1]) { $("planN").value = t[1]; $("planFreq").value = t[2]; }
+    planFirstDefault(); $("planUpfront").checked = $("planType").value === "in4";
+    updatePlanRow();
+  });
+  ["planN", "planFreq", "planFirst"].forEach(function (id) { $(id).addEventListener("input", updatePlanRow); $(id).addEventListener("change", updatePlanRow); });
   $("planFee").addEventListener("input", function () { feeTouched = true; updatePlanRow(); });
   $("amt").addEventListener("input", updatePlanRow);
 
@@ -4392,6 +4651,10 @@ td.paid { color: var(--ink-soft); }
   function isBnplDebt(l) { return l.kind === "bnpl" || BNPL_NAMES.test(l.name || ""); }
   function payoffText(l, st, bill) {
     if (st.balance <= 0) return { main: "Paid off", sub: "" };
+    if (usesPlans(l)) {
+      var sc = planSchedule(l); if (!sc.length) return { main: "Unknown", sub: "Check each plan's dates" };
+      return { main: sc.length === 1 ? "With the next payment" : sc[sc.length - 1].date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }), sub: sc.length + (sc.length === 1 ? " payment" : " payments") + " left" };
+    }
     if (bill) {
       var pj = loanProjection(bill);
       if (pj && pj._left <= 0.005) {
@@ -4410,6 +4673,7 @@ td.paid { color: var(--ink-soft); }
   function payoffWhen(l) {
     var st = loanState(l), bill = loanBill(l);
     if (st.balance <= 0) return { kind: "done" };
+    if (usesPlans(l)) { var sc = planSchedule(l); return sc.length ? { kind: "date", date: sc[sc.length - 1].date, left: sc.length } : { kind: "unknown" }; }
     if (bill) {
       var pj = loanProjection(bill);
       if (pj && pj._left <= 0.005) {
@@ -4448,6 +4712,11 @@ td.paid { color: var(--ink-soft); }
       }).join("") + "</div>";
   }
   function nextPayment(l) {
+    if (usesPlans(l)) {
+      var sc = planSchedule(l); if (!sc.length) return null;
+      var k0 = dayKey(sc[0].date), sum = sc.reduce(function (s2, d) { return dayKey(d.date) === k0 ? s2 + d.amt : s2; }, 0);
+      return { key: sc[0].key, date: sc[0].date, amt: r2(sum) };
+    }
     var bill = loanBill(l); if (!bill) return null;
     var pj = loanProjection(bill); if (!pj) return null;
     var k = Object.keys(pj).filter(function (x) { return !occPayment(bill, x) && pj[x] !== 0; }).sort()[0];
@@ -4483,7 +4752,7 @@ td.paid { color: var(--ink-soft); }
       var st = loanState(l), nx = nextPayment(l);
       var line = st.balance <= 0 ? '<small style="color:var(--good)">Paid off</small>'
         : nx ? '<small class="nx' + (nx.date < new Date(new Date().setHours(0, 0, 0, 0)) ? " warn" : "") + '">Next ' + (nx.amt != null ? loanMoney(l, nx.amt) : "payment") + " · " + nx.date.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + "</small>"
-        : "<small>" + (loanBill(l) ? "No upcoming payment" : "Not in Bills yet") + "</small>";
+        : "<small>" + (loanBill(l) || usesPlans(l) ? "No upcoming payment" : "Not in Bills yet") + "</small>";
       var pg = loanProgress(l, st.balance);
       var prog = pg && st.balance > 0 ? '<i class="ln-prog" aria-hidden="true"><i style="width:' + pg.pct.toFixed(1) + '%"></i></i><small class="ln-pct">' + pctText(pg) + "% paid off" + (pg.since ? " since tracking" : "") + "</small>" : "";
       return '<button class="ca-card" data-dsel="' + l.id + '" aria-pressed="' + (l.id === dSel ? "true" : "false") + '">' +
@@ -4502,7 +4771,57 @@ td.paid { color: var(--ink-soft); }
     $("dDetailWrap").hidden = false;
     $("dDetail").innerHTML = loanDetail(state.loans.find(function (l) { return l.id === dSel; }));
   }
+  function planLoanDetail(l) {
+    var st = loanState(l), f = function (n) { return loanMoney(l, n); }, po = payoffText(l, st, null), sc = planSchedule(l);
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    var dShort = function (d) { return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
+    var head = '<div class="dd-head"><div><h2>' + esc(l.name) + "</h2><small>Buy now, pay later · tracked plan by plan" + (l.exclude ? " · not in debt-to-income" : "") + "</small></div>" +
+      '<button class="edit-btn" data-editloan="' + l.id + '">Edit</button></div>';
+    var in30 = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + 30), d30 = sc.reduce(function (s2, d) { return d.date <= in30 ? s2 + d.amt : s2; }, 0);
+    var flow = '<div class="ca-flow">' +
+      "<div><span>Owed today</span><b>" + f(st.balance) + "</b></div>" +
+      '<div><span>Next payment</span><b style="font-size:15px">' + (sc.length ? f(nextPayment(l).amt) + " · " + dShort(sc[0].date) : "None") + "</b>" + (d30 > 0 ? "<span>" + f(d30) + " due in the next 30 days</span>" : "") + "</div>" +
+      '<div><span>Paid off by</span><b style="font-size:15px">' + po.main + "</b>" + (po.sub ? "<span>" + po.sub + "</span>" : "") + "</div>" +
+      (l.limit > 0 ? '<div class="end"><span>Available to use</span><b>' + f(l.limit - st.balance) + "</b><span>of " + f(l.limit) + "</span></div>" : "<div><span>Interest</span><b>None</b></div>") +
+      "</div>";
+    var all = planBills(l).map(function (b) { return { b: b, s: planStatus(l, b) }; });
+    var act = all.filter(function (x) { return x.s.active; }).sort(function (a, c) { return (a.s.due[0] ? a.s.due[0].date : 0) - (c.s.due[0] ? c.s.due[0].date : 0); });
+    var done = all.filter(function (x) { return !x.s.active; });
+    var plRow = function (x) {
+      var b = x.b, s = x.s, nx = s.due[0];
+      return '<div class="pl-row' + (s.active ? "" : " done") + '"><div><b>' + esc(b.planName || b.name) + "</b><small>" +
+        f(b.amount) + " " + freqLabel(b).toLowerCase() + " · " + s.done + " of " + s.count + " paid" +
+        (nx ? ' · <span class="' + (nx.date < t0 ? "warn" : "") + '">' + (nx.date < t0 ? "overdue since " : "next ") + dShort(nx.date) + "</span>" : s.active ? "" : " · paid off") + "</small></div>" +
+        '<div class="num"><b>' + f(s.left) + "</b><small>left</small></div>" +
+        '<button class="edit-btn" data-editplan="' + b.id + '">Edit</button></div>';
+    };
+    var intro = !all.length ? '<div class="pl-intro"><p>Add each plan you have in the ' + esc(l.name) + " app: what it's for, how much each payment is, how many are left and when the next one is due. Weekly and monthly plans can sit side by side.</p><p>When they're all in, <b>Owed today</b> should match the app's balance to pay.</p></div>" : "";
+    var plansHtml = "<h3>Your plans</h3>" + intro + (act.length ? '<div class="pl-list">' + act.map(plRow).join("") + "</div>" : all.length ? '<p class="empty">No plans to pay. Nice!</p>' : "") +
+      '<div class="pl-add"><button class="small-btn" data-addplan="' + l.id + '">+ Add a plan</button>' +
+      (all.length ? '<small class="hint" style="margin:0">Bought something new? Add it as an expense paid with ' + esc(l.name) + " and it becomes a plan.</small>" : "") + "</div>" +
+      (done.length ? '<details style="margin-top:12px"><summary class="hint">' + done.length + (done.length === 1 ? " finished plan" : " finished plans") + '</summary><div class="pl-list">' + done.map(plRow).join("") + "</div></details>" : "");
+    var terms = [0, 3, 6, 12].filter(function (m) { return l.limits && l.limits[m] > 0; });
+    if (terms.length) plansHtml += '<h3 style="margin-top:14px">Plan limits</h3>' + terms.map(function (m) {
+      return '<div class="kv"><span>Left on ' + (m ? m + "-month plans" : "pay in full") + "</span><span>" + f(Math.max(0, l.limits[m] - planTermLeft(l, m))) + " of " + f(l.limits[m]) + "</span></div>";
+    }).join("");
+    // upcoming payments, grouped by day
+    var groups = [];
+    sc.forEach(function (d) {
+      var k = dayKey(d.date), g = groups[groups.length - 1];
+      if (!g || g.k !== k) groups.push(g = { k: k, date: d.date, amt: 0, names: [] });
+      g.amt += d.amt; g.names.push(d.bill.planName || d.bill.name);
+    });
+    var up = groups.slice(0, 8).map(function (g) {
+      return '<div class="kv"><span' + (g.date < t0 ? ' class="warn"' : "") + ">" + g.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) +
+        "<small style=\"display:block;color:var(--ink-soft);font-size:13px\">" + esc(g.names.join(", ")) + "</small></span><span>" + f(g.amt) + "</span></div>";
+    }).join("");
+    return head + flow +
+      '<div class="dd-cols"><div class="dd-list">' + plansHtml + "</div>" +
+      '<div class="dd-list"><h3>Next payments</h3>' + (up || '<p class="empty">' + (all.length ? "Nothing left to pay." : "Add a plan to see its payments here.") + "</p>") +
+      '<p class="hint">Tick each one off in Bills when ' + esc(l.name) + " takes it.</p></div></div>";
+  }
   function loanDetail(l) {
+    if (usesPlans(l)) return planLoanDetail(l);
     var st = loanState(l), bill = loanBill(l), po = payoffText(l, st, bill), f = function (n) { return loanMoney(l, n); };
     var head = '<div class="dd-head"><div><h2>' + esc(l.name) + "</h2><small>" + kindLabel(l.kind) + (l.apr ? " · " + l.apr + "% APR" : "") +
       (bill ? " · paid through Bills from " + esc(payInfo(bill.pay).name) : " · not in Bills yet") + (l.exclude ? " · not in debt-to-income" : "") + "</small></div>" +
@@ -4528,7 +4847,8 @@ td.paid { color: var(--ink-soft); }
         "<p>" + f(pg.paid) + " paid of " + f(pg.base) + (pg.since ? "" : " borrowed") + ". " + cheer +
         (pg.since && st.balance > 0 ? ' <button class="mini-link" data-editloan="' + l.id + '">Add the amount you first borrowed</button> to see your full progress.' : "") + "</p></div>";
     }
-    var addBill = !bill && st.balance > 0 ? '<p class="hint">This debt isn\'t in Bills yet, so payments won\'t lower it automatically. <button class="small-btn" data-loanbill="' + l.id + '">Add to Bills</button></p>' : "";
+    var toPlans = l.kind === "bnpl" ? '<div class="pl-intro"><p><b>Easier: track ' + esc(l.name) + ' plan by plan.</b> Add each plan from the app (weekly or monthly, each with its own payments) and the tracker adds them up for you.</p><button class="small-btn" data-planson="' + l.id + '">Switch to plans</button></div>' : "";
+    var addBill = !bill && st.balance > 0 && l.kind !== "bnpl" ? '<p class="hint">This debt isn\'t in Bills yet, so payments won\'t lower it automatically. <button class="small-btn" data-loanbill="' + l.id + '">Add to Bills</button></p>' : "";
     // upcoming payments
     var up = "";
     if (bill && st.balance > 0) {
@@ -4553,7 +4873,7 @@ td.paid { color: var(--ink-soft); }
       var terms = [0, 3, 6, 12].filter(function (m) { return l.limits && l.limits[m] > 0; });
       if (terms.length) plans += terms.map(function (m) { return '<div class="kv"><span>Left on ' + (m ? m + "-month plans" : "pay in full") + "</span><span>" + f(Math.max(0, l.limits[m] - termUsed(l, m))) + "</span></div>"; }).join("");
     }
-    return head + progHtml + flow + addBill +
+    return head + progHtml + flow + toPlans + addBill +
       '<div class="dd-cols"><div class="dd-list"><h3>Next payments</h3>' + (up || '<p class="empty">' + (st.balance > 0 ? "None scheduled." : "Nothing left to pay.") + "</p>") +
         (plans ? '<div style="margin-top:14px">' + plans + "</div>" : "") + "</div>" +
       '<div class="dd-list"><h3>Recent payments</h3>' + (pays.length ? pays.map(function (t) { return row(t, true); }).join("") : '<p class="empty">No payments recorded yet.</p>') +
