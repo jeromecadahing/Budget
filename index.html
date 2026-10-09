@@ -1572,7 +1572,7 @@ td.paid { color: var(--ink-soft); }
   function planOwner(b) { return b && b.planOf ? state.loans.find(function (l) { return l.id === b.planOf; }) || null : null; }
   function planTerm(b) { var t = PLAN_TYPES[b.planType]; return t ? t[3] : -1; }
   function planStatus(l, b) {
-    var count = Math.max(1, b.planCount || 1), total = r2((b.amount || 0) * count);
+    var count = Math.max(1, b.planCount || 1), total = r2((b.amount || 0) * count + (b.planAdj || 0));
     var pays = state.tx.filter(function (t) { return t.type === "expense" && t.bill === b.id; });
     var paid = pays.reduce(function (s2, t) { return s2 + inLoanCur(l, t); }, 0), left = Math.max(0, r2(total - paid)), due = [];
     if (left > 0.005 && (b.begins || b.start)) {
@@ -1669,7 +1669,7 @@ td.paid { color: var(--ink-soft); }
           b.planName = v.name.trim(); b.name = l.name + " · " + b.planName; b.planType = v.type; b.amount = r2(v.amt);
           b.pay = v.pay; b.category = v.cat; b.freq = v.freq; b.cur = curOf(l); b.debt = false;
           if (v.spent) b.planSpent = true; else delete b.planSpent;
-          b.planCount = done + n;
+          b.planCount = done + n; b.planAdj = r2(s.paid - b.amount * done);
           if (v.next !== oldNext || v.freq !== oldFreq || n !== leftN) setPlanDates(b, v.next, n);
         }
         l.payWith = v.pay;
@@ -2628,7 +2628,7 @@ td.paid { color: var(--ink-soft); }
     if (usesPlans(l)) return planBills(l).reduce(function (s2, b) {
       if ((b.planAdded || "") > endStr) return s2;
       var paid = state.tx.reduce(function (s3, t) { return t.type === "expense" && t.bill === b.id && t.date <= endStr ? s3 + inLoanCur(l, t) : s3; }, 0);
-      return s2 + Math.max(0, r2((b.amount || 0) * Math.max(1, b.planCount || 1) - paid));
+      return s2 + Math.max(0, r2((b.amount || 0) * Math.max(1, b.planCount || 1) + (b.planAdj || 0) - paid));
     }, 0);
     var bal = l.balance || 0, r = monthlyRate(l.apr || 0);
     state.tx.filter(function (t) {
