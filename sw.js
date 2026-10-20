@@ -1,7 +1,7 @@
 // Lets the Budget Tracker open as an app and work without signal.
 // The page is fetched fresh whenever you're online (so updates show straight away),
 // and the last copy is used when you're offline. Data sync is handled separately by Firebase.
-const CACHE = "budget-tracker-v1";
+const CACHE = "budget-tracker-v3";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {

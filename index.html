@@ -11,7 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Budget">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Budget</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪙</text></svg>">
+<script>try { if ((JSON.parse(localStorage.getItem("budget-tracker-biolock")) || {}).on) document.documentElement.classList.add("bio-locked"); } catch (e) {}</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23FBF3E4'/><path d='M50.00 25.05A24.95 24.95 0 0 1 62.48 71.61' fill='none' stroke='%23B9A7EC' stroke-width='12.1'/><path d='M60.94 72.42A24.95 24.95 0 0 1 25.43 54.33' fill='none' stroke='%23F6B7A0' stroke-width='12.1'/><path d='M25.19 52.61A24.95 24.95 0 0 1 48.26 25.11' fill='none' stroke='%23A9DCC4' stroke-width='12.1'/><text x='50' y='51' text-anchor='middle' dominant-baseline='central' font-family='Familjen Grotesk,Arial,Helvetica,sans-serif' font-weight='700' font-size='26' fill='%232D4A41'>£</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
@@ -677,6 +678,22 @@ td.paid { color: var(--ink-soft); }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--card); padding: 9px 16px; border-radius: 8px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .toast.show { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+
+/* Fingerprint / Face ID lock (device only) */
+html.bio-locked .wrap, html.bio-locked .toast { visibility: hidden; }
+.bio-screen { display: none; position: fixed; inset: 0; z-index: 1000; background: var(--paper); place-items: center;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)); text-align: center; }
+html.bio-locked .bio-screen { display: grid; }
+.bio-inner { width: min(320px, 100%); }
+.bio-logo { width: 84px; height: 84px; display: block; margin: 0 auto 18px; }
+.bio-inner h2 { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 24px; margin: 0 0 4px; }
+.bio-inner > p { color: var(--ink-soft); font-size: 15px; margin: 0; }
+.bio-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; margin-top: 28px; width: 100%;
+  background: var(--ink); color: var(--card); border: 0; border-radius: 999px; padding: 14px 20px; font-weight: 600; font-size: 16px; }
+.bio-btn svg { width: 22px; height: 22px; flex: none; }
+.bio-inner > p.bio-msg { color: var(--over); font-size: 14px; min-height: 1.4em; margin: 12px 0 0; }
+.bio-reset { margin-top: 6px; background: none; border: 0; color: var(--ink-soft); font-size: 14px; text-decoration: underline; padding: 6px; }
+.bio-row select { background: var(--field); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font-size: 13px; }
 </style>
 <script>
   // Background colour chosen in the profile menu: one for light mode, one for dark mode (this device only)
@@ -691,6 +708,16 @@ td.paid { color: var(--ink-soft); }
 </script>
 </head>
 <body>
+<div class="bio-screen" id="bioScreen" role="dialog" aria-modal="true" aria-labelledby="bioTitle">
+  <div class="bio-inner">
+    <svg class="bio-logo" role="img" aria-label="Budget" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='#FBF3E4'/><path d='M50.00 25.05A24.95 24.95 0 0 1 62.48 71.61' fill='none' stroke='#B9A7EC' stroke-width='12.1'/><path d='M60.94 72.42A24.95 24.95 0 0 1 25.43 54.33' fill='none' stroke='#F6B7A0' stroke-width='12.1'/><path d='M25.19 52.61A24.95 24.95 0 0 1 48.26 25.11' fill='none' stroke='#A9DCC4' stroke-width='12.1'/><text x='50' y='51' text-anchor='middle' dominant-baseline='central' font-family='Familjen Grotesk,Arial,Helvetica,sans-serif' font-weight='700' font-size='26' fill='#2D4A41'>£</text></svg>
+    <h2 id="bioTitle">Budget is locked</h2>
+    <p>Use your fingerprint to open it.</p>
+    <button class="bio-btn" id="bioUnlock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 4.6A9 9 0 0 1 20.2 9"/><path d="M3.8 9.5A9 9 0 0 1 5 7"/><path d="M6 19.5c.9-1.6 1.4-3.4 1.4-5.3a4.6 4.6 0 0 1 9.2 0c0 1.3-.1 2.5-.3 3.7"/><path d="M9.6 21c.9-2.1 1.4-4.4 1.4-6.8a1 1 0 0 1 2 0c0 2.8-.5 5.5-1.6 8"/><path d="M15.4 21.2c.3-.7.5-1.4.7-2.1"/><path d="M3.5 14.2c0-1.6.3-3 1-4.4"/><path d="M20.4 12.5c.1.6.1 1.1.1 1.7"/></svg>Unlock</button>
+    <p class="bio-msg" id="bioMsg" role="alert"></p>
+    <button class="bio-reset" id="bioReset" hidden>Set up fingerprint again</button>
+  </div>
+</div>
 <div class="wrap">
   <div class="topbar">
   <nav class="tabs" role="tablist" aria-label="View">
@@ -717,6 +744,18 @@ td.paid { color: var(--ink-soft); }
         <div class="bg-swatches" id="bgSwatches" role="group" aria-labelledby="bgLabel"></div>
         <label class="bg-custom">Your own<input type="color" id="bgCustom" aria-label="Pick your own background colour"></label>
         <button class="small-btn" id="bgReset">Reset</button>
+      </div>
+      <div class="pactions bio-row" id="bioRow" hidden>
+        <span class="pbackup" id="bioStatus">Fingerprint lock is off</span>
+        <button class="small-btn" id="bioToggle">Turn on fingerprint lock</button>
+        <label class="pbackup" id="bioDelayWrap" hidden>Lock again after
+          <select id="bioDelay">
+            <option value="60000">1 minute away</option>
+            <option value="300000">5 minutes away</option>
+            <option value="900000">15 minutes away</option>
+            <option value="-1">only when the app is opened</option>
+          </select>
+        </label>
       </div>
       <div id="pActions">
       <div class="pactions">
@@ -5574,6 +5613,133 @@ td.paid { color: var(--ink-soft); }
   cloudInit();
   // Installable app: register the offline helper (only works on the real https site, not when opened as a file)
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(function () {});
+})();
+</script>
+<script>
+// ---------- Fingerprint / Face ID lock ----------
+// Uses the phone's own screen lock (fingerprint, face, or the phone PIN as its fallback) through WebAuthn.
+// The setting lives on this device only and is never synced. It keeps the app closed to someone holding
+// your unlocked phone; it does not encrypt the data stored in the browser.
+(function () {
+  var KEY = "budget-tracker-biolock";
+  var root = document.documentElement;
+  function $(id) { return document.getElementById(id); }
+  function read() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function write(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }
+  var cfg = read();
+  if (cfg.delay == null) cfg.delay = 60000;
+
+  function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+  function toB64(buf) { var b = new Uint8Array(buf), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function fromB64(str) { str = str.replace(/-/g, "+").replace(/_/g, "/"); while (str.length % 4) str += "="; var s = atob(str), b = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i); return b; }
+  function verifiedFlag(authData) { var b = new Uint8Array(authData); return b.length > 32 && (b[32] & 0x04) !== 0; } // UV bit: the person was verified, not just present
+
+  function supported() {
+    if (!window.isSecureContext || !window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return Promise.resolve(false);
+    return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(function () { return false; });
+  }
+
+  function register() {
+    return navigator.credentials.create({ publicKey: {
+      challenge: rand(32),
+      rp: { name: "Budget Tracker" },
+      user: { id: rand(16), name: "budget-tracker", displayName: "Budget Tracker" },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },
+      attestation: "none", timeout: 60000
+    } }).then(function (cred) {
+      if (!cred) throw new Error("none");
+      return toB64(cred.rawId);
+    });
+  }
+
+  function verify() {
+    return navigator.credentials.get({ publicKey: {
+      challenge: rand(32),
+      allowCredentials: [{ type: "public-key", id: fromB64(cfg.cred), transports: ["internal"] }],
+      userVerification: "required", timeout: 60000
+    } }).then(function (a) {
+      if (!a || !verifiedFlag(a.response.authenticatorData)) throw new Error("unverified");
+      return true;
+    });
+  }
+
+  // ----- lock screen -----
+  var busy = false, fails = 0, hiddenAt = 0;
+  function lock() {
+    root.classList.add("bio-locked");
+    $("bioMsg").textContent = ""; $("bioReset").hidden = fails < 2;
+    var pm = $("profileMenu"); if (pm) pm.open = false;
+  }
+  function unlock() { root.classList.remove("bio-locked"); fails = 0; $("bioReset").hidden = true; }
+  function tryUnlock() {
+    if (busy) return; busy = true; $("bioMsg").textContent = "";
+    verify().then(unlock, function (e) {
+      fails++;
+      $("bioMsg").textContent = e && e.name === "NotAllowedError" ? "Not unlocked. Tap Unlock to try again." : "Fingerprint check didn't work. Tap Unlock to try again.";
+      if (fails >= 2) $("bioReset").hidden = false;
+    }).then(function () { busy = false; });
+  }
+  // If the saved fingerprint key was removed from the phone, make a new one. The phone asks for its own
+  // fingerprint or PIN to do this, so it doesn't open the app for anyone who can't unlock the phone.
+  function resetKey() {
+    if (busy) return; busy = true; $("bioMsg").textContent = "";
+    register().then(function (id) { cfg.cred = id; write(cfg); unlock(); },
+      function () { $("bioMsg").textContent = "Couldn't set up the fingerprint. Check that your phone has a fingerprint or screen lock set."; })
+      .then(function () { busy = false; });
+  }
+
+  // ----- settings row in the profile menu -----
+  function renderRow(ok) {
+    var row = $("bioRow"); if (!row) return;
+    row.hidden = false;
+    if (!ok) {
+      $("bioStatus").textContent = "Fingerprint lock needs the app opened over https on a phone with a fingerprint or screen lock";
+      $("bioToggle").hidden = true; $("bioDelayWrap").hidden = true; return;
+    }
+    $("bioStatus").textContent = cfg.on ? "Fingerprint lock is on for this device" : "Fingerprint lock is off";
+    $("bioToggle").textContent = cfg.on ? "Turn off fingerprint lock" : "Turn on fingerprint lock";
+    $("bioToggle").hidden = false; $("bioDelayWrap").hidden = !cfg.on;
+    $("bioDelay").value = String(cfg.delay);
+  }
+  function toggle() {
+    if (busy) return; busy = true;
+    var done = function () { busy = false; renderRow(true); };
+    if (cfg.on) {
+      // confirm it's you before switching it off
+      verify().then(function () { cfg.on = false; delete cfg.cred; write(cfg); done(); },
+        function () { busy = false; $("bioStatus").textContent = "Fingerprint lock is still on. Try again to turn it off."; });
+    } else {
+      register().then(function (id) { cfg.on = true; cfg.cred = id; write(cfg); },
+        function () { $("bioStatus").textContent = "Fingerprint lock wasn't turned on. Try again."; busy = false; return "skip"; })
+        .then(function (r) { if (r !== "skip") done(); });
+    }
+  }
+
+  function start() {
+    $("bioUnlock").addEventListener("click", tryUnlock);
+    $("bioReset").addEventListener("click", resetKey);
+    $("bioToggle").addEventListener("click", toggle);
+    $("bioDelay").addEventListener("change", function () { cfg.delay = Number(this.value); write(cfg); });
+
+    supported().then(function (ok) {
+      renderRow(ok);
+      if (cfg.on && !cfg.cred) { cfg.on = false; write(cfg); }
+      if (cfg.on && ok) tryUnlock();        // ask straight away; if the browser wants a tap first, the button is there
+      else if (cfg.on && !ok) unlock();     // opened somewhere the lock can't work (e.g. not https): don't trap the data
+      else unlock();
+    });
+
+    document.addEventListener("visibilitychange", function () {
+      if (!cfg.on || busy) return;
+      if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+      if (cfg.delay >= 0 && hiddenAt && Date.now() - hiddenAt >= cfg.delay && !root.classList.contains("bio-locked")) { lock(); tryUnlock(); }
+      hiddenAt = 0;
+    });
+    // pages restored from the back/forward cache count as reopening
+    window.addEventListener("pageshow", function (e) { if (e.persisted && cfg.on && cfg.delay >= 0) { lock(); tryUnlock(); } });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
 </script>
 </body>
