@@ -748,12 +748,13 @@ html.bio-locked .bio-screen { display: grid; }
       <div class="pactions bio-row" id="bioRow" hidden>
         <span class="pbackup" id="bioStatus">Fingerprint lock is off</span>
         <button class="small-btn" id="bioToggle">Turn on fingerprint lock</button>
-        <label class="pbackup" id="bioDelayWrap" hidden>Lock again after
+        <label class="pbackup" id="bioDelayWrap" hidden>Lock again when
           <select id="bioDelay">
-            <option value="60000">1 minute away</option>
-            <option value="300000">5 minutes away</option>
-            <option value="900000">15 minutes away</option>
-            <option value="-1">only when the app is opened</option>
+            <option value="0">I leave the app</option>
+            <option value="60000">I've been away 1 minute</option>
+            <option value="300000">I've been away 5 minutes</option>
+            <option value="900000">I've been away 15 minutes</option>
+            <option value="-1">I open the app fresh</option>
           </select>
         </label>
       </div>
@@ -5627,7 +5628,8 @@ html.bio-locked .bio-screen { display: grid; }
   function read() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
   function write(c) { try { localStorage.setItem(KEY, JSON.stringify(c)); } catch (e) {} }
   var cfg = read();
-  if (cfg.delay == null) cfg.delay = 60000;
+  // lock straight away by default (older setups that never chose a time move to this once)
+  if (cfg.delay == null || (!cfg.v && cfg.delay === 60000)) { cfg.delay = 0; cfg.v = 2; if (cfg.on) write(cfg); }
 
   function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
   function toB64(buf) { var b = new Uint8Array(buf), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
@@ -5665,7 +5667,12 @@ html.bio-locked .bio-screen { display: grid; }
   }
 
   // ----- lock screen -----
-  var busy = false, fails = 0, hiddenAt = 0;
+  var busy = false, fails = 0, hiddenAt = 0, graceUntil = 0;
+  // Picking a backup file or signing in with Google briefly leaves the app; don't lock for that.
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (t && t.closest && (t.closest('input[type="file"]') || t.closest("#cloudBtn"))) graceUntil = Date.now() + 120000;
+  }, true);
   function lock() {
     root.classList.add("bio-locked");
     $("bioMsg").textContent = ""; $("bioReset").hidden = fails < 2;
@@ -5732,7 +5739,8 @@ html.bio-locked .bio-screen { display: grid; }
 
     document.addEventListener("visibilitychange", function () {
       if (!cfg.on || busy) return;
-      if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+      if (document.visibilityState === "hidden") { if (Date.now() > graceUntil) hiddenAt = Date.now(); return; }
+      graceUntil = 0;
       if (cfg.delay >= 0 && hiddenAt && Date.now() - hiddenAt >= cfg.delay && !root.classList.contains("bio-locked")) { lock(); tryUnlock(); }
       hiddenAt = 0;
     });
