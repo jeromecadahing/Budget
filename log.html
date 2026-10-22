@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D332C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Quick log">
+<title>Quick log</title>
+<link rel="manifest" href="log.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #DDE4DF; --card: #F7F9F7; --ink: #1D332C; --ink-soft: #55695F;
+  --line: #C9D4CC; --brass: #A87A22; --over: #B0413A; --good: #2F6B4F; --field: #FFFFFF;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F1815; --card: #1A2622; --ink: #E3EAE5; --ink-soft: #9AAEA4;
+    --line: #2E3E38; --brass: #D3A54A; --over: #E0756D; --good: #7CC3A0; --field: #0F1714;
+    color-scheme: dark;
+  }
+}
+*, *::before, *::after { box-sizing: inherit; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font: 16px/1.45 "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+.wrap { max-width: 460px; margin: 0 auto; padding: 18px 16px 40px; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+header h1 { font: 400 22px/1.1 "Young Serif", Georgia, serif; margin: 0; }
+header a, .linkbtn { margin-left: auto; color: var(--ink-soft); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; padding: 4px; font-family: inherit; cursor: pointer; }
+.status { font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+.dot.ok { background: var(--good); } .dot.busy { background: var(--brass); } .dot.err { background: var(--over); }
+
+.sheet { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; margin-top: 10px; }
+.amount { display: flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 6px; }
+.amount select { appearance: none; -webkit-appearance: none; border: 0; background: none; color: var(--ink-soft); font: 600 18px/1 inherit; font-family: inherit; padding: 4px 2px; cursor: pointer; }
+.amount input { flex: 1; min-width: 0; border: 0; background: none; color: var(--ink); font: 400 52px/1.1 "Young Serif", Georgia, serif; padding: 0; outline: none; font-variant-numeric: tabular-nums; }
+.amount input::placeholder { color: var(--line); }
+.amount:focus-within { border-color: var(--good); }
+.conv { font-size: 13px; color: var(--ink-soft); min-height: 19px; margin-top: 4px; }
+
+.group { margin-top: 18px; }
+.group > span { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); border-radius: 999px; padding: 9px 14px; font: 500 15px/1 inherit; font-family: inherit; cursor: pointer; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.chip[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--card); }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; min-width: 0; }
+input.f, select.f { width: 100%; border: 1px solid var(--line); background: var(--field); color: var(--ink); border-radius: 10px; padding: 11px 12px; font: 16px inherit; font-family: inherit; }
+input.f:focus, select.f:focus, .chip:focus-visible, button:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+.save { width: 100%; margin-top: 20px; border: 0; border-radius: 14px; background: var(--ink); color: var(--card); font: 600 18px/1 inherit; font-family: inherit; padding: 17px; cursor: pointer; }
+.save:disabled { opacity: .5; cursor: default; }
+.err { color: var(--over); font-size: 14px; min-height: 20px; margin-top: 10px; }
+
+.recent { margin-top: 26px; }
+.recent h2 { font: 400 18px/1.2 "Young Serif", Georgia, serif; margin: 0 0 8px; }
+.recent ul { list-style: none; margin: 0; padding: 0; }
+.recent li { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid var(--line); }
+.recent li i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.recent .what { flex: 1; min-width: 0; }
+.recent .what b { font-weight: 500; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent .what small { color: var(--ink-soft); font-size: 13px; }
+.recent .amt { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.recent .amt small { display: block; font-weight: 400; color: var(--ink-soft); font-size: 12px; }
+.pending { color: var(--brass); }
+.empty { color: var(--ink-soft); font-size: 14px; padding: 10px 2px; border-top: 1px solid var(--line); }
+
+.signin { text-align: center; padding: 40px 10px; }
+.signin p { color: var(--ink-soft); max-width: 32ch; margin: 10px auto 22px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); opacity: 0; background: var(--ink); color: var(--card); border-radius: 12px; padding: 12px 14px; font-size: 15px; display: flex; gap: 14px; align-items: center; transition: opacity .18s, transform .18s; pointer-events: none; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { background: none; border: 0; color: var(--card); font: 600 15px inherit; font-family: inherit; text-decoration: underline; cursor: pointer; padding: 0; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Quick log</h1>
+    <a href="./">Open full budget</a>
+  </header>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">Connecting…</span></div>
+
+  <section class="signin" id="signinView" hidden>
+    <p>Sign in with the same Google account you use in your budget tracker. Expenses you log here appear there straight away.</p>
+    <button class="save" id="signinBtn" type="button">Sign in with Google</button>
+  </section>
+
+  <main id="logView" hidden>
+    <div class="sheet">
+      <label class="amount">
+        <select id="cur" aria-label="Currency"></select>
+        <input id="amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount">
+      </label>
+      <div class="conv" id="conv"></div>
+
+      <div class="group">
+        <span id="catLabel">Category</span>
+        <div class="chips" id="cats" role="group" aria-labelledby="catLabel"></div>
+      </div>
+
+      <div class="group">
+        <span id="payLabel">Paid with</span>
+        <div class="chips" id="pays" role="group" aria-labelledby="payLabel"></div>
+      </div>
+
+      <div class="group row">
+        <input class="f" id="note" type="text" placeholder="Note (optional)" aria-label="Note" autocomplete="off">
+        <input class="f" id="date" type="date" aria-label="Date" style="flex:0 0 150px">
+      </div>
+
+      <button class="save" id="saveBtn" type="button">Add expense</button>
+      <div class="err" id="err" role="alert"></div>
+    </div>
+
+    <div class="row" style="margin-top:12px;align-items:center">
+      <select class="f" id="profile" aria-label="Budget profile" hidden></select>
+      <button class="linkbtn" id="signoutBtn" type="button" style="flex:0 0 auto">Sign out</button>
+    </div>
+
+    <section class="recent">
+      <h2>Latest expenses</h2>
+      <ul id="recent"></ul>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button id="toastUndo" type="button" hidden>Undo</button></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(function () {
+  // Same Firebase project as index.html, so both read and write the same budget.
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC-zCBjVr0PePZj5fB6zR4RO6yK159mnBI",
+    authDomain: "budget-tracker-67807.firebaseapp.com",
+    projectId: "budget-tracker-67807",
+    storageBucket: "budget-tracker-67807.firebasestorage.app",
+    messagingSenderId: "202600003301",
+    appId: "1:202600003301:web:d06be5f0e13a778a14060c"
+  };
+  var BASE = "budget-tracker-v1";                    // the main app's localStorage key for profile data
+  var QKEY = "budget-quicklog-queue";               // expenses waiting for signal
+  var PREFS = "budget-quicklog-prefs";
+  var CACHE = "budget-quicklog-cache";
+
+  var $ = function (id) { return document.getElementById(id); };
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function today() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function keyFor(id) { return id === "main" ? BASE : BASE + ":" + id; }
+  function readJSON(k, fb) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? fb : v; } catch (e) { return fb; } }
+  function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function fmt(cur, n) { try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(n); } catch (e) { return cur + " " + n.toFixed(2); } }
+
+  // A different "by" from the main app's device id, so an open tracker on this device still picks up the change
+  var DEVICE = "quicklog:" + (function () { try { return localStorage.getItem("budget-tracker-device") || uid(); } catch (e) { return uid(); } })();
+
+  var prefs = readJSON(PREFS, {});
+  var app = { user: null, db: null, profiles: [], profileId: prefs.profile || "main", state: null, unsub: null, lastId: null };
+
+  // ---------- Status & toast ----------
+  function setStatus(kind, text) { $("dot").className = "dot " + (kind || ""); $("statusText").textContent = text; }
+  var toastTimer;
+  function toast(text, undoFn) {
+    $("toastText").textContent = text;
+    $("toastUndo").hidden = !undoFn;
+    $("toastUndo").onclick = function () { hideToast(); if (undoFn) undoFn(); };
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, undoFn ? 6000 : 2800);
+  }
+  function hideToast() { $("toast").classList.remove("show"); }
+
+  // ---------- Reading the budget (same rules as the main app) ----------
+  function rateFor(st, cur) {
+    if (!cur || cur === "GBP") return 1;
+    if (cur === "PHP") return st.rate && st.rate.value > 0 ? st.rate.value : null;
+    var r = st.rates && st.rates[cur];
+    return r && r.value > 0 ? r.value : null;
+  }
+  function curOf(x) { return x && x.cur ? x.cur : "GBP"; }
+  function cardById(st, id) { return (st.cards || []).find(function (c) { return c.id === id; }); }
+  function bankById(st, id) { return (st.banks || []).find(function (b) { return b.id === id; }); }
+  function cardAmtFor(st, cardId, cur, orig, gbp) {
+    var c = cardById(st, cardId);
+    if (!c || curOf(c) === "GBP") return undefined;
+    if (cur === curOf(c)) return orig;
+    var r = rateFor(st, curOf(c));
+    return r ? Math.round(gbp / r * 100) / 100 : undefined;
+  }
+  function payOptions(st) {
+    var out = [{ id: "cash", name: "Cash or debit" }];
+    (st.banks || []).forEach(function (b) { var d = b.acct4 || b.last4; out.push({ id: b.id, name: b.name + (d ? " ••" + d : "") }); });
+    (st.cards || []).filter(function (c) { return !c.closed && !c.archived; })
+      .forEach(function (c) { out.push({ id: c.id, name: c.name + (c.last4 ? " ••" + c.last4 : "") }); });
+    return out;
+  }
+  function currencyOptions(st) {
+    var set = ["GBP"];
+    if (rateFor(st, "PHP")) set.push("PHP");
+    Object.keys(st.rates || {}).forEach(function (c) { if (set.indexOf(c) < 0 && rateFor(st, c)) set.push(c); });
+    return set;
+  }
+
+  // ---------- Rendering ----------
+  var sel = { cat: prefs.cat || null, pay: prefs.pay || "cash", cur: prefs.cur || "GBP" };
+
+  function render() {
+    var st = app.state; if (!st) return;
+    var cats = st.categories || [];
+    if (!cats.some(function (c) { return c.id === sel.cat; })) sel.cat = cats[0] ? cats[0].id : null;
+    $("cats").innerHTML = cats.length ? cats.map(function (c) {
+      return '<button type="button" class="chip" data-cat="' + esc(c.id) + '" aria-pressed="' + (c.id === sel.cat) + '"><i style="background:' + esc(c.color || "#7A7F87") + '"></i>' + esc(c.name) + "</button>";
+    }).join("") : '<span class="empty" style="border:0;padding:0">Add a category in the full budget first.</span>';
+
+    var pays = payOptions(st);
+    if (!pays.some(function (p) { return p.id === sel.pay; })) sel.pay = "cash";
+    $("pays").innerHTML = pays.map(function (p) {
+      return '<button type="button" class="chip" data-pay="' + esc(p.id) + '" aria-pressed="' + (p.id === sel.pay) + '">' + esc(p.name) + "</button>";
+    }).join("");
+
+    var curs = currencyOptions(st);
+    if (curs.indexOf(sel.cur) < 0) sel.cur = "GBP";
+    $("cur").innerHTML = curs.map(function (c) { return "<option" + (c === sel.cur ? " selected" : "") + ">" + c + "</option>"; }).join("");
+
+    var profs = app.profiles;
+    $("profile").hidden = profs.length < 2;
+    $("profile").innerHTML = profs.map(function (p) { return '<option value="' + esc(p.id) + '"' + (p.id === app.profileId ? " selected" : "") + ">" + esc(p.name) + "</option>"; }).join("");
+
+    renderConv(); renderRecent();
+  }
+
+  function renderConv() {
+    var st = app.state, n = parseFloat($("amt").value.replace(",", "."));
+    if (!st || sel.cur === "GBP" || !(n > 0)) { $("conv").textContent = ""; return; }
+    var r = rateFor(st, sel.cur);
+    $("conv").textContent = r ? "≈ " + fmt("GBP", n * r) : "No " + sel.cur + " rate yet. Refresh it in the full budget.";
+  }
+
+  function renderRecent() {
+    var st = app.state, catMap = {};
+    (st.categories || []).forEach(function (c) { catMap[c.id] = c; });
+    var queued = readJSON(QKEY, []).filter(function (q) { return q.uid === (app.user && app.user.uid) && q.profile === app.profileId; })
+      .map(function (q) { return Object.assign({ _pending: true }, q.tx); });
+    var seen = {}; queued.forEach(function (t) { seen[t.id] = 1; });
+    var list = queued.concat((st.tx || []).filter(function (t) { return t.type === "expense" && !seen[t.id]; }))
+      .sort(function (a, b) { return (b.date || "").localeCompare(a.date || "") || (b.created || 0) - (a.created || 0); })
+      .slice(0, 8);
+    if (!list.length) { $("recent").innerHTML = '<li class="empty">Nothing logged yet. Your first expense will show here.</li>'; return; }
+    $("recent").innerHTML = list.map(function (t) {
+      var c = catMap[t.category] || {};
+      var d = new Date((t.date || today()) + "T00:00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      var foreign = t.cur && t.cur !== "GBP";
+      return "<li><i style=\"background:" + esc(c.color || "#7A7F87") + "\"></i>" +
+        '<div class="what"><b>' + esc(t.note || c.name || "Expense") + "</b><small>" + esc(d) + (t.note && c.name ? ", " + esc(c.name) : "") +
+        (t._pending ? ' <span class="pending">· waiting for signal</span>' : "") + "</small></div>" +
+        '<div class="amt">' + fmt("GBP", t.amount || 0) + (foreign ? "<small>" + fmt(t.cur, t.orig) + "</small>" : "") + "</div></li>";
+    }).join("");
+  }
+
+  $("cats").onclick = function (e) { var b = e.target.closest("[data-cat]"); if (!b) return; sel.cat = b.dataset.cat; prefs.cat = sel.cat; writeJSON(PREFS, prefs); render(); };
+  $("pays").onclick = function (e) { var b = e.target.closest("[data-pay]"); if (!b) return; sel.pay = b.dataset.pay; prefs.pay = sel.pay; writeJSON(PREFS, prefs); render(); };
+  $("cur").onchange = function () { sel.cur = this.value; prefs.cur = sel.cur; writeJSON(PREFS, prefs); renderConv(); };
+  $("amt").oninput = renderConv;
+  $("amt").onkeydown = $("note").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); save(); } };
+  $("profile").onchange = function () { app.profileId = this.value; prefs.profile = app.profileId; writeJSON(PREFS, prefs); watchProfile(); };
+
+  // ---------- Writing ----------
+  function profRef(id) { return app.db.collection("users").doc(app.user.uid).collection("profiles").doc(id); }
+
+  // Read the latest budget, change it, write it back, in one Firestore transaction so nothing from another device is lost
+  function mutate(profileId, fn) {
+    var ref = profRef(profileId);
+    return app.db.runTransaction(function (trx) {
+      return trx.get(ref).then(function (snap) {
+        if (!snap.exists || !snap.data().data) throw new Error("This budget isn't in the cloud yet. Open the full budget and sign in there first.");
+        var st = JSON.parse(snap.data().data);
+        if (st.enc) throw new Error("This budget is locked. Open it in the full budget first.");
+        if (!Array.isArray(st.tx)) st.tx = [];
+        var changed = fn(st);
+        if (changed === false) return st;
+        var str = JSON.stringify(st);
+        trx.set(ref, { data: str, updatedAt: Date.now(), by: DEVICE });
+        return st;
+      });
+    }).then(function (st) {
+      // Keep the main app's copy on this device in step too
+      try { if (localStorage.getItem("budget-tracker-cloud-linked") === app.user.uid) localStorage.setItem(keyFor(profileId), JSON.stringify(st)); } catch (e) {}
+      return st;
+    });
+  }
+
+  function buildTx() {
+    var st = app.state, amt = parseFloat($("amt").value.replace(",", "."));
+    if (!(amt > 0)) return { err: "Enter how much you spent." };
+    if (!sel.cat) return { err: "Choose a category." };
+    var rate = rateFor(st, sel.cur);
+    if (!rate) return { err: "No " + sel.cur + " exchange rate yet. Refresh it in the full budget, or log it in pounds." };
+    var orig = Math.round(amt * 100) / 100, gbp = Math.round(orig * rate * 100) / 100;
+    return { tx: {
+      id: uid(), type: "expense", created: Date.now(), cur: sel.cur, orig: orig, rate: rate, amount: gbp,
+      date: $("date").value || today(), category: sel.cat, pay: sel.pay,
+      cardAmt: cardAmtFor(st, sel.pay, sel.cur, orig, gbp), note: $("note").value.trim()
+    } };
+  }
+
+  function stripUndefined(o) { return JSON.parse(JSON.stringify(o)); }
+
+  function save() {
+    if (!app.state) return;
+    var b = buildTx();
+    if (b.err) { $("err").textContent = b.err; return; }
+    $("err").textContent = "";
+    var tx = stripUndefined(b.tx), profileId = app.profileId;
+    $("saveBtn").disabled = true;
+    var done = function () { $("saveBtn").disabled = false; $("amt").value = ""; $("note").value = ""; $("date").value = today(); renderConv(); $("amt").focus(); };
+
+    if (!navigator.onLine) { enqueue(profileId, tx); done(); renderRecent(); toast("Saved. It'll sync when you're back online"); return; }
+
+    setStatus("busy", "Saving…");
+    mutate(profileId, function (st) { if (st.tx.some(function (t) { return t.id === tx.id; })) return false; st.tx.push(tx); })
+      .then(function (st) {
+        app.state = st; render(); setStatus("ok", "Synced with " + (app.user.email || "your Google account"));
+        done(); app.lastId = tx.id;
+        toast("Added " + fmt(tx.cur, tx.orig), function () { undo(profileId, tx.id); });
+      })
+      .catch(function (e) {
+        if (isOffline(e)) { enqueue(profileId, tx); done(); renderRecent(); setStatus("busy", "Offline · will sync later"); toast("Saved. It'll sync when you're back online"); return; }
+        $("saveBtn").disabled = false; setStatus("err", "Couldn't save"); $("err").textContent = e.message || "Couldn't save. Try again.";
+      });
+  }
+
+  function undo(profileId, id) {
+    mutate(profileId, function (st) { var n = st.tx.length; st.tx = st.tx.filter(function (t) { return t.id !== id; }); return st.tx.length !== n; })
+      .then(function (st) { if (profileId === app.profileId) { app.state = st; render(); } toast("Removed"); })
+      .catch(function (e) { toast("Couldn't undo: " + (e.message || "try again")); });
+  }
+
+  function isOffline(e) { return !navigator.onLine || (e && (e.code === "unavailable" || e.code === "deadline-exceeded")); }
+
+  // ---------- Offline queue ----------
+  function enqueue(profileId, tx) { var q = readJSON(QKEY, []); q.push({ uid: app.user.uid, profile: profileId, tx: tx }); writeJSON(QKEY, q); }
+  var flushing = false;
+  function flushQueue() {
+    if (flushing || !app.user || !navigator.onLine) return;
+    var mine = readJSON(QKEY, []).filter(function (q) { return q.uid === app.user.uid; });
+    if (!mine.length) return;
+    flushing = true;
+    var byProfile = {};
+    mine.forEach(function (q) { (byProfile[q.profile] = byProfile[q.profile] || []).push(q.tx); });
+    var ids = Object.keys(byProfile), sent = 0;
+    ids.reduce(function (p, pid) {
+      return p.then(function () {
+        return mutate(pid, function (st) {
+          var have = {}; st.tx.forEach(function (t) { have[t.id] = 1; });
+          var add = byProfile[pid].filter(function (t) { return !have[t.id]; });
+          add.forEach(function (t) { st.tx.push(t); });
+          return add.length > 0;
+        }).then(function (st) {
+          sent += byProfile[pid].length;
+          var keep = readJSON(QKEY, []).filter(function (q) { return !(q.uid === app.user.uid && q.profile === pid); });
+          writeJSON(QKEY, keep);
+          if (pid === app.profileId) { app.state = st; render(); }
+        });
+      });
+    }, Promise.resolve())
+      .then(function () { if (sent) toast(sent === 1 ? "1 offline expense synced" : sent + " offline expenses synced"); })
+      .catch(function () {})
+      .then(function () { flushing = false; });
+  }
+  window.addEventListener("online", flushQueue);
+
+  // ---------- Auth & live data ----------
+  function watchProfile() {
+    if (app.unsub) app.unsub();
+    var cached = readJSON(CACHE + ":" + app.user.uid + ":" + app.profileId, null);
+    if (cached) { app.state = cached; render(); }
+    setStatus("busy", "Loading your budget…");
+    app.unsub = profRef(app.profileId).onSnapshot(function (snap) {
+      if (!snap.exists || !snap.data().data) { setStatus("err", "This budget isn't in the cloud yet. Sign in on the full budget first."); return; }
+      try {
+        var st = JSON.parse(snap.data().data);
+        if (st.enc) { setStatus("err", "This budget is locked. Open it in the full budget first."); return; }
+        app.state = st;
+        writeJSON(CACHE + ":" + app.user.uid + ":" + app.profileId, { categories: st.categories, cards: st.cards, banks: st.banks, rate: st.rate, rates: st.rates,
+          tx: (st.tx || []).filter(function (t) { return t.type === "expense"; }).slice(-20) });
+        render(); setStatus("ok", "Synced with " + (app.user.email || "your Google account"));
+        flushQueue();
+      } catch (e) { setStatus("err", "Couldn't read your budget"); }
+    }, function () { setStatus(cached ? "busy" : "err", cached ? "Offline · showing your last saved categories" : "Couldn't reach your budget"); });
+  }
+
+  function onAuth(u) {
+    app.user = u || null;
+    if (app.unsub) { app.unsub(); app.unsub = null; }
+    if (!u) { $("logView").hidden = true; $("signinView").hidden = false; setStatus("", "Not signed in"); return; }
+    $("signinView").hidden = true; $("logView").hidden = false;
+    $("date").value = today();
+    app.db.collection("users").doc(u.uid).get().then(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      app.profiles = d && d.profiles && d.profiles.length ? d.profiles : [{ id: "main", name: "Me" }];
+      writeJSON(CACHE + ":" + u.uid + ":profiles", app.profiles);
+    }).catch(function () {
+      app.profiles = readJSON(CACHE + ":" + u.uid + ":profiles", [{ id: "main", name: "Me" }]);
+    }).then(function () {
+      if (!app.profiles.some(function (p) { return p.id === app.profileId; })) app.profileId = app.profiles[0].id;
+      watchProfile(); $("amt").focus();
+    });
+  }
+
+  $("signinBtn").onclick = function () {
+    var provider = new firebase.auth.GoogleAuthProvider();
+    firebase.auth().signInWithPopup(provider).catch(function (e) {
+      if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) return firebase.auth().signInWithRedirect(provider);
+      if (e && e.code !== "auth/popup-closed-by-user") setStatus("err", "Sign-in didn't work: " + (e.message || e.code));
+    });
+  };
+  $("signoutBtn").onclick = function () { if (confirm("Sign out of Quick log?")) firebase.auth().signOut(); };
+  $("saveBtn").onclick = save;
+
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    app.db = firebase.firestore();
+    firebase.auth().onAuthStateChanged(onAuth);
+  } catch (e) { setStatus("err", "Couldn't start. Check your connection and reload."); }
+
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
+})();
+</script>
+</body>
+</html>
