@@ -719,8 +719,10 @@ function occurrences(b, from, to) {
   for (let k = 0; k < 600; k++) { const d = addMonthsClamped(a, k * ms, a.getDate()); if (d >= to) break; if (d >= from) out.push({ date: d, key: dk(d) }); }
   return out;
 }
+const splitsOf = (p) => (p ? st.tx.filter((t) => t.split && t.split === p.id) : []);
+const paidTotal = (cur, p) => inCur(cur, p) + splitsOf(p).reduce((s, t) => s + inCur(cur, t), 0);
 function occPayment(b, key) {
-  return st.tx.find((t) => t.bill === b.id && t.type === 'expense' && (t.billOcc ? t.billOcc === key : (t.billMonth || t.date.slice(0, 7)) === key));
+  return st.tx.find((t) => t.bill === b.id && t.type === 'expense' && !t.split && (t.billOcc ? t.billOcc === key : (t.billMonth || t.date.slice(0, 7)) === key));
 }
 function billDone(b) {
   if (b.planOf) return planLeft(b) <= 0.005;
@@ -750,7 +752,7 @@ function itemsIn(from, to) {
       occurrences(b, from, to).forEach((o) => {
         const p = occPayment(b, o.key);
         if (!p && done) return;
-        const cur = b.cur || 'GBP', a = p ? { amt: inCur(cur, p), est: false } : billAmt(b);
+        const cur = b.cur || 'GBP', a = p ? { amt: paidTotal(cur, p), est: false } : billAmt(b);
         const owner = b.planOf ? M.loan[b.planOf] : null;
         out.push(withAssumed({ kind: 'bill', uid: b.id + '|' + o.key, ref: b, key: o.key, date: o.date, name: b.planName || b.name, owner: owner ? owner.name : '', cur, amt: r2(a.amt), est: a.est, unknown: !p && a.unknown, gbp: r2(toGbp(cur, a.amt)), pay: p ? p.pay : b.pay, cat: b.category, paid: p || null }));
       });
@@ -1167,6 +1169,7 @@ function setCatColors(P) {
   CAT_COLORS = {}; let n = 0;
   seen.forEach((k) => { CAT_COLORS[k] = k === 'Other' ? 'var(--faint)' : k === 'Money in' ? 'var(--good)' : PALETTE[n++ % PALETTE.length]; });
 }
+const shareOf = (b) => (b && b.shareAmt > 0 ? esc(b.shareWho || 'Wife') + ' pays ' + fmt(b.cur, b.shareAmt) : '');
 const catCol = (k) => CAT_COLORS[k] || 'var(--faint)';
 function statusCell(i, t0) {
   const late = open_(i) && i.date < t0, isToday = open_(i) && +i.date === +t0;
@@ -1211,7 +1214,7 @@ function renderCycle() {
 
   const cols = [
     { k: 'date', label: 'Date', w: '86px', html: (i) => '<span class="dt">' + DOW[i.date.getDay()] + ' <b>' + i.date.getDate() + ' ' + MON[i.date.getMonth()] + '</b></span>' },
-    { k: 'name', label: 'Item', w: '30%', html: (i) => nameBtn('item', 'data-uid="' + esc(i.uid) + '"', esc(i.name) + (i.owner ? '<small>' + esc(i.owner) + ' plan</small>' : ''), tipText(i)) },
+    { k: 'name', label: 'Item', w: '30%', html: (i) => nameBtn('item', 'data-uid="' + esc(i.uid) + '"', esc(i.name) + (i.owner || shareOf(i.ref) ? '<small>' + [i.owner ? esc(i.owner) + ' plan' : '', shareOf(i.ref)].filter(Boolean).join(', ') + '</small>' : ''), tipText(i)) },
     { k: 'cat', label: 'Category', html: (i) => '<span class="cat">' + swatch(catCol(groupName(i))) + esc(i.kind === 'in' ? 'Money in' : i.cat === '__cards' ? 'Card payment' : catName(i.cat)) + '</span>' },
     { k: 'pay', label: 'Account', html: (i) => '<span class="muted nw">' + esc(srcName(i.pay)) + '</span>' },
     { k: 'amt', label: 'Amount', num: true, w: '110px', html: amtCell },
@@ -1348,7 +1351,7 @@ function renderBills() {
     { label: 'Pay-later plans', value: bigMoney(plans), note: live.filter((r) => r.b.planOf).length + ' plans' }
   ]);
   const cols = [
-    { k: 'name', label: 'Bill', w: '26%', sort: (r) => (r.b.planName || r.b.name).toLowerCase(), html: (r) => nameBtn('bill', 'data-id="' + r.b.id + '"', esc(r.b.planName || r.b.name) + (r.owner ? '<small>' + esc(r.owner.name) + ' plan</small>' : '')) },
+    { k: 'name', label: 'Bill', w: '26%', sort: (r) => (r.b.planName || r.b.name).toLowerCase(), html: (r) => nameBtn('bill', 'data-id="' + r.b.id + '"', esc(r.b.planName || r.b.name) + (r.owner || r.b.shareAmt > 0 ? '<small>' + [r.owner ? esc(r.owner.name) + ' plan' : '', shareOf(r.b)].filter(Boolean).join(', ') + '</small>' : '')) },
     { k: 'cat', label: 'Category', sort: (r) => catName(r.b.category), html: (r) => '<span class="muted">' + esc(r.b.category ? catName(r.b.category) : 'Uncategorised') + '</span>' },
     { k: 'freq', label: 'How often', sort: (r) => PERM[r.f] || 0, html: (r) => esc(FREQ_LABEL[r.f] || 'Monthly') },
     { k: 'next', label: 'Next due', sort: (r) => (r.next ? +r.next : 9e15), html: (r) => (r.done ? '<span class="pill good">Finished</span>' : r.next ? DOW[r.next.getDay()] + ' ' + dShort(r.next) : '<span class="faint">—</span>') },
@@ -1387,6 +1390,12 @@ function renderBills() {
 }
 
 // ---------- Debt ----------
+// Pay-later accounts with plans finish on their last plan payment, not on the payoff estimate
+function planEnd(d) {
+  if (d.kind !== 'bnpl' || !usesPlans(d.ref)) return null;
+  const ends = planBills(d.ref).filter((b) => planLeft(b) > 0.005 && b.ends).map((b) => b.ends).sort();
+  return ends.length ? pday(ends[ends.length - 1]) : null;
+}
 function renderDebt() {
   const list = debtList(), total = list.reduce((s, d) => s + d.gbp, 0);
   const extra = +st.dfPlan.extra || 0, strat = st.dfPlan.strategy === 'avalanche' ? 'avalanche' : 'snowball';
@@ -1417,7 +1426,7 @@ function renderDebt() {
     { k: 'share', label: 'Of total', num: true, w: '110px', sort: (d) => d.gbp, html: (d) => '<span class="pct">' + Math.round(d.gbp / (total || 1) * 100) + '%</span>' + dataBar(d.gbp / (total || 1), 'var(--late)') },
     { k: 'apr', label: 'APR', num: true, sort: (d) => d.apr, html: (d) => (d.apr ? d.apr + '%' : '<span class="faint">0%</span>') },
     { k: 'pay', label: 'Monthly', num: true, sort: (d) => d.payGbp, html: (d) => (d.est ? '≈ ' : '') + fmt(d.cur, d.pay) },
-    { k: 'when', label: 'Clear by', sort: (d) => ord[d.id], html: (d) => (sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : '<span class="neg">Not yet</span>') }
+    { k: 'when', label: 'Clear by', sort: (d) => ord[d.id], html: (d) => { const pe = planEnd(d); return pe ? monYr(pe) + '<small class="fx">last plan payment</small>' : sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : '<span class="neg">Not yet</span>'; } }
   ];
   h += sheetHead('Debts, in the order you’ll clear them', '<button class="btn small ghost" data-act="add-loan">Add a loan</button>') +
     grid(cols, ordered, { id: 'debt', empty: 'No debts. That’s the goal.', foot: [fcell('<b>Total</b>', false, 2), fcell('<b>' + money(total) + '</b>', true), fcell('100%', true), fcell(''), fcell('<b>' + money(monthly) + '</b>', true), fcell('')] });
@@ -1675,22 +1684,32 @@ function payTx(i, amt, pay, date) {
   if (i.kind === 'card') return Object.assign(base, { type: 'cardpay', card: i.ref.id, cardMin: i.key, from: pay || i.pay, cardAmt: cur !== 'GBP' ? r2(amt) : undefined, category: null, note: i.ref.name + ' minimum payment' });
   return Object.assign(base, { type: 'expense', bill: i.ref.id, billOcc: i.key, billMonth: i.key.slice(0, 7), category: i.ref.category || null, pay: pay || i.pay || 'cash', note: i.ref.name });
 }
+// A bill someone else shares: your part, plus their part recorded as money they owe you
+function payTxs(i, amt, pay, date) {
+  const b = i.kind === 'bill' ? i.ref : null, share = b && b.shareAmt > 0 ? Math.min(+b.shareAmt, amt) : 0;
+  if (!share) return [payTx(i, amt, pay, date)];
+  const who = b.shareWho || 'Wife', note = (b.planName || b.name) + ', ' + who + '’s share';
+  if (amt - share < 0.005) return [Object.assign(payTx(i, amt, pay, date), { owedBy: who, note })];
+  const main = payTx(i, amt - share, pay, date), part = payTx(i, share, pay, date);
+  return [main, Object.assign(part, { split: main.id, owedBy: who, note })];
+}
+const removePaid = (p) => { const list = [p].concat(splitsOf(p)); st.tx = st.tx.filter((t) => list.indexOf(t) < 0); return list; };
 function tick(u) {
   const i = findItem(u); if (!i) return;
   if (i.paid) {
-    const t = i.paid, at = st.tx.indexOf(t); st.tx.splice(at, 1);
-    commit(i.name + (i.kind === 'in' ? ' marked not received' : ' marked not paid'), () => { st.tx.splice(at, 0, t); commit(); });
+    const gone = removePaid(i.paid);
+    commit(i.name + (i.kind === 'in' ? ' marked not received' : ' marked not paid'), () => { st.tx.push(...gone); commit(); });
     return;
   }
   if (!(i.amt > 0) || i.unknown) return itemSheet(i);
-  const t = payTx(i, i.amt);
-  st.tx.push(t);
-  commit(i.name + (i.kind === 'in' ? ' marked received' : ' marked paid'), () => { st.tx.splice(st.tx.indexOf(t), 1); commit(); });
+  const ts = payTxs(i, i.amt);
+  st.tx.push(...ts);
+  commit(i.name + (i.kind === 'in' ? ' marked received' : ' marked paid') + (ts.length > 1 ? ', ' + ts[1].owedBy + ' owes you ' + fmt(i.cur, ts[1].orig) : ''), () => { st.tx = st.tx.filter((t) => ts.indexOf(t) < 0); commit(); });
 }
 function tickLate() {
   const t0 = today0(), c0 = cycleAt(0);
   const late = itemsIn(c0.start, c0.end).filter((i) => open_(i) && i.kind !== 'in' && i.date < t0 && i.amt > 0 && !i.unknown);
-  const added = late.map((i) => payTx(i, i.amt));
+  const added = [].concat(...late.map((i) => payTxs(i, i.amt)));
   st.tx.push(...added);
   commit(added.length + ' bills marked paid', () => { st.tx = st.tx.filter((t) => added.indexOf(t) < 0); commit(); });
 }
@@ -1703,14 +1722,15 @@ function itemSheet(i) {
   const catTxt = catText(i);
   const meta = '<p class="muted" style="margin:-6px 0 16px">' + (i.owner ? esc(i.owner) + ' plan, due ' : 'Due ') + dLong(i.date) + (i.paid ? '.' : i.unknown ? '. Enter what you paid.' : i.est ? '. The amount is an estimate.' : '.') +
     '<br><span style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--ink)"><i style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + (CAT_COLORS[groupName(i)] || 'var(--faint)') + '"></i>' + esc(catTxt) + '</span>, ' + (i.kind === 'in' ? (i.paid ? 'received into ' : i.assumed ? 'already in ' : 'goes into ') : i.paid ? 'paid from ' : i.assumed ? 'already out of ' : 'comes out of ') + esc(i.kind === 'in' && !isBank(i.pay) ? 'an untracked account' : srcName(i.pay)) + '</p>';
+  const shareNote = i.kind === 'bill' && i.ref.shareAmt > 0 ? '<p class="muted" style="margin:-8px 0 14px">' + esc(i.ref.shareWho || 'Wife') + ' pays ' + fmt(i.cur, i.ref.shareAmt) + ' of this. When you mark it paid, that part is saved as money ' + esc(i.ref.shareWho || 'Wife') + ' owes you.</p>' : '';
   const editBtn = '<button class="btn" data-act="' + (i.kind === 'card' ? 'card' : i.kind === 'in' ? 'income' : 'bill') + '" data-id="' + i.ref.id + '">' + (i.kind === 'card' ? 'Edit card' : i.kind === 'in' ? 'Edit' : 'Edit bill') + '</button>';
   formSheet({
-    title: i.name, intro: meta, fields, submit: i.paid ? 'Save' : i.kind === 'in' ? 'Mark received' : 'Mark paid', danger: i.paid ? (i.kind === 'in' ? 'Mark not received' : 'Mark not paid') : null, extraBtn: editBtn,
+    title: i.name, intro: meta + shareNote, fields, submit: i.paid ? 'Save' : i.kind === 'in' ? 'Mark received' : 'Mark paid', danger: i.paid ? (i.kind === 'in' ? 'Mark not received' : 'Mark not paid') : null, extraBtn: editBtn,
     onDanger: () => { closeSheet(); tick(i.uid); },
     onSubmit: (v) => {
       if (!(v.amt > 0)) return i.kind === 'in' ? 'Enter the amount received.' : 'Enter the amount paid.';
-      if (i.paid) { const at = st.tx.indexOf(i.paid); st.tx.splice(at, 1); }
-      st.tx.push(payTx(i, v.amt, v.pay, v.date));
+      if (i.paid) removePaid(i.paid);
+      st.tx.push(...payTxs(i, v.amt, v.pay, v.date));
       commit(i.name + (i.paid ? ' updated' : i.kind === 'in' ? ' marked received' : ' marked paid'));
     }
   });
@@ -1767,37 +1787,77 @@ function incomeSheet(x) {
     }
   });
 }
+// How many payments apart two dates are on a bill's schedule (negative if b is before a)
+function stepsBetween(f, a, b) {
+  if (FD[f]) return Math.round(daysBetween(a, b) / FD[f]);
+  const months = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth();
+  return Math.round(months / (FM[f] || 1));
+}
+function shiftDate(f, d, k, day) {
+  if (FD[f]) return addDays(d, k * FD[f]);
+  return addMonthsClamped(d, k * (FM[f] || 1), day || d.getDate());
+}
 function billSheet(b) {
   const isNew = !b, d = b || { freq: 'monthly', cur: 'GBP', due: 1 };
+  const isPlan = !!d.planOf, paidN = b ? billPayments(b).filter((t) => !t.split).length : 0;
   const fields = [
     { k: 'name', label: 'Name', value: d.planName || d.name, full: true },
-    { k: 'amount', label: 'Amount', type: 'number', value: d.amount || '', hint: 'Leave empty if it changes each time' },
+    { k: 'amount', label: isPlan ? 'Each payment' : 'Amount', type: 'number', value: d.amount || '', hint: isPlan ? 'The full payment, including anyone else’s share' : 'Leave empty if it changes each time' },
     { k: 'cur', label: 'Currency', type: 'select', options: curOpts, value: d.cur || 'GBP' },
     { k: 'freq', label: 'How often', type: 'select', options: freqOpts, value: freqOf(d) },
     { k: 'due', label: 'Day of the month', type: 'number', step: '1', value: d.due || 1, hint: 'For monthly bills' },
-    { k: 'start', label: 'First payment date', type: 'date', value: d.start || d.begins || '', hint: 'For weekly, yearly and other bills' },
-    { k: 'ends', label: 'Last payment', type: 'date', value: d.ends || '', hint: 'Optional' },
-    { k: 'category', label: 'Category', type: 'select', options: sel(catOpts(), 'Uncategorised'), value: d.category || '' },
-    { k: 'pay', label: 'Paid from', type: 'select', options: payOpts(), value: d.pay || 'cash' }
+    { k: 'start', label: 'First payment date', type: 'date', value: d.start || d.begins || '', hint: isPlan ? 'When the plan’s first payment is' : 'Leave empty unless it starts later' },
+    { k: 'ends', label: 'Last payment', type: 'date', value: d.ends || '', hint: isPlan ? 'Change this or the number of payments, the other follows' : 'Optional' }
   ];
+  if (isPlan) {
+    // Pair the plan fields up: payment and count, schedule, dates, then currency beside category
+    const cur = fields.splice(2, 1)[0];
+    fields.splice(2, 0, { k: 'count', label: 'Number of payments', type: 'number', step: '1', value: d.planCount || 1, hint: paidN + ' marked paid so far. Total = this × each payment.' });
+    fields.push({ k: 'category', label: 'Category', type: 'select', options: sel(catOpts(), 'Uncategorised'), value: d.category || '' }, cur);
+  } else fields.push({ k: 'category', label: 'Category', type: 'select', options: sel(catOpts(), 'Uncategorised'), value: d.category || '' });
+  fields.push(
+    { k: 'pay', label: 'Paid from', type: 'select', options: payOpts(), value: d.pay || 'cash', full: isPlan },
+    { k: 'shareAmt', label: 'Someone else pays', type: 'number', value: d.shareAmt || '', hint: 'Their part of each payment. Leave empty if it’s all yours.' },
+    { k: 'shareWho', label: 'Who', value: d.shareWho || 'Wife', placeholder: 'e.g. Wife' }
+  );
   formSheet({
-    title: isNew ? 'Add a bill' : 'Edit bill', fields, submit: isNew ? 'Add bill' : 'Save', danger: isNew ? null : 'Delete bill',
+    title: isNew ? 'Add a bill' : isPlan ? 'Edit plan' : 'Edit bill', fields, submit: isNew ? 'Add bill' : 'Save', danger: isNew ? null : isPlan ? 'Delete plan' : 'Delete bill',
     onDanger: () => {
       if (!confirm('Delete ' + (b.planName || b.name) + '? Past payments stay in your activity.')) return;
       const at = st.bills.indexOf(b); st.bills.splice(at, 1); closeSheet(); commit('Bill deleted', () => { st.bills.splice(at, 0, b); commit(); });
     },
     onSubmit: (v) => {
       if (!v.name.trim()) return 'Give the bill a name.';
+      if (v.shareAmt > 0 && v.amount > 0 && v.shareAmt > v.amount) return 'Their share can’t be more than the payment.';
       const n = b || { id: uid() };
+      const oldStart = d.start || d.begins || '', oldEnds = d.ends || '', oldCount = d.planCount || 1;
       if (n.planOf) n.planName = v.name.trim(); else n.name = v.name.trim();
       n.amount = v.amount > 0 ? r2(v.amount) : 0; n.cur = v.cur; n.freq = v.freq;
       n.due = Math.min(31, Math.max(1, Math.round(v.due || 1)));
       if (v.freq !== 'monthly') { if (!v.start) return 'Choose the first payment date.'; n.start = v.start; n.due = pday(v.start).getDate(); }
-      if (v.ends) n.ends = v.ends; else delete n.ends;
+      else if (v.start && v.start !== oldStart) { n.begins = v.start; if (isPlan) { n.start = v.start; n.due = pday(v.start).getDate(); } }
+      else if (!v.start && oldStart && !isPlan) { delete n.begins; delete n.start; }
+      if (isPlan) {
+        const f = n.freq, first = v.start || n.begins || n.start;
+        let count = Math.max(1, Math.round(v.count || oldCount)), ends = v.ends || '';
+        if (count !== oldCount) {
+          // Number of payments changed: move the last payment to match
+          if (oldEnds) ends = dk(shiftDate(f, pday(oldEnds), count - oldCount, n.due));
+          else if (first) ends = dk(shiftDate(f, pday(first), count - 1, n.due));
+        } else if (ends && ends !== oldEnds) {
+          // Last payment changed: add or remove that many payments
+          count = oldEnds ? oldCount + stepsBetween(f, pday(oldEnds), pday(ends)) : (first ? stepsBetween(f, pday(first), pday(ends)) + 1 : oldCount);
+        }
+        if (count < Math.max(1, paidN)) return 'You’ve already marked ' + paidN + ' payments paid, so it can’t be fewer than that.';
+        n.planCount = count;
+        if (ends) n.ends = ends; else delete n.ends;
+      } else if (v.ends) n.ends = v.ends; else delete n.ends;
       n.category = v.category || null; n.pay = v.pay;
+      if (v.shareAmt > 0) { n.shareAmt = r2(v.shareAmt); n.shareWho = (v.shareWho || '').trim() || 'Wife'; } else { delete n.shareAmt; delete n.shareWho; }
       const l = loanForBill(n); if (l && !usesPlans(l) && n.amount > 0) { l.payment = n.amount; l.payMode = 'fixed'; }
       if (!b) st.bills.push(n);
-      commit(b ? 'Bill saved' : 'Bill added');
+      const total = isPlan ? fmt(n.cur, n.amount * n.planCount + (+n.planAdj || 0)) : '';
+      commit(b ? (isPlan ? 'Plan saved: ' + n.planCount + ' payments, ' + total + ' in total' : 'Bill saved') : 'Bill added');
     }
   });
 }
