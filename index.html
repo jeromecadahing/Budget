@@ -1667,9 +1667,18 @@ const curOpts = [['GBP', '£ GBP'], ['PHP', '₱ PHP']];
 const freqOpts = Object.keys(FREQ_LABEL).map((k) => [k, FREQ_LABEL[k]]);
 
 // ---------- Add / edit a transaction ----------
+function oweHint(total, owe, cur) {
+  total = +total || 0; owe = owe > 0 ? +owe : null;
+  if (!(total > 0)) return 'Leave empty if they pay all of it.';
+  if (owe == null || owe >= total) return 'They pay all ' + fmt(cur, total) + '. Enter less to split it.';
+  return 'You pay ' + fmt(cur, total - owe) + ', they pay ' + fmt(cur, owe) + '.';
+}
 function txSheet(type, t) {
   type = t ? t.type : type || 'expense';
   const isNew = !t, d = t || {};
+  // A split: this transaction is your part, and a linked one is the part someone pays back
+  const partner = t && t.type === 'expense' ? st.tx.find((x) => x.split === t.id && x.owedBy) : null;
+  const owedWho = partner ? partner.owedBy : d.owedBy;
   const segs = [['expense', 'Spending'], ['income', 'Income'], ['transfer', 'Transfer'], ['cardpay', 'Pay a card']];
   const seg = isNew ? '<div class="seg" role="group" aria-label="Type">' + segs.map((s) => '<button data-act="txtype" data-v="' + s[0] + '" aria-pressed="' + (s[0] === type) + '">' + s[1] + '</button>').join('') + '</div>' : '';
   let fields;
@@ -1702,15 +1711,16 @@ function txSheet(type, t) {
     ];
   } else {
     fields = [
-      { k: 'orig', label: 'Amount', type: 'number', value: d.orig, cls: 'amount-in', full: true },
+      { k: 'orig', label: 'Amount', type: 'number', value: partner ? r2(+d.orig + +partner.orig) : d.orig, cls: 'amount-in', full: true, hint: partner ? 'The full amount, including ' + partner.owedBy + '’s part' : '' },
       { k: 'note', label: 'What for', value: d.note, placeholder: 'e.g. groceries' },
       { k: 'cur', label: 'Currency', type: 'select', options: curOpts, value: d.cur || 'GBP' },
       { k: 'category', label: 'Category', type: 'select', options: sel(catOpts(), 'Uncategorised'), value: d.category || '' },
       { k: 'pay', label: 'Paid with', type: 'select', options: payOpts(), value: d.pay || (st.banks[0] || {}).id || 'cash' },
       { k: 'date', label: 'Date', type: 'date', value: date },
       { k: 'bill', label: 'Is this a bill payment?', type: 'select', options: sel(st.bills.filter((b) => !billDone(b)).map((b) => [b.id, b.name]), 'No'), value: d.bill || '' },
-      { k: 'owe', label: 'Someone will pay me back for this', type: 'check', value: !!d.owedBy, full: true },
-      { k: 'owedBy', label: 'Who pays you back', value: d.owedBy || 'Wife', list: 'peopleList', full: true, hidden: !d.owedBy, hint: d.collected ? 'Paid back on ' + dLong(pday(d.collected)) : 'It still comes out of your account. You’ll see a reminder until you mark it collected.' },
+      { k: 'owe', label: 'Someone will pay me back for this', type: 'check', value: !!owedWho, full: true },
+      { k: 'owedBy', label: 'Who pays you back', value: owedWho || 'Wife', list: 'peopleList', hidden: !owedWho, hint: (partner || d).collected ? 'Paid back on ' + dLong(pday((partner || d).collected)) : 'You’ll see a reminder until you collect it.' },
+      { k: 'oweAmt', label: 'How much they pay', type: 'number', value: partner ? partner.orig : '', hidden: !owedWho, placeholder: 'All of it', hint: oweHint(partner ? +d.orig + +partner.orig : d.orig, partner ? partner.orig : null, d.cur) },
       { type: 'html', html: '<datalist id="peopleList">' + people().map((p) => '<option value="' + esc(p) + '">').join('') + '</datalist>' }
     ];
   }
@@ -1718,7 +1728,11 @@ function txSheet(type, t) {
     title: isNew ? 'Add' : 'Edit transaction', intro: seg, fields, submit: isNew ? 'Add' : 'Save',
     danger: isNew ? null : 'Delete',
     extraBtn: t && t.owedBy && !t.collected ? '<button class="btn" data-act="collect" data-who="' + esc(t.owedBy) + '">Collect</button>' : '',
-    onDanger: () => { const i = st.tx.indexOf(t); relinkRepay(t, false); st.tx.splice(i, 1); closeSheet(); commit('Deleted', () => { st.tx.splice(i, 0, t); relinkRepay(t, true); commit(); }); },
+    onDanger: () => {
+      const gone = [t].concat(partner ? [partner] : []);
+      gone.forEach((x) => relinkRepay(x, false)); st.tx = st.tx.filter((x) => gone.indexOf(x) < 0);
+      closeSheet(); commit('Deleted', () => { st.tx.push(...gone); gone.forEach((x) => relinkRepay(x, true)); commit(); });
+    },
     onSubmit: (v) => {
       const n = t || { id: uid(), created: Date.now() };
       n.type = type; n.date = v.date || dk(today0());
@@ -1742,13 +1756,25 @@ function txSheet(type, t) {
           n.category = v.category || null; n.pay = v.pay;
           const ob = v.owe ? (v.owedBy || '').trim() : '';
           if (v.owe && !ob) return 'Say who will pay you back.';
-          if (ob) n.owedBy = ob; else { delete n.owedBy; delete n.collected; delete n.collectedTx; }
+          const owe = ob ? (v.oweAmt > 0 ? r2(v.oweAmt) : n.orig) : 0;
+          if (owe > n.orig + 0.004) return 'They can’t pay back more than the amount.';
+          const split = ob && owe < n.orig - 0.004;
+          if (ob && !split) n.owedBy = ob; else { delete n.owedBy; delete n.collected; delete n.collectedTx; }
           if (v.bill) { n.bill = v.bill; const b = M.bill[v.bill]; const key = billKeyNear(b, pday(n.date)); n.billOcc = key; n.billMonth = key.slice(0, 7); if (!n.note) n.note = b.name; }
           else { delete n.bill; delete n.billOcc; delete n.billMonth; }
+          if (split) {
+            // Your part stays on this transaction; their part becomes a linked one they owe you
+            n.orig = r2(n.orig - owe); n.amount = r2(toGbp(n.cur, n.orig));
+            const p = partner || { id: uid(), created: Date.now(), type: 'expense' };
+            Object.assign(p, { date: n.date, cur: n.cur, orig: owe, rate: n.rate, amount: r2(toGbp(n.cur, owe)), category: n.category, pay: n.pay, owedBy: ob, split: n.id, note: (n.note || catName(n.category)) + ', ' + ob + '’s part' });
+            ['bill', 'billOcc', 'billMonth'].forEach((k) => { if (n[k]) p[k] = n[k]; else delete p[k]; });
+            if (!partner) st.tx.push(p);
+          } else if (partner) { relinkRepay(partner, false); st.tx.splice(st.tx.indexOf(partner), 1); }
         }
       }
       if (!t) st.tx.push(n);
-      commit(t ? 'Saved' : 'Added');
+      const p2 = st.tx.find((x) => x.split === n.id && x.owedBy);
+      commit((t ? 'Saved' : 'Added') + (p2 ? '. ' + p2.owedBy + ' owes you ' + fmt(p2.cur, p2.orig) : n.owedBy ? '. ' + n.owedBy + ' owes you ' + fmt(n.cur, n.orig) : ''));
     }
   });
 }
@@ -2344,12 +2370,16 @@ document.addEventListener('input', (e) => {
   const a = e.target.dataset && e.target.dataset.act;
   if (a === 'q') { ui.actQuery = e.target.value; ui.actLimit = 60; $('#txList').innerHTML = txListHtml(); }
   if (a === 'extra') { $('#extraOut').textContent = money(+e.target.value, true); }
+  if (e.target.id === 'f_orig' || e.target.id === 'f_oweAmt') {
+    const a2 = document.getElementById('f_oweAmt'), tot = document.getElementById('f_orig'), cur = document.getElementById('f_cur');
+    if (a2) { const h = a2.closest('label').querySelector('.hint'); if (h) h.textContent = oweHint(parseFloat(tot.value), a2.value === '' ? null : parseFloat(a2.value), cur ? cur.value : 'GBP'); }
+  }
 });
 document.addEventListener('change', (e) => {
   const a = e.target.dataset && e.target.dataset.act;
   if (a === 'extra') { st.dfPlan.extra = +e.target.value; commit(); }
   if (a === 'payinto') { st.payInto = e.target.value || undefined; commit(); }
-  if (e.target.id === 'f_owe') { const n = document.getElementById('f_owedBy'); if (n) { n.closest('label').hidden = !e.target.checked; if (e.target.checked && !n.value) n.value = 'Wife'; } }
+  if (e.target.id === 'f_owe') { const n = document.getElementById('f_owedBy'), a2 = document.getElementById('f_oweAmt'); if (n) { n.closest('label').hidden = !e.target.checked; if (e.target.checked && !n.value) n.value = 'Wife'; } if (a2) a2.closest('label').hidden = !e.target.checked; }
   if (a === 'profile') { closeSheet(); switchProfile(e.target.value); }
 });
 sheet.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && sheetSubmit) { e.preventDefault(); sheetSubmit(); } });
