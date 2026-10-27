@@ -13,7 +13,7 @@
 <title>Budget</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..750&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #E8EBF1; --surface: #FFFFFF; --sunk: #F2F4F8; --ink: #172036; --muted: #5A6378; --faint: #8C94A6; --line: #D6DBE5;
@@ -302,6 +302,184 @@ dialog.sheet::backdrop { background: rgba(10, 14, 26, .45); }
 .welcome .sheet-actions { margin-top: 26px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* =====================================================================
+   Spreadsheet layout
+   Gridlines, a row-number gutter, header cells, totals with an accounting
+   double rule. The one loud element is the "active cell" outline on the
+   figure that matters most on each tab.
+   ===================================================================== */
+:root {
+  --bg: #ECEEF2; --surface: #FFFFFF; --sunk: #F4F5F8; --head: #EEF0F4; --ink: #1B2130; --muted: #576073; --faint: #8F97A8; --line: #DCE0E7; --line-2: #C9CFD9;
+  --route-soft-2: #C9D1FA; --row-hover: #F2F4FE;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --head: #1F2431; --line-2: #394054; --route-soft-2: #3A4380; --row-hover: #1F2538; }
+}
+:root[data-theme="dark"] { --head: #1F2431; --line-2: #394054; --route-soft-2: #3A4380; --row-hover: #1F2538; }
+
+body { font: 400 15px/1.4 "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; font-variation-settings: normal; font-variant-numeric: tabular-nums; }
+.app { max-width: 1340px; padding: 12px 20px 120px; }
+.brand { font-family: "IBM Plex Sans", system-ui, sans-serif; font-variation-settings: normal; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.brand-mark { width: 22px; height: 22px; border-radius: 4px; border: 2px solid var(--route); background:
+  linear-gradient(var(--route), var(--route)) 0 50% / 100% 2px no-repeat,
+  linear-gradient(var(--route), var(--route)) 50% 0 / 2px 100% no-repeat; }
+.brand-mark::after { display: none; }
+.add-btn { height: 36px; border-radius: 8px; padding: 0 14px 0 10px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 8px; }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* Tabs read as sheet tabs on wide screens */
+@media (min-width: 721px) {
+  .tabs { width: auto; background: none; border: 0; border-bottom: 1px solid var(--line-2); border-radius: 0; padding: 0 0 0 4px; margin: 6px 0 18px; gap: 2px; }
+  .tabs button { border-radius: 6px 6px 0 0; padding: 8px 18px; border: 1px solid transparent; border-bottom: 0; margin-bottom: -1px; color: var(--muted); font-weight: 500; }
+  .tabs button:hover { background: var(--sunk); }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--line-2); box-shadow: inset 0 2px 0 var(--route); font-weight: 600; }
+}
+
+.big { font-weight: 600; letter-spacing: -0.015em; font-variation-settings: normal; }
+.big .p { font-size: .62em; font-weight: 500; }
+h2.h { font-family: "IBM Plex Sans", system-ui, sans-serif; font-variation-settings: normal; font-size: 16px; font-weight: 600; letter-spacing: 0; margin: 0; }
+.btn { height: 32px; border-radius: 7px; font-size: 14px; font-weight: 500; padding: 0 12px; }
+.btn.small { height: 30px; font-size: 13.5px; padding: 0 10px; }
+.btn.ghost { padding: 0 8px; }
+.seg { border-radius: 8px; padding: 2px; }
+.seg button { border-radius: 6px; padding: 5px 11px; font-size: 13.5px; font-weight: 500; }
+.pill { font-size: 12px; font-weight: 500; padding: 1px 7px; border-radius: 4px; }
+.panel { border-radius: 10px; }
+.callout { border-radius: 8px; margin: 14px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--late) 30%, transparent); }
+.owed { border-radius: 8px; margin-top: 12px; padding: 10px 14px; }
+.owed .go { border-radius: 6px; }
+.inline-select { border-radius: 8px; margin-top: 10px; }
+.stale { color: var(--amber); }
+.empty { padding: 18px 6px; }
+
+/* ---------- Named total cells ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 10px 14px 11px; display: flex; flex-direction: column; gap: 3px; min-width: 0; position: relative; }
+.kpi .k { font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif; font-size: 13px; font-weight: 500; color: var(--muted); }
+.kpi .v { font-size: 25px; font-weight: 600; line-height: 1.15; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .v .p { font-size: .62em; font-weight: 500; }
+.kpi small { font-size: 12.5px; color: var(--muted); min-height: 1em; }
+.kpi .dbar { margin-top: 4px; }
+.kpi.neg .v { color: var(--late); }
+.kpi.pos .v { color: var(--good); }
+/* The active cell: outlined like a selected cell, with the fill handle */
+.kpi.key { box-shadow: inset 0 0 0 2px var(--route); background: color-mix(in srgb, var(--route-soft) 45%, var(--surface)); }
+.kpi.key::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 7px; height: 7px; background: var(--route); border: 1.5px solid var(--surface); }
+.kpi.key .v { font-size: 28px; }
+
+/* ---------- Bars above each grid ---------- */
+.sheet-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; margin: 24px 0 8px; }
+.bar-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.hint-line { font-size: 13px; color: var(--faint); margin: 8px 2px 0; }
+.small-note { font-size: 13px; margin: 0 0 8px; }
+
+/* ---------- Grid ---------- */
+.grid-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; -webkit-overflow-scrolling: touch; }
+table.grid { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+.grid-wrap table.grid { min-width: 760px; }
+.side table.grid, .mini table.grid { min-width: 0; }
+table.grid col.c-rn { width: 38px; }
+table.grid th, table.grid td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: middle; }
+table.grid tr > :last-child { border-right: 0; }
+table.grid tbody tr:last-child td { border-bottom: 0; }
+table.grid thead th { background: var(--head); font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif; font-weight: 600; font-size: 13px; color: var(--muted); white-space: nowrap; border-bottom: 1px solid var(--line-2); padding: 6px 10px; }
+table.grid .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.grid th.num { text-align: right; }
+table.grid .rn { background: var(--head); color: var(--faint); font-size: 11.5px; text-align: center; padding: 0 4px; width: 38px; border-right: 1px solid var(--line-2); }
+table.grid tbody tr:hover td:not(.rn) { background: var(--row-hover); }
+table.grid tbody tr:hover .rn { color: var(--route); font-weight: 600; }
+.th-sort { border: 0; background: none; padding: 0; font: inherit; color: inherit; display: inline-flex; gap: 4px; align-items: center; }
+.th-sort:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+th[aria-sort] { color: var(--ink) !important; }
+.arr { font-size: 9px; color: var(--route); }
+th.num .th-sort { flex-direction: row-reverse; }
+
+.cell-btn { border: 0; background: none; padding: 0; margin: 0; text-align: left; font-weight: 500; color: var(--ink); display: block; max-width: 100%; }
+.cell-btn:hover { color: var(--route); }
+table.grid td .cell-btn { min-width: 130px; }
+.mini table.grid td .cell-btn { min-width: 0; }
+.cell-btn small, small.fx { display: block; font-size: 12px; color: var(--muted); font-weight: 400; line-height: 1.3; }
+.dt { white-space: nowrap; color: var(--muted); }
+.dt b { color: var(--ink); font-weight: 600; }
+.cat { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; vertical-align: 0; flex: none; }
+.cat .sw { margin-right: 0; }
+.pct { display: block; font-size: 13px; }
+.dbar { display: block; height: 5px; background: var(--sunk); border-radius: 1px; overflow: hidden; margin-top: 3px; min-width: 40px; }
+.dbar i { display: block; height: 100%; }
+
+/* Status and the paid checkbox */
+.stat { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.tick { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--line-2); background: var(--surface); display: grid; place-items: center; color: transparent; flex: none; }
+.tick svg { width: 14px; height: 14px; }
+.tick:hover { border-color: var(--route); color: var(--route); }
+.tick[aria-pressed="true"] { background: var(--route); border-color: var(--route); color: var(--route-ink); }
+
+/* Row states */
+table.grid tr.paid td:not(.rn), table.grid tr.assumed td:not(.rn) { color: var(--muted); }
+table.grid tr.paid .cell-btn, table.grid tr.assumed .cell-btn { color: var(--muted); }
+table.grid tr.paid .a { text-decoration: line-through; text-decoration-color: var(--faint); }
+table.grid tr.late td.rn { background: var(--late); color: #fff; }
+table.grid tr.late td:not(.rn) { background: color-mix(in srgb, var(--late-soft) 55%, var(--surface)); }
+table.grid tr.today td.rn { background: var(--amber); color: #fff; }
+table.grid tr.today td:not(.rn) { background: color-mix(in srgb, var(--amber-soft) 50%, var(--surface)); }
+table.grid tr.grp td { background: var(--sunk); padding-top: 9px; padding-bottom: 9px; }
+table.grid tr.grp td.rn { background: var(--head); }
+table.grid tr.note-row td { background: color-mix(in srgb, var(--route-soft) 35%, var(--surface)); font-style: italic; color: var(--muted); }
+table.grid tr.note-row td b { font-style: normal; color: var(--ink); }
+table.grid tr.note-row.late td { background: var(--late-soft); color: var(--late); font-style: normal; font-weight: 500; }
+table.grid tr.note-row.late .btn { margin-left: 10px; }
+table.grid tr.note-row.pay td { font-style: normal; color: var(--ink); background: color-mix(in srgb, var(--route-soft) 60%, var(--surface)); }
+table.grid tr.empty-row td { color: var(--muted); padding: 18px 12px; }
+table.grid tr.faint-row td { color: var(--muted); }
+.nw { white-space: nowrap; }
+
+/* Totals: rule above, accounting double rule under the figures */
+table.grid tfoot td { background: var(--head); border-top: 1.5px solid var(--ink); border-bottom: 0; font-weight: 500; }
+table.grid tfoot td.num b { border-bottom: 3px double var(--ink); padding-bottom: 1px; }
+table.grid tfoot td.num small.fx { margin-top: 3px; }
+
+/* Small side sheets */
+.mini { margin-top: 0; min-width: 0; overflow-x: auto; }
+.kpis + .mini, .owed + .mini, .callout + .mini { margin-top: 24px; }
+.mini .sheet-bar { margin-top: 0; }
+.mini > table.grid { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.mini > table.grid td, .mini > table.grid th { padding: 7px 10px; }
+.mini > table.grid tbody tr:last-child td { border-bottom: 1px solid var(--line); }
+.chart-box { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 12px 14px; margin-top: 18px; }
+.chart-box .sheet-bar { margin: 0 0 6px; }
+.chart-wrap { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; }
+.chart-wrap .chart { height: 200px; width: 100%; display: block; }
+.chart-y { display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; color: var(--muted); text-align: right; height: 200px; }
+.chart-x { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+.slider { gap: 10px; font-size: 13.5px; color: var(--muted); }
+.slider b { color: var(--ink); min-width: 56px; }
+.slider input { width: 160px; }
+
+/* Layouts */
+.cycle-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
+.cycle-grid .side { display: grid; gap: 18px; padding-top: 24px; }
+@media (max-width: 1180px) { .cycle-grid { grid-template-columns: minmax(0, 1fr); } .cycle-grid .side { grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); padding-top: 4px; } }
+.two { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 9fr); gap: 22px; align-items: start; }
+@media (max-width: 1240px) { .two { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+.two > div > .sheet-bar { min-height: 32px; }
+.search { margin: 0 0 10px; }
+.search input { height: 34px; border-radius: 7px; padding: 0 12px; font-size: 14px; }
+.chips button { border-radius: 6px; padding: 4px 10px; font-size: 13px; }
+
+@media (max-width: 720px) {
+  .app { padding: 8px 12px 130px; }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi .v { font-size: 21px; }
+  .kpi.key { grid-column: 1 / -1; }
+  .kpi.key .v { font-size: 26px; }
+  .sheet-bar { margin-top: 20px; }
+  table.grid { font-size: 13.5px; }
+  table.grid th, table.grid td { padding: 6px 8px; }
+  .slider input { width: 120px; }
+}
 </style>
 </head>
 <body>
@@ -317,6 +495,7 @@ dialog.sheet::backdrop { background: rgba(10, 14, 26, .45); }
 
   <nav class="tabs" role="tablist" aria-label="Views" id="tabs">
     <button role="tab" data-tab="cycle" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><path d="M7.5 12h9"/></svg>Pay cycle</button>
+    <button role="tab" data-tab="bills" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 9v11"/></svg>Bills</button>
     <button role="tab" data-tab="accounts" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></svg>Accounts</button>
     <button role="tab" data-tab="debt" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c5 0 7 3 9 7s4 7 7 7"/><path d="M4 19h16"/></svg>Debt</button>
     <button role="tab" data-tab="activity" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>Activity</button>
@@ -324,6 +503,7 @@ dialog.sheet::backdrop { background: rgba(10, 14, 26, .45); }
 
   <main id="main">
     <section id="v-cycle" role="tabpanel"></section>
+    <section id="v-bills" role="tabpanel" hidden></section>
     <section id="v-accounts" role="tabpanel" hidden></section>
     <section id="v-debt" role="tabpanel" hidden></section>
     <section id="v-activity" role="tabpanel" hidden></section>
@@ -893,15 +1073,72 @@ function commit(msg, undoFn) {
 function render() {
   setSync();
   document.querySelectorAll('#tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === ui.tab)));
-  ['cycle', 'accounts', 'debt', 'activity'].forEach((t) => { $('#v-' + t).hidden = t !== ui.tab; });
+  if (['cycle', 'bills', 'accounts', 'debt', 'activity'].indexOf(ui.tab) < 0) ui.tab = 'cycle';
+  ['cycle', 'bills', 'accounts', 'debt', 'activity'].forEach((t) => { $('#v-' + t).hidden = t !== ui.tab; });
   if (!hasData(st)) { $('#v-' + ui.tab).innerHTML = remote.ready ? welcomeHtml() : '<p class="empty">Loading your budget…</p>'; return; }
-  ({ cycle: renderCycle, accounts: renderAccounts, debt: renderDebt, activity: renderActivity })[ui.tab]();
+  ({ cycle: renderCycle, bills: renderBills, accounts: renderAccounts, debt: renderDebt, activity: renderActivity })[ui.tab]();
 }
 function welcomeHtml() {
   return '<div class="welcome"><h2 class="big">Start with what you have.</h2>' +
     '<p>Bring in a backup from your old tracker and everything comes across: accounts, cards, bills, loans and every transaction. Or start with an empty budget and add your first account.</p>' +
     '<div class="sheet-actions"><button class="btn primary" data-act="import">Import a backup</button><button class="btn" data-act="add-bank">Add an account</button></div></div>';
 }
+
+// =============== Spreadsheet building blocks ===============
+// Every view is built from the same parts: a strip of named total cells, and grids with a header row,
+// a row-number gutter, optional group rows with subtotals, and a totals row.
+const SORT = {}, SORT_DEF = { banks: { k: 'bal', dir: -1 }, cards: { k: 'util', dir: -1 } };
+const sortOf = (id) => (id in SORT ? SORT[id] : SORT_DEF[id] || null);
+const ordinal = (n) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+const swatch = (col) => '<i class="sw" style="background:' + col + '"></i>';
+function kpis(cells) {
+  return '<div class="kpis">' + cells.map((c) => '<div class="kpi' + (c.cls ? ' ' + c.cls : '') + '"><span class="k">' + esc(c.label) + '</span><b class="v">' + c.value + '</b>' + (c.note ? '<small>' + c.note + '</small>' : '') + '</div>').join('') + '</div>';
+}
+function dataBar(frac, col) {
+  const p = Math.max(0, Math.min(1, frac || 0)) * 100;
+  return '<span class="dbar"><i style="width:' + p.toFixed(1) + '%;background:' + (col || 'var(--route-soft-2)') + '"></i></span>';
+}
+// cols: [{ k, label, num, w, sort(r), html(r), cls(r) }]
+// opts: { id, sortable, rowAttr(r), rowCls(r), groups: [{ head, rows }], foot: [cells], empty, before, after }
+function grid(cols, rows, opts) {
+  opts = opts || {};
+  const id = opts.id, s = id && opts.sortable !== false ? sortOf(id) : null;
+  const sorted = (list) => {
+    if (!s) return list;
+    const c = cols.find((x) => x.k === s.k); if (!c || !c.sort) return list;
+    return list.slice().sort((a, b) => { const x = c.sort(a), y = c.sort(b); return (x < y ? -1 : x > y ? 1 : 0) * s.dir; });
+  };
+  let h = '<div class="grid-wrap"><table class="grid"' + (opts.minW ? ' style="min-width:' + opts.minW + 'px"' : '') + '><colgroup><col class="c-rn">' + cols.map((c) => '<col' + (c.w ? ' style="width:' + c.w + '"' : '') + '>').join('') + '</colgroup><thead><tr><th class="rn" aria-hidden="true"></th>';
+  cols.forEach((c) => {
+    const can = id && opts.sortable !== false && c.sort, on = s && s.k === c.k;
+    const lbl = esc(c.label) + (on ? '<span class="arr">' + (s.dir > 0 ? '▲' : '▼') + '</span>' : '');
+    h += '<th class="' + (c.num ? 'num' : '') + '"' + (on ? ' aria-sort="' + (s.dir > 0 ? 'ascending' : 'descending') + '"' : '') + '>' +
+      (can ? '<button class="th-sort" data-act="sort" data-t="' + id + '" data-k="' + c.k + '">' + lbl + '</button>' : lbl) + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  let n = 0;
+  const rowHtml = (r) => {
+    n++;
+    const cls = opts.rowCls ? opts.rowCls(r) : '';
+    return '<tr' + (cls ? ' class="' + cls + '"' : '') + (opts.rowAttr ? ' ' + opts.rowAttr(r) : '') + '><td class="rn">' + n + '</td>' +
+      cols.map((c) => '<td class="' + (c.num ? 'num' : '') + (c.cls ? ' ' + c.cls(r) : '') + '">' + c.html(r) + '</td>').join('') + '</tr>';
+  };
+  if (opts.groups) {
+    opts.groups.forEach((g) => { h += '<tr class="grp"><td class="rn"></td>' + g.head + '</tr>'; sorted(g.rows).forEach((r) => { h += rowHtml(r); }); });
+  } else {
+    if (opts.before) h += opts.before;
+    sorted(rows).forEach((r) => { h += rowHtml(r); });
+    if (opts.after) h += opts.after;
+  }
+  if (!n && !opts.before && !opts.after) h += '<tr class="empty-row"><td class="rn"></td><td colspan="' + cols.length + '">' + esc(opts.empty || 'Nothing here yet.') + '</td></tr>';
+  h += '</tbody>';
+  if (opts.foot) h += '<tfoot><tr><td class="rn"></td>' + opts.foot.join('') + '</tr></tfoot>';
+  return h + '</table></div>';
+}
+const nameBtn = (act, attrs, label, title) => '<button class="cell-btn" data-act="' + act + '" ' + attrs + (title ? ' title="' + title + '"' : '') + '>' + label + '</button>';
+const fcell = (html, num, span) => '<td' + (num ? ' class="num"' : '') + (span > 1 ? ' colspan="' + span + '"' : '') + '>' + (html || '') + '</td>';
+const gbpNote = (cur, n) => ((cur || 'GBP') !== 'GBP' ? '<small class="fx">≈ ' + money(toGbp(cur, n)) + '</small>' : '');
+const sheetHead = (title, right) => '<div class="sheet-bar"><h2 class="h">' + title + '</h2>' + (right ? '<div class="bar-tools">' + right + '</div>' : '') + '</div>';
 
 // ---------- Pay cycle ----------
 function catText(i) {
@@ -921,22 +1158,6 @@ function tipText(i) {
   return lines.map(esc).join('&#10;');
 }
 const groupName = (i) => (i.kind === 'in' ? 'Money in' : i.cat === '__cards' ? 'Card payments' : topCat(i.cat) ? topCat(i.cat).name : 'Other');
-function catLabel(i, group) {
-  if (i.cat === '__cards') return group === 'Card payments' ? '' : 'Card payment';
-  const c = M.cat[i.cat]; if (!c) return '';
-  return c.name === group ? '' : c.name;
-}
-function stopHtml(i, t0, group, mode) {
-  const late = open_(i) && i.date < t0, isToday = open_(i) && +i.date === +t0;
-  const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '') + (mode === 'in' ? ' inday' : mode === 'start' ? ' daystart' : '');
-  const status = i.paid ? '' : late ? '<span class="pill late">' + (i.kind === 'in' ? 'Not received' : 'Unpaid') + '</span>' : isToday ? '<span class="pill today">Due today</span>' : '';
-  const amount = i.unknown ? '<span class="faint">Set amount</span>' : (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
-  const col = CAT_COLORS[groupName(i)] || 'var(--faint)';
-  return '<li class="' + cls + '"><div class="date">' + (mode === 'in' ? '' : '<b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()]) + '</div><span class="node" style="border-color:' + col + ';background:' + (i.paid ? col : 'color-mix(in srgb, ' + col + ' 22%, var(--surface))') + '"></span>' +
-    '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '" data-tip="' + tipText(i) + '"><span class="nm">' + esc(i.name) + '</span>' + status + '</button>' +
-    '<span class="amt">' + (i.kind === 'in' && !i.unknown ? '<span class="pos">+' + fmt(i.cur, i.amt) + '</span>' : amount) + '</span>' +
-    '<button class="tick" data-act="tick" data-uid="' + esc(i.uid) + '" aria-label="' + (i.paid ? 'Mark ' + esc(i.name) + ' as not paid' : 'Mark ' + esc(i.name) + ' as paid') + '" aria-pressed="' + !!i.paid + '">' + ICON_CHECK + '</button></li>';
-}
 let CAT_COLORS = {};
 function setCatColors(P) {
   const tot = {}, seen = [];
@@ -946,152 +1167,224 @@ function setCatColors(P) {
   CAT_COLORS = {}; let n = 0;
   seen.forEach((k) => { CAT_COLORS[k] = k === 'Other' ? 'var(--faint)' : k === 'Money in' ? 'var(--good)' : PALETTE[n++ % PALETTE.length]; });
 }
+const catCol = (k) => CAT_COLORS[k] || 'var(--faint)';
+function statusCell(i, t0) {
+  const late = open_(i) && i.date < t0, isToday = open_(i) && +i.date === +t0;
+  const pill = i.paid ? '<span class="pill good">' + (i.kind === 'in' ? 'Received' : 'Paid') + '</span>'
+    : i.assumed ? '<span class="pill">' + (i.kind === 'in' ? 'In already' : 'Gone out') + '</span>'
+    : late ? '<span class="pill late">' + (i.kind === 'in' ? 'Not received' : 'Late') + '</span>'
+    : isToday ? '<span class="pill today">Due today</span>'
+    : isCard(i.pay) && i.kind !== 'in' ? '<span class="pill">On card</span>' : '';
+  return '<span class="stat">' + pill + '<button class="tick" data-act="tick" data-uid="' + esc(i.uid) + '" aria-label="' + (i.paid ? 'Mark ' + esc(i.name) + ' as not paid' : 'Mark ' + esc(i.name) + ' as paid') + '" aria-pressed="' + !!i.paid + '">' + ICON_CHECK + '</button></span>';
+}
+function amtCell(i) {
+  if (i.unknown) return '<span class="faint">Set amount</span>';
+  const s = (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
+  return '<span class="a' + (i.kind === 'in' ? ' pos' : '') + '">' + (i.kind === 'in' ? '+' : '') + s + '</span>' + gbpNote(i.cur, i.amt);
+}
+// Cash moves only for open items paid from (or into) an account or cash, not cards
+const movesCash = (i) => open_(i) && (i.kind === 'in' || !isCard(i.pay));
 function renderCycle() {
   const P = cyclePicture(), t0 = today0();
   setCatColors(P);
-  const c = ui.cycleView ? P.c1 : P.c0, items = ui.cycleView ? P.next : P.now;
-  const daysLeft = daysBetween(t0, P.c0.end);
-  let h = '<div class="cycle-grid"><div>';
-  // Hero
-  const waiting = st.startDate && pday(st.startDate) > t0;
-  h += '<div class="hero"><p class="cap">' + (waiting ? 'In your accounts now' : P.free < 0 ? 'Short before payday' : 'Free to spend before payday') + '</p><h2 class="big' + (P.free < 0 ? ' neg' : '') + '">' + bigMoney(P.free) + '</h2>' +
-    '<p class="sub">' + (waiting ? 'Your fresh start begins on ' + dLong(pday(st.startDate)) + '. That morning, update your balances on the Accounts tab.' :
-    money(P.cash) + ' across your accounts, with ' + money(P.dueNow) + ' of bills still to go out' + (P.inNow > 0.005 ? ' and ' + money(P.inNow) + ' still to come in' : '') + ' before payday on ' + dLong(P.c0.end) + (daysLeft === 1 ? ', tomorrow.' : ', in ' + daysLeft + ' days.')) + '</p>';
-  // Runway
-  const span = P.c0.end - P.c0.start, pos = (d) => Math.max(0, Math.min(100, ((d - P.c0.start) / span) * 100));
-  h += '<div class="runway" aria-hidden="true"><div class="line"></div><div class="done" style="width:' + pos(t0) + '%"></div>' +
-    P.now.map((i) => '<span class="dot' + (!open_(i) ? ' paid' : i.date < t0 ? ' late' : '') + '" style="left:' + pos(i.date) + '%"></span>').join('') +
-    '<span class="now" style="left:' + pos(t0) + '%"><span>Today</span></span><span class="end">' + dShort(P.c0.start) + '</span><span class="end r">Payday ' + dShort(P.c0.end) + '</span><span class="cap-end">£</span></div></div>';
-  // Shortfall
+  const view = ui.cycleView ? 1 : 0, c = view ? P.c1 : P.c0, items = view ? P.next : P.now;
+  const daysLeft = daysBetween(t0, P.c0.end), waiting = st.startDate && pday(st.startDate) > t0;
+  const leftNext = P.pay + P.inNext - P.billsNext;
+  let h = kpis([
+    { label: 'Cash in accounts', value: bigMoney(P.cash), cls: P.cash < 0 ? 'neg' : '', note: st.banks.length + ' accounts' },
+    { label: 'Bills before payday', value: bigMoney(P.dueNow), note: waiting ? 'Fresh start on ' + dShort(pday(st.startDate)) : P.now.filter((i) => open_(i) && i.kind !== 'in').length + ' unpaid' },
+    { label: waiting ? 'In your accounts now' : 'Free before payday', value: bigMoney(P.free), cls: 'key' + (P.free < 0 ? ' neg' : ''), note: 'Payday ' + dLong(P.c0.end) + (daysLeft === 1 ? ', tomorrow' : ', in ' + daysLeft + ' days') },
+    { label: 'Pay', value: P.pay ? bigMoney(P.pay) : '<button class="btn small" data-act="settings">Set your pay</button>', note: 'Expected ' + dShort(P.c1.start) },
+    { label: 'Left after next cycle', value: bigMoney(leftNext), cls: leftNext < 0 ? 'neg' : '', note: 'Pay minus account bills to ' + dShort(addDays(P.c1.end, -1)) }
+  ]);
   if (P.shortNow.length) {
     h += '<div class="callout"><div>' + (P.shortNow.length === 1 ? '<b>' + esc(P.shortNow[0].b.name) + '</b> is ' + fmt(P.shortNow[0].b.cur, P.shortNow[0].short) + ' short for its bills before payday.' :
       'Not enough in ' + P.shortNow.length + ' accounts for bills before payday: ' + P.shortNow.map((a) => '<b>' + esc(a.b.name) + '</b> ' + fmt(a.b.cur, a.short)).join(', ') + '.') + '</div></div>';
   }
   h += owedCardsHtml();
-  // Route
-  h += '<div class="route-head"><div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !ui.cycleView + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!ui.cycleView + '">Next cycle</button></div>' +
-    '<div class="route-tools"><div class="seg" role="group" aria-label="Sort bills"><button data-act="groupby" data-v="date" aria-pressed="' + (ui.groupBy !== 'cat' && ui.groupBy !== 'acct') + '">By date</button><button data-act="groupby" data-v="cat" aria-pressed="' + (ui.groupBy === 'cat') + '">By category</button><button data-act="groupby" data-v="acct" aria-pressed="' + (ui.groupBy === 'acct') + '">By account</button></div>' +
-    '<span class="muted" style="font-size:14px">' + dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)) + '</span></div></div>';
-  const legendHtml = () => { const ks = []; items.forEach((i) => { const k = groupName(i); if (ks.indexOf(k) < 0) ks.push(k); }); ks.sort((a, b) => Object.keys(CAT_COLORS).indexOf(a) - Object.keys(CAT_COLORS).indexOf(b)); return ks.length ? '<div class="mini-legend">' + ks.map((k) => '<span><i style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></i>' + esc(k) + '</span>').join('') + '</div>' : ''; };
-  if (ui.groupBy === 'cat' || ui.groupBy === 'acct') {
-    const byAcct = ui.groupBy === 'acct';
+
+  const by = ui.groupBy === 'cat' || ui.groupBy === 'acct' ? ui.groupBy : 'date';
+  const tools = '<div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !view + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!view + '">Next cycle</button></div>' +
+    '<div class="seg" role="group" aria-label="Arrange rows"><button data-act="groupby" data-v="date" aria-pressed="' + (by === 'date') + '">By date</button><button data-act="groupby" data-v="cat" aria-pressed="' + (by === 'cat') + '">By category</button><button data-act="groupby" data-v="acct" aria-pressed="' + (by === 'acct') + '">By account</button></div>' +
+    '<button class="btn small" data-act="bills">Edit bills</button>';
+  h += '<div class="cycle-grid"><div class="main-col">' + sheetHead(dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)), tools);
+
+  const cols = [
+    { k: 'date', label: 'Date', w: '86px', html: (i) => '<span class="dt">' + DOW[i.date.getDay()] + ' <b>' + i.date.getDate() + ' ' + MON[i.date.getMonth()] + '</b></span>' },
+    { k: 'name', label: 'Item', w: '30%', html: (i) => nameBtn('item', 'data-uid="' + esc(i.uid) + '"', esc(i.name) + (i.owner ? '<small>' + esc(i.owner) + ' plan</small>' : ''), tipText(i)) },
+    { k: 'cat', label: 'Category', html: (i) => '<span class="cat">' + swatch(catCol(groupName(i))) + esc(i.kind === 'in' ? 'Money in' : i.cat === '__cards' ? 'Card payment' : catName(i.cat)) + '</span>' },
+    { k: 'pay', label: 'Account', html: (i) => '<span class="muted nw">' + esc(srcName(i.pay)) + '</span>' },
+    { k: 'amt', label: 'Amount', num: true, w: '110px', html: amtCell },
+  ];
+  const showRun = by === 'date';
+  let run = view ? P.pay : P.cash;
+  if (showRun) cols.push({ k: 'run', label: view ? 'Left of pay' : 'Cash after', num: true, w: '110px', html: (i) => { if (movesCash(i)) run += (i.kind === 'in' ? 1 : -1) * i.gbp; return '<span class="' + (run < 0 ? 'neg' : movesCash(i) ? '' : 'faint') + '">' + money(run) + '</span>'; } });
+  cols.push({ k: 'st', label: 'Status', w: '138px', html: (i) => statusCell(i, t0) });
+  const rowCls = (i) => [i.paid ? 'paid' : '', i.assumed ? 'assumed' : '', open_(i) && i.date < t0 ? 'late' : '', open_(i) && +i.date === +t0 ? 'today' : ''].filter(Boolean).join(' ');
+  const N = cols.length;
+  const emptyMsg = waiting && !view ? 'Your fresh start begins on ' + dLong(pday(st.startDate)) + '. Switch to Next cycle to see what’s coming.' : 'Nothing due in this cycle.';
+  const outAll = items.filter((i) => i.kind !== 'in'), inAll = items.filter((i) => i.kind === 'in');
+  const sumOut = outAll.reduce((s, i) => s + i.gbp, 0), sumLeft = outAll.filter(open_).reduce((s, i) => s + i.gbp, 0), sumIn = inAll.reduce((s, i) => s + i.gbp, 0);
+  const foot = [fcell('<b>Total</b>' + (sumIn > 0.005 ? ' <span class="pos">+' + money(sumIn) + ' in</span>' : ''), false, 4), fcell('<b>' + money(sumOut) + '</b>' + (sumLeft < sumOut - 0.005 ? '<small class="fx">' + money(sumLeft) + ' unpaid</small>' : ''), true)];
+  if (showRun) foot.push(fcell('<b class="' + ((view ? leftNext : P.free) < 0 ? 'neg' : '') + '">' + money(view ? leftNext : P.free) + '</b>', true));
+  foot.push(fcell(''));
+  if (by === 'date') {
+    const lateItems = view ? [] : items.filter((i) => open_(i) && i.kind !== 'in' && i.date < t0);
+    let before = '<tr class="note-row"><td class="rn"></td><td colspan="' + (N - 2) + '">' + (view ? 'Pay lands' + (M.bank[st.payInto] ? ' in ' + esc(M.bank[st.payInto].name) : '') + ' on ' + dLong(c.start) : 'Cash across your accounts today') + '</td><td class="num"><b>' + (view ? money(P.pay) : money(P.cash)) + '</b></td><td></td></tr>';
+    if (lateItems.length > 1) before += '<tr class="note-row late"><td class="rn"></td><td colspan="' + N + '">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></td></tr>';
+    const after = '<tr class="note-row pay"><td class="rn"></td><td><span class="dt">' + DOW[c.end.getDay()] + ' <b>' + c.end.getDate() + ' ' + MON[c.end.getMonth()] + '</b></span></td><td colspan="' + (N - 1) + '"><b>Payday</b>' + (P.pay ? ' <span class="muted">about ' + money(P.pay) + '</span>' : '') + '</td></tr>';
+    const list = items.slice();
+    if (!list.length) h += grid(cols, [], { before: before + '<tr class="empty-row"><td class="rn"></td><td colspan="' + N + '">' + esc(emptyMsg) + '</td></tr>', after, rowCls });
+    else h += grid(cols, list, { before, after, rowCls, foot });
+  } else {
+    const byAcct = by === 'acct';
     const keyOf = (i) => (byAcct ? (i.pay || 'cash') : groupName(i));
     const gmap = {}; items.forEach((i) => { const k = keyOf(i); (gmap[k] = gmap[k] || []).push(i); });
-    const order = Object.keys(gmap).map((k) => { const l = gmap[k], outs = l.filter((i) => i.kind !== 'in'), ins = l.filter((i) => i.kind === 'in'); return [k, l, outs.filter(open_).reduce((s, i) => s + i.gbp, 0), outs.reduce((s, i) => s + i.gbp, 0), ins.reduce((s, i) => s + i.gbp, 0), outs.length, ins.length]; }).sort((a, b) => (b[3] - a[3]) || (b[4] - a[4]));
-    h += '<div>' + (byAcct ? legendHtml() : '');
-    if (!order.length) h += '<p class="empty">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday.' : 'Nothing due in this cycle.') + '</p>';
-    order.forEach(([k, list, left, all, inAll, nOut, nIn]) => {
+    const groups = Object.keys(gmap).map((k) => {
+      const l = gmap[k].slice().sort((a, b) => a.date - b.date || a.name.localeCompare(b.name));
+      const outs = l.filter((i) => i.kind !== 'in'), all = outs.reduce((s, i) => s + i.gbp, 0), left = outs.filter(open_).reduce((s, i) => s + i.gbp, 0), ins = l.filter((i) => i.kind === 'in').reduce((s, i) => s + i.gbp, 0);
       const bank = byAcct ? M.bank[k] : null;
       const title = byAcct ? srcName(k) : k;
-      const sw = byAcct ? '' : '<span class="sw" style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></span>';
-      const extra = bank && bankBal(bank) != null ? ', has ' + fmt(bank.cur, bankBal(bank)) + ' now' : '';
-      const count = [nOut ? nOut + (nOut > 1 ? ' bills' : ' bill') : '', nIn ? nIn + ' coming in' : ''].filter(Boolean).join(', ');
-      const amtH = nOut ? money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + (inAll > 0.005 ? '<small class="pos">+' + money(inAll) + ' coming in</small>' : '') : '<span class="pos">+' + money(inAll) + '</span>';
-      h += '<div class="cat-h">' + sw + '<div style="min-width:0"><h3 class="h">' + esc(title) + '</h3><span class="muted" style="font-size:13.5px">' + count + esc(extra) + '</span></div><span class="amt">' + amtH + '</span></div>' +
-        '<ol class="route">' + list.slice().sort((a, b) => a.date - b.date || a.name.localeCompare(b.name)).map((i) => stopHtml(i, t0, k)).join('') + '</ol>';
-    });
-    h += '</div><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Bills and money in</button></p></div>';
-  } else {
-  h += legendHtml() + '<ol class="route">';
-  const lateItems = ui.cycleView ? [] : items.filter((i) => open_(i) && i.kind !== 'in' && i.date < t0);
-  if (!ui.cycleView && lateItems.length > 1) h += '<li class="stop group"><span></span><span class="node"></span><div class="lbl">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></div></li>';
-  let markerDone = !!ui.cycleView;
-  // One block per day; within a day, bills of the same kind sit together
-  const corder = Object.keys(CAT_COLORS), days = [];
-  items.forEach((i) => { const k = dk(i.date); let d = days[days.length - 1]; if (!d || d.k !== k) { d = { k, date: i.date, list: [] }; days.push(d); } d.list.push(i); });
-  days.forEach((d) => {
-    d.list.sort((a, b) => (a.kind === 'in' ? 0 : 1) - (b.kind === 'in' ? 0 : 1) || corder.indexOf(groupName(a)) - corder.indexOf(groupName(b)) || a.name.localeCompare(b.name));
-    if (!markerDone && d.date >= t0) { h += todayMarker(t0); markerDone = true; }
-    if (d.list.length === 1) { h += stopHtml(d.list[0], t0, undefined, 'start'); return; }
-    const outs = d.list.filter((i) => i.kind !== 'in'), nIn = d.list.length - outs.length;
-    const left = outs.filter(open_).reduce((s, i) => s + i.gbp, 0), all = outs.reduce((s, i) => s + i.gbp, 0);
-    const inSum = d.list.filter((i) => i.kind === 'in').reduce((s, i) => s + i.gbp, 0);
-    const count = [outs.length ? outs.length + (outs.length > 1 ? ' bills' : ' bill') : '', nIn ? '+' + nIn + ' in' : ''].filter(Boolean).join(', ');
-    h += '<li class="stop dayhead daystart"><div class="date"><b>' + d.date.getDate() + '</b>' + MON[d.date.getMonth()] + '</div><span class="node"></span>' +
-      '<div class="lbl">' + DOWL[d.date.getDay()] + '<span>' + count + '</span></div>' +
-      '<span class="amt">' + (!outs.length ? '<span class="pos">+' + money(inSum) + '</span>' : left > 0.005 ? money(left) + (left < all - 0.005 ? '<small>left of ' + money(all) + '</small>' : '') : '<span class="muted" style="font-weight:500">All paid</span>') + '</span><span></span></li>' +
-      d.list.map((i) => stopHtml(i, t0, undefined, 'in')).join('');
-  });
-  if (!markerDone) h += todayMarker(t0);
-  if (!items.length) h += '<li class="stop marker"><span></span><span class="node"></span><div class="lbl">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday' : 'Nothing due in this cycle') + '</div></li>';
-  h += '<li class="stop marker pay"><div class="date"><b>' + c.end.getDate() + '</b>' + MON[c.end.getMonth()] + '</div><span class="node">£</span><div class="lbl">Payday' + (P.pay ? '<span>about ' + money(P.pay) + '</span>' : '') + '</div></li>';
-  h += '</ol><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Bills and money in</button></p></div>';
+      const extra = bank && bankBal(bank) != null ? '<span class="muted"> has ' + fmt(bank.cur, bankBal(bank)) + '</span>' : '';
+      const head = '<td colspan="4">' + (byAcct ? '' : swatch(catCol(k))) + '<b>' + esc(title) + '</b>' + extra + ' <span class="faint">' + l.length + (l.length > 1 ? ' rows' : ' row') + '</span></td>' +
+        '<td class="num"><b>' + (outs.length ? money(all) : '<span class="pos">+' + money(ins) + '</span>') + '</b>' + (outs.length && left < all - 0.005 ? '<small class="fx">' + money(left) + ' unpaid</small>' : '') + '</td><td></td>';
+      return { head, rows: l, all, ins };
+    }).sort((a, b) => b.all - a.all || b.ins - a.ins);
+    h += groups.length ? grid(cols, [], { groups, rowCls, foot }) : grid(cols, [], { empty: emptyMsg });
   }
+  h += '</div>';
 
-  // Side: payday plan
-  h += '<div class="side"><div class="panel plan"><h2 class="h">When you’re paid on ' + dLong(P.c1.start) + '</h2>';
-  const left = P.pay + P.inNext - P.billsNext;
-  h += '<div class="sum-line"><span>Pay</span><span class="amt">' + (P.pay ? money(P.pay) : '<button class="btn small" data-act="settings">Set your pay</button>') + '</span></div>' +
-    (P.inNext > 0.005 ? '<div class="sum-line"><span>Coming in from others</span><span class="amt pos">+' + money(P.inNext) + '</span></div>' : '') +
-    '<div class="sum-line"><span>Bills from your accounts until ' + dShort(addDays(P.c1.end, -1)) + '</span><span class="amt">−' + money(P.billsNext) + '</span></div>' +
-    '<div class="sum-line total"><span>Left for everything else</span><span class="amt' + (left < 0 ? ' neg' : '') + '">' + money(left) + '</span></div>';
-  if (P.onCardsNext > 0.005) h += '<p class="muted" style="font-size:14px;margin:8px 0 0">Plus ' + money(P.onCardsNext) + ' of bills that go on your cards.</p>';
-  // Moves
+  // Side: payday plan, moves, where the pay goes
+  h += '<div class="side"><div class="mini">' + sheetHead('When you’re paid on ' + dShort(P.c1.start));
+  h += '<table class="grid tight"><tbody>' +
+    '<tr><td>Pay</td><td class="num">' + (P.pay ? money(P.pay) : '<button class="btn small" data-act="settings">Set your pay</button>') + '</td></tr>' +
+    (P.inNext > 0.005 ? '<tr><td>Coming in from others</td><td class="num pos">+' + money(P.inNext) + '</td></tr>' : '') +
+    '<tr><td>Bills from your accounts</td><td class="num">−' + money(P.billsNext) + '</td></tr>' +
+    (P.onCardsNext > 0.005 ? '<tr class="faint-row"><td>Bills that go on cards</td><td class="num muted">' + money(P.onCardsNext) + '</td></tr>' : '') +
+    '</tbody><tfoot><tr><td><b>Left for everything else</b></td><td class="num"><b class="' + (leftNext < 0 ? 'neg' : '') + '">' + money(leftNext) + '</b></td></tr></tfoot></table>';
   const payInto = M.bank[st.payInto];
   const moves = P.moves.filter((a) => a.b.id !== st.payInto && a.move > 0.005).sort((a, b) => toGbp(b.b.cur, b.move) - toGbp(a.b.cur, a.move));
   if (!payInto && P.moves.length) {
     h += '<div class="inline-select"><span>Which account does your pay land in?</span><select data-act="payinto"><option value="">Choose</option>' + st.banks.map((b) => '<option value="' + b.id + '">' + esc(b.name) + '</option>').join('') + '</select></div>';
   }
+  h += '</div>';
   if (moves.length) {
     const tot = moves.reduce((s, a) => s + toGbp(a.b.cur, a.move), 0);
-    h += '<div class="moves"><h3 class="h">Move ' + money(tot) + (payInto ? ' out of ' + esc(payInto.name) : '') + '</h3>' + moves.map((a) => {
-      const foreign = (a.b.cur || 'GBP') !== 'GBP';
-      return '<div class="move"><span class="nm">' + esc(a.b.name) + '</span><span class="amt">' + fmt(a.b.cur, a.move) + (foreign ? '<small class="muted" style="display:block;font-weight:400">≈ ' + money(toGbp(a.b.cur, a.move)) + '</small>' : '') + '</span>' +
-        '<span class="mt">Bills of ' + fmt(a.b.cur, a.need) + ', ' + (a.after < 0 ? 'overdrawn by ' + fmt(a.b.cur, -a.after) : 'will have ' + fmt(a.b.cur, a.after)) + '</span></div>';
-    }).join('') + '</div>';
+    h += '<div class="mini">' + sheetHead('Move ' + money(tot) + (payInto ? ' out of ' + esc(payInto.name) : '')) +
+      '<table class="grid tight"><thead><tr><th>To</th><th class="num">Move</th><th class="num">Bills</th><th class="num">Has after</th></tr></thead><tbody>' +
+      moves.map((a) => '<tr><td>' + esc(a.b.name) + '</td><td class="num"><b>' + fmt(a.b.cur, a.move) + '</b>' + gbpNote(a.b.cur, a.move) + '</td><td class="num">' + fmt(a.b.cur, a.need) + '</td><td class="num' + (a.after < 0 ? ' neg' : '') + '">' + fmt(a.b.cur, a.after) + '</td></tr>').join('') +
+      '</tbody></table></div>';
   }
-  h += '</div>';
-  // Where the pay goes
   const groups = {};
-  P.next.filter((i) => open_(i) && i.kind !== 'in').forEach((i) => {
-    const k = i.cat === '__cards' ? 'Card payments' : (topCat(i.cat) ? topCat(i.cat).name : 'Other');
-    groups[k] = (groups[k] || 0) + i.gbp;
-  });
+  P.next.filter((i) => open_(i) && i.kind !== 'in').forEach((i) => { const k = groupName(i); groups[k] = (groups[k] || 0) + i.gbp; });
   const gl = Object.entries(groups).sort((a, b) => b[1] - a[1]), gt = gl.reduce((s, g) => s + g[1], 0);
   if (gt > 0) {
-    h += '<div class="flat"><h3 class="h">Where next cycle’s bills go</h3><div class="bar" style="height:14px;border-radius:7px">' + gl.map((g) => '<i style="width:' + (g[1] / gt * 100) + '%;background:' + (CAT_COLORS[g[0]] || 'var(--faint)') + '"></i>').join('') + '</div>' +
-      '<div class="legend">' + gl.map((g) => '<div><i style="background:' + (CAT_COLORS[g[0]] || 'var(--faint)') + '"></i><span>' + esc(g[0]) + '</span><span class="amt">' + money(g[1]) + '</span></div>').join('') + '</div></div>';
+    h += '<div class="mini">' + sheetHead('Next cycle by category') + '<table class="grid tight"><thead><tr><th>Category</th><th class="num">Amount</th><th class="num" style="width:34%">Share</th></tr></thead><tbody>' +
+      gl.map((g) => '<tr><td>' + swatch(catCol(g[0])) + esc(g[0]) + '</td><td class="num">' + money(g[1]) + '</td><td class="num"><span class="pct">' + Math.round(g[1] / gt * 100) + '%</span>' + dataBar(g[1] / gt, catCol(g[0])) + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>' + money(gt) + '</b></td><td></td></tr></tfoot></table></div>';
   }
   h += '</div></div>';
   $('#v-cycle').innerHTML = h;
 }
-function todayMarker(t0) { return '<li class="stop marker"><div class="date"><b>' + t0.getDate() + '</b>' + MON[t0.getMonth()] + '</div><span class="node"></span><div class="lbl">Today<span>' + DOW[t0.getDay()] + '</span></div></li>'; }
 
 // ---------- Accounts ----------
 function renderAccounts() {
   const t0 = today0(), cash = cashNow();
-  const banks = st.banks.slice().sort((a, b) => bankGbp(b) - bankGbp(a));
-  const cards = st.cards.slice().sort((a, b) => toGbp(b.cur, cardBal(b)) - toGbp(a.cur, cardBal(a)));
-  const owed = cards.reduce((s, c) => s + Math.max(0, toGbp(c.cur, cardBal(c))), 0);
-  const lim = cards.filter((c) => c.limit > 0).reduce((s, c) => s + toGbp(c.cur, c.limit), 0);
+  const owed = st.cards.reduce((s, c) => s + Math.max(0, toGbp(c.cur, cardBal(c))), 0);
+  const lim = st.cards.filter((c) => c.limit > 0).reduce((s, c) => s + toGbp(c.cur, c.limit), 0);
   const stale = st.banks.filter((b) => !b.balDate || daysBetween(pday(b.balDate), t0) > 7).length;
-  let h = '<div class="lead"><div><p class="cap">Cash across ' + st.banks.length + ' accounts</p><h2 class="big' + (cash < 0 ? ' neg' : '') + '">' + bigMoney(cash) + '</h2>' +
-    (stale ? '<p class="sub stale">' + stale + ' balance' + (stale > 1 ? 's haven’t' : ' hasn’t') + ' been checked in over a week.</p>' : '<p class="sub">All balances checked this week.</p>') + '</div>' +
-    '<button class="btn primary" data-act="checkin">Update balances</button></div>';
-  h += '<div class="two"><div class="panel"><div class="sec-head"><h2 class="h">Bank accounts</h2><button class="btn ghost small" data-act="add-bank">Add account</button></div><ul class="list">';
-  banks.forEach((b) => {
-    const bal = bankBal(b), days = b.balDate ? daysBetween(pday(b.balDate), t0) : null, cur = b.cur || 'GBP';
-    h += '<li><button class="row" data-act="bank" data-id="' + b.id + '"><span class="nm">' + esc(b.name) + (b.acct4 ? ' <span class="faint">••' + esc(b.acct4) + '</span>' : '') + '</span>' +
-      '<span class="mt' + (days > 7 ? ' stale' : '') + '">' + (days == null ? 'Balance not set' : days === 0 ? 'Checked today' : 'Checked ' + days + (days === 1 ? ' day ago' : ' days ago')) + '</span>' +
-      '<span class="rt amt' + (bal < 0 ? ' neg' : '') + '">' + (bal == null ? '—' : fmt(cur, bal)) + (cur !== 'GBP' && bal != null ? '<small>≈ ' + money(toGbp(cur, bal)) + '</small>' : '') + '</span></button></li>';
-  });
-  if (!banks.length) h += '<li class="empty">No accounts yet.</li>';
-  h += '</ul></div>';
-  h += '<div class="panel"><div class="sec-head"><h2 class="h">Cards</h2><button class="btn ghost small" data-act="add-card">Add card</button></div>';
-  if (lim > 0) h += '<div class="util" style="margin:4px 0 10px"><span>' + money(owed) + ' owed of ' + money(lim, true) + '</span><span class="amt">' + Math.round(owed / lim * 100) + '% used</span><div class="bar"><i style="width:' + Math.min(100, owed / lim * 100) + '%;background:' + (owed / lim > 0.75 ? 'var(--late)' : 'var(--route)') + '"></i></div></div>';
-  h += '<ul class="list">';
-  cards.forEach((c) => {
-    const bal = cardBal(c), cur = c.cur || 'GBP', u = c.limit > 0 ? bal / c.limit : 0;
-    h += '<li><button class="row" data-act="card" data-id="' + c.id + '"><span class="nm">' + esc(c.name) + (c.last4 ? ' <span class="faint">••' + esc(c.last4) + '</span>' : '') + '</span>' +
-      '<span class="mt">' + (c.limit > 0 ? Math.round(u * 100) + '% of ' + fmt(cur, c.limit, true) : 'No limit set') + (c.apr ? ', ' + c.apr + '% APR' : '') + (c.dueDay ? ', due on the ' + ordinal(c.dueDay) : '') + '</span>' +
-      '<span class="rt amt">' + fmt(cur, bal) + (cur !== 'GBP' ? '<small>≈ ' + money(toGbp(cur, bal)) + '</small>' : '') + '</span></button>' +
-      (c.limit > 0 ? '<div class="bar" style="height:4px;margin:-6px 4px 6px"><i style="width:' + Math.min(100, u * 100) + '%;background:' + (u > 0.9 ? 'var(--late)' : u > 0.6 ? 'var(--amber)' : 'var(--route)') + '"></i></div>' : '') + '</li>';
-  });
-  if (!cards.length) h += '<li class="empty">No cards yet.</li>';
-  h += '</ul></div></div>';
+  let h = kpis([
+    { label: 'Cash across accounts', value: bigMoney(cash), cls: 'key' + (cash < 0 ? ' neg' : ''), note: stale ? '<span class="stale">' + stale + ' not checked this week</span>' : 'All checked this week' },
+    { label: 'Owed on cards', value: bigMoney(owed), note: st.cards.length + ' cards' },
+    { label: 'Card limits', value: bigMoney(lim), note: money(Math.max(0, lim - owed)) + ' available' },
+    { label: 'Cards used', value: lim > 0 ? Math.round(owed / lim * 100) + '%' : '—', cls: lim > 0 && owed / lim > 0.75 ? 'neg' : '', note: lim > 0 ? dataBar(owed / lim, owed / lim > 0.75 ? 'var(--late)' : 'var(--route)') : '' },
+    { label: 'Cash minus cards', value: bigMoney(cash - owed), cls: cash - owed < 0 ? 'neg' : '' }
+  ]);
+  // Banks
+  const bankCols = [
+    { k: 'name', label: 'Account', w: '34%', sort: (b) => b.name.toLowerCase(), html: (b) => nameBtn('bank', 'data-id="' + b.id + '"', esc(b.name)) },
+    { k: 'no', label: 'Number', sort: (b) => b.acct4 || '', html: (b) => (b.acct4 ? '<span class="muted">••' + esc(b.acct4) + '</span>' : '') },
+    { k: 'bal', label: 'Balance', num: true, sort: (b) => bankGbp(b), html: (b) => { const v = bankBal(b); return v == null ? '<span class="faint">Not set</span>' : '<span class="' + (v < 0 ? 'neg' : '') + '">' + fmt(b.cur, v) + '</span>' + gbpNote(b.cur, v); } },
+    { k: 'chk', label: 'Checked', sort: (b) => b.balDate || '', html: (b) => { const d = b.balDate ? daysBetween(pday(b.balDate), t0) : null; return '<span class="' + (d == null || d > 7 ? 'stale' : 'muted') + '">' + (d == null ? 'Never' : d === 0 ? 'Today' : d === 1 ? 'Yesterday' : d + ' days ago') + '</span>'; } }
+  ];
+  h += '<div class="two"><div>' + sheetHead('Bank accounts', '<button class="btn small" data-act="checkin">Update balances</button><button class="btn small ghost" data-act="add-bank">Add account</button>') +
+    grid(bankCols, st.banks, { id: 'banks', minW: 460, empty: 'No accounts yet.', foot: [fcell('<b>Total</b>', false, 2), fcell('<b class="' + (cash < 0 ? 'neg' : '') + '">' + money(cash) + '</b>', true), fcell('')] }) + '</div>';
+  // Cards
+  const cardCols = [
+    { k: 'name', label: 'Card', w: '24%', sort: (c) => c.name.toLowerCase(), html: (c) => nameBtn('card', 'data-id="' + c.id + '"', esc(c.name) + (c.last4 ? ' <span class="faint">••' + esc(c.last4) + '</span>' : '')) },
+    { k: 'bal', label: 'Owed', num: true, sort: (c) => toGbp(c.cur, cardBal(c)), html: (c) => fmt(c.cur, cardBal(c)) + gbpNote(c.cur, cardBal(c)) },
+    { k: 'lim', label: 'Limit', num: true, sort: (c) => toGbp(c.cur, c.limit || 0), html: (c) => (c.limit > 0 ? fmt(c.cur, c.limit, true) : '<span class="faint">—</span>') },
+    { k: 'util', label: 'Used', num: true, w: '96px', sort: (c) => (c.limit > 0 ? cardBal(c) / c.limit : -1), html: (c) => { if (!(c.limit > 0)) return '<span class="faint">—</span>'; const u = cardBal(c) / c.limit; return '<span class="pct' + (u > 0.9 ? ' neg' : '') + '">' + Math.round(u * 100) + '%</span>' + dataBar(u, u > 0.9 ? 'var(--late)' : u > 0.6 ? 'var(--amber)' : 'var(--route)'); } },
+    { k: 'apr', label: 'APR', num: true, sort: (c) => +c.apr || 0, html: (c) => (c.apr ? c.apr + '%' : '<span class="faint">—</span>') },
+    { k: 'due', label: 'Due', num: true, sort: (c) => c.dueDay || 99, html: (c) => (c.dueDay ? ordinal(c.dueDay) : '<span class="faint">—</span>') },
+    { k: 'min', label: 'Min pay', num: true, sort: (c) => toGbp(c.cur, cardMin(c)), html: (c) => { const m = cardMin(c); return m > 0 ? (c.minPay > 0 ? '' : '≈ ') + fmt(c.cur, m) : '<span class="faint">—</span>'; } },
+    { k: 'from', label: 'Paid from', sort: (c) => srcName(c.payFrom), html: (c) => '<span class="muted">' + esc(c.payFrom ? srcName(c.payFrom) : 'Not set') + '</span>' }
+  ];
+  const minTot = st.cards.reduce((s, c) => s + toGbp(c.cur, cardMin(c)), 0);
+  h += '<div class="wide">' + sheetHead('Cards', '<button class="btn small ghost" data-act="add-card">Add card</button>') +
+    grid(cardCols, st.cards, { id: 'cards', empty: 'No cards yet.', foot: [fcell('<b>Total</b>'), fcell('<b>' + money(owed) + '</b>', true), fcell('<b>' + money(lim, true) + '</b>', true), fcell(lim > 0 ? '<b>' + Math.round(owed / lim * 100) + '%</b>' : '', true), fcell(''), fcell(''), fcell('<b>' + money(minTot) + '</b>', true), fcell('')] }) + '</div></div>';
   $('#v-accounts').innerHTML = h;
 }
-const ordinal = (n) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+
+// ---------- Bills ----------
+function nextOcc(b) { const t0 = today0(); const o = occurrences(b, t0, addDays(t0, 420)); return o.length ? o[0].date : null; }
+function renderBills() {
+  const t0 = today0();
+  const rows = st.bills.map((b) => {
+    const a = billAmt(b), cur = b.cur || 'GBP', done = billDone(b), f = freqOf(b);
+    const monthly = done ? 0 : toGbp(cur, a.amt) * (PERM[f] || 0);
+    const owner = b.planOf ? M.loan[b.planOf] : null;
+    const ended = b.ends && pday(b.ends) < t0;
+    return { b, a, cur, done: done || ended, f, monthly: r2(monthly), owner, next: done || ended ? null : nextOcc(b), top: topCat(b.category) };
+  });
+  const live = rows.filter((r) => !r.done);
+  const monthlyTot = live.reduce((s, r) => s + r.monthly, 0);
+  const onCards = live.filter((r) => isCard(r.b.pay)).reduce((s, r) => s + r.monthly, 0);
+  const plans = live.filter((r) => r.b.planOf).reduce((s, r) => s + r.monthly, 0);
+  let h = kpis([
+    { label: 'Bills per month', value: bigMoney(monthlyTot), cls: 'key', note: live.length + ' active' },
+    { label: 'From accounts', value: bigMoney(monthlyTot - onCards) },
+    { label: 'On cards', value: bigMoney(onCards) },
+    { label: 'Pay-later plans', value: bigMoney(plans), note: live.filter((r) => r.b.planOf).length + ' plans' }
+  ]);
+  const cols = [
+    { k: 'name', label: 'Bill', w: '26%', sort: (r) => (r.b.planName || r.b.name).toLowerCase(), html: (r) => nameBtn('bill', 'data-id="' + r.b.id + '"', esc(r.b.planName || r.b.name) + (r.owner ? '<small>' + esc(r.owner.name) + ' plan</small>' : '')) },
+    { k: 'cat', label: 'Category', sort: (r) => catName(r.b.category), html: (r) => '<span class="muted">' + esc(r.b.category ? catName(r.b.category) : 'Uncategorised') + '</span>' },
+    { k: 'freq', label: 'How often', sort: (r) => PERM[r.f] || 0, html: (r) => esc(FREQ_LABEL[r.f] || 'Monthly') },
+    { k: 'next', label: 'Next due', sort: (r) => (r.next ? +r.next : 9e15), html: (r) => (r.done ? '<span class="pill good">Finished</span>' : r.next ? DOW[r.next.getDay()] + ' ' + dShort(r.next) : '<span class="faint">—</span>') },
+    { k: 'pay', label: 'Paid from', sort: (r) => srcName(r.b.pay), html: (r) => '<span class="muted">' + esc(srcName(r.b.pay)) + '</span>' },
+    { k: 'amt', label: 'Amount', num: true, sort: (r) => toGbp(r.cur, r.a.amt), html: (r) => (r.a.unknown ? '<span class="faint">Not set</span>' : (r.a.est ? '≈ ' : '') + fmt(r.cur, r.a.amt) + gbpNote(r.cur, r.a.amt)) },
+    { k: 'pm', label: 'Per month', num: true, sort: (r) => r.monthly, html: (r) => (r.done ? '<span class="faint">—</span>' : money(r.monthly)) },
+    { k: 'end', label: 'Ends', sort: (r) => r.b.ends || 'z', html: (r) => (r.b.ends ? dShort(pday(r.b.ends)) + ' ' + pday(r.b.ends).getFullYear() + (r.b.planOf ? '<small class="fx">' + money(planLeft(r.b)) + ' left</small>' : '') : '<span class="faint">Ongoing</span>') }
+  ];
+  const rowCls = (r) => (r.done ? 'paid' : '');
+  const tools = '<button class="btn small" data-act="add-bill">Add bill</button><button class="btn small ghost" data-act="add-income">Add money in</button>';
+  h += sheetHead('Bills', tools);
+  const foot = [fcell('<b>Total, active bills</b>', false, 6), fcell('<b>' + money(monthlyTot) + '</b>', true), fcell('')];
+  if (SORT.bills) {
+    h += grid(cols, rows, { id: 'bills', rowCls, foot, empty: 'No bills yet.' });
+  } else {
+    const gmap = {};
+    rows.forEach((r) => { const k = r.top ? r.top.name : 'Uncategorised'; (gmap[k] = gmap[k] || { col: r.top ? r.top.color : 'var(--faint)', rows: [] }).rows.push(r); });
+    const groups = Object.keys(gmap).map((k) => {
+      const g = gmap[k], tot = g.rows.reduce((s, r) => s + r.monthly, 0);
+      g.rows.sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || b.monthly - a.monthly);
+      return { tot, rows: g.rows, head: '<td colspan="6">' + swatch(g.col) + '<b>' + esc(k) + '</b> <span class="faint">' + g.rows.length + (g.rows.length > 1 ? ' bills' : ' bill') + '</span></td><td class="num"><b>' + money(tot) + '</b></td><td></td>' };
+    }).sort((a, b) => b.tot - a.tot);
+    h += grid(cols, [], { id: 'bills', groups, rowCls, foot, empty: 'No bills yet.' });
+  }
+  h += '<p class="hint-line">Click a column heading to sort. Click it a third time to go back to grouping by category.</p>';
+  if (st.incomes.length) {
+    const icols = [
+      { k: 'name', label: 'Money in', w: '30%', html: (x) => nameBtn('income', 'data-id="' + x.id + '"', esc(x.name)) },
+      { k: 'freq', label: 'How often', html: (x) => esc(FREQ_LABEL[freqOf(x)] || 'Monthly') },
+      { k: 'into', label: 'Goes into', html: (x) => '<span class="muted">' + esc(srcName(x.into)) + '</span>' },
+      { k: 'amt', label: 'Amount', num: true, html: (x) => '<span class="pos">+' + fmt(x.cur, +x.amount || 0) + '</span>' }
+    ];
+    h += sheetHead('Money in') + grid(icols, st.incomes, {});
+  }
+  $('#v-bills').innerHTML = h;
+}
 
 // ---------- Debt ----------
 function renderDebt() {
@@ -1099,42 +1392,49 @@ function renderDebt() {
   const extra = +st.dfPlan.extra || 0, strat = st.dfPlan.strategy === 'avalanche' ? 'avalanche' : 'snowball';
   const sim = simulate(extra, strat), base = extra > 0 ? simulate(0, strat) : null;
   const monthly = list.reduce((s, d) => s + d.payGbp, 0);
-  let h = '<div class="lead"><div><p class="cap">You owe</p><h2 class="big">' + bigMoney(total) + '</h2><p class="sub">' + list.length + ' debts, with ' + money(monthly) + ' a month in minimum and fixed payments.</p></div></div>';
-  h += '<div class="panel"><h2 class="h">' + (sim.months == null ? 'At this rate you won’t clear it' : 'Debt-free by ' + monYr(monthsFromNow(sim.months))) + '</h2>';
-  h += '<p class="muted" style="margin:0 0 14px">' + (sim.months == null ? 'Payments don’t keep up with interest. Add a little extra each month to see a date.' :
-    'Paying ' + money(sim.budget, true) + ' a month' + (extra ? ', including ' + money(extra, true) + ' extra' : '') + '. ' + (sim.interest > 1 ? 'About ' + money(sim.interest, true) + ' goes on interest.' : 'Almost nothing goes on interest.') +
-    (base && base.months != null && sim.months != null ? ' The extra saves ' + (base.months - sim.months) + ' months' + (base.interest - sim.interest > 1 ? ' and ' + money(base.interest - sim.interest, true) + ' in interest' : '') + '.' : base && base.months == null ? ' Without the extra you’d never finish.' : '')) + '</p>';
-  h += '<div class="ctrl"><label class="slider"><span>Extra each month</span><input type="range" min="0" max="1500" step="25" value="' + extra + '" data-act="extra" aria-label="Extra each month"><b id="extraOut" style="min-width:60px">' + money(extra, true) + '</b></label>' +
-    '<div class="seg" role="group" aria-label="Order"><button data-act="strat" data-v="snowball" aria-pressed="' + (strat === 'snowball') + '">Smallest first</button><button data-act="strat" data-v="avalanche" aria-pressed="' + (strat === 'avalanche') + '">Highest interest first</button></div></div>';
+  const cardsT = list.filter((d) => d.kind === 'card').reduce((s, d) => s + d.gbp, 0), loansT = list.filter((d) => d.kind === 'loan').reduce((s, d) => s + d.gbp, 0), bnplT = list.filter((d) => d.kind === 'bnpl').reduce((s, d) => s + d.gbp, 0);
+  let h = kpis([
+    { label: 'Total owed', value: bigMoney(total), cls: 'key', note: list.length + ' debts' },
+    { label: 'Cards', value: bigMoney(cardsT) },
+    { label: 'Loans', value: bigMoney(loansT) },
+    { label: 'Pay later', value: bigMoney(bnplT) },
+    { label: 'Paying each month', value: bigMoney(sim.budget), note: extra ? 'incl. ' + money(extra, true) + ' extra' : 'Minimum and fixed' },
+    { label: 'Debt-free by', value: sim.months == null ? 'Not at this rate' : monYr(monthsFromNow(sim.months)), cls: sim.months == null ? 'neg' : '', note: sim.months == null ? 'Add extra to see a date' : sim.interest > 1 ? '≈ ' + money(sim.interest, true) + ' interest' : 'Almost no interest' }
+  ]);
+  h += '<div class="mini chart-box">' + sheetHead('Payoff plan',
+    '<label class="slider"><span>Extra each month</span><input type="range" min="0" max="1500" step="25" value="' + extra + '" data-act="extra" aria-label="Extra each month"><b id="extraOut">' + money(extra, true) + '</b></label>' +
+    '<div class="seg" role="group" aria-label="Order"><button data-act="strat" data-v="snowball" aria-pressed="' + (strat === 'snowball') + '">Smallest first</button><button data-act="strat" data-v="avalanche" aria-pressed="' + (strat === 'avalanche') + '">Highest interest first</button></div>');
+  if (base && base.months != null && sim.months != null) h += '<p class="muted small-note">The extra saves ' + (base.months - sim.months) + ' months' + (base.interest - sim.interest > 1 ? ' and ' + money(base.interest - sim.interest, true) + ' in interest' : '') + '.</p>';
+  else if (base && base.months == null) h += '<p class="muted small-note">Without the extra you’d never finish.</p>';
   h += debtChart(sim, base) + '</div>';
-  // Order
   const ordered = list.slice().sort((a, b) => (sim.done[a.id] || 9999) - (sim.done[b.id] || 9999) || a.gbp - b.gbp);
-  h += '<div class="sec-head"><h2 class="h">In the order you’ll clear them</h2><button class="btn ghost small" data-act="add-loan">Add a loan</button></div><div class="panel" style="padding:6px 18px"><ul class="list">';
-  ordered.forEach((d, n) => {
-    const when = sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : 'Not yet';
-    const kind = d.kind === 'card' ? 'Card' : d.kind === 'bnpl' ? 'Pay later' : 'Loan';
-    h += '<li><button class="row" data-act="debt" data-kind="' + d.kind + '" data-id="' + d.id + '"><span class="nm">' + esc(d.name) + '</span>' +
-      '<span class="mt">' + (n === 0 && extra > 0 ? '<span class="pill good">Extra goes here</span> ' : '') + kind + ', ' + (d.est ? '≈ ' : '') + fmt(d.cur, d.pay) + ' a month' + (d.apr ? ', ' + d.apr + '% APR' : '') + '</span>' +
-      '<span class="rt amt">' + fmt(d.cur, d.bal) + '<small>Clear by ' + when + '</small></span></button></li>';
-  });
-  if (!ordered.length) h += '<li class="empty">No debts. That’s the goal.</li>';
-  h += '</ul></div>';
+  const ord = {}; ordered.forEach((d, n) => (ord[d.id] = n + 1));
+  const KIND = { card: 'Card', bnpl: 'Pay later', loan: 'Loan' };
+  const cols = [
+    { k: 'name', label: 'Debt', w: '26%', sort: (d) => d.name.toLowerCase(), html: (d) => nameBtn('debt', 'data-kind="' + d.kind + '" data-id="' + d.id + '"', esc(d.name) + (ord[d.id] === 1 && extra > 0 ? '<small class="pos">Extra goes here</small>' : '')) },
+    { k: 'kind', label: 'Type', sort: (d) => d.kind, html: (d) => '<span class="muted">' + KIND[d.kind] + '</span>' },
+    { k: 'bal', label: 'Balance', num: true, sort: (d) => d.gbp, html: (d) => fmt(d.cur, d.bal) + gbpNote(d.cur, d.bal) },
+    { k: 'share', label: 'Of total', num: true, w: '110px', sort: (d) => d.gbp, html: (d) => '<span class="pct">' + Math.round(d.gbp / (total || 1) * 100) + '%</span>' + dataBar(d.gbp / (total || 1), 'var(--late)') },
+    { k: 'apr', label: 'APR', num: true, sort: (d) => d.apr, html: (d) => (d.apr ? d.apr + '%' : '<span class="faint">0%</span>') },
+    { k: 'pay', label: 'Monthly', num: true, sort: (d) => d.payGbp, html: (d) => (d.est ? '≈ ' : '') + fmt(d.cur, d.pay) },
+    { k: 'when', label: 'Clear by', sort: (d) => ord[d.id], html: (d) => (sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : '<span class="neg">Not yet</span>') }
+  ];
+  h += sheetHead('Debts, in the order you’ll clear them', '<button class="btn small ghost" data-act="add-loan">Add a loan</button>') +
+    grid(cols, ordered, { id: 'debt', empty: 'No debts. That’s the goal.', foot: [fcell('<b>Total</b>', false, 2), fcell('<b>' + money(total) + '</b>', true), fcell('100%', true), fcell(''), fcell('<b>' + money(monthly) + '</b>', true), fcell('')] });
   $('#v-debt').innerHTML = h;
 }
 function debtChart(sim, base) {
-  const W = 640, H = 190, padL = 6, padB = 26, s = sim.series, b = base ? base.series : null;
+  const W = 1000, H = 200, s = sim.series, b = base ? base.series : null;
   const n = Math.max(s.length, b ? Math.min(b.length, s.length * 2) : 0, 2) - 1;
   const max = Math.max(...s, ...(b || [0])) || 1;
-  const x = (i) => padL + (i / n) * (W - padL * 2), y = (v) => 8 + (1 - v / max) * (H - padB - 8);
+  const x = (i) => (i / n) * W, y = (v) => 4 + (1 - v / max) * (H - 8);
   const path = (arr) => arr.slice(0, n + 1).map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
-  let g = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Total debt over time">';
-  g += '<line x1="' + padL + '" x2="' + (W - padL) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
-  if (b) g += '<path d="' + path(b) + '" fill="none" stroke="var(--faint)" stroke-width="2" stroke-dasharray="5 5"/>';
-  g += '<path d="' + path(s) + ' L' + x(Math.min(s.length - 1, n)) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + 'Z" fill="var(--route-soft)" opacity=".7"/><path d="' + path(s) + '" fill="none" stroke="var(--route)" stroke-width="3" stroke-linejoin="round"/>';
-  const ticks = [0, Math.round(n / 2), n];
-  ticks.forEach((i, k) => g += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (k === 0 ? 'start' : k === 2 ? 'end' : 'middle') + '">' + (i === 0 ? 'Now' : monYr(monthsFromNow(i))) + '</text>');
-  g += '</svg>';
-  if (b) g += '<p class="faint" style="font-size:13px;margin:6px 0 0">Dashed line: minimum payments only.</p>';
+  let g = '<div class="chart-wrap"><div class="chart-y">' + [1, 0.5, 0].map((f) => '<span>' + money(max * f, true) + '</span>').join('') + '</div><div><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Total debt over time">';
+  [0, 0.25, 0.5, 0.75, 1].forEach((f) => { g += '<line x1="0" x2="' + W + '" y1="' + y(max * f) + '" y2="' + y(max * f) + '" stroke="var(--line)" vector-effect="non-scaling-stroke"' + (f ? ' stroke-dasharray="2 4"' : '') + '/>'; });
+  if (b) g += '<path d="' + path(b) + '" fill="none" stroke="var(--faint)" stroke-width="2" stroke-dasharray="5 5" vector-effect="non-scaling-stroke"/>';
+  g += '<path d="' + path(s) + ' L' + x(Math.min(s.length - 1, n)) + ' ' + y(0) + ' L' + x(0) + ' ' + y(0) + 'Z" fill="var(--route-soft)" opacity=".7"/><path d="' + path(s) + '" fill="none" stroke="var(--route)" stroke-width="2.5" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>';
+  g += '</svg><div class="chart-x"><span>Now</span><span>' + monYr(monthsFromNow(Math.round(n / 2))) + '</span><span>' + monYr(monthsFromNow(n)) + '</span></div></div></div>';
+  if (b) g += '<p class="faint small-note" style="margin-top:6px">Dashed line: minimum payments only.</p>';
   return g;
 }
 
@@ -1150,6 +1450,9 @@ function txMeta(t) {
   if (t.type === 'cardpay') return 'Card payment from ' + srcName(t.from);
   return catName(t.category) + ', ' + srcName(t.pay);
 }
+const TX_TYPE = { expense: 'Spending', income: 'Income', transfer: 'Transfer', cardpay: 'Card payment' };
+const txAcct = (t) => (t.type === 'income' ? srcName(t.into) : t.type === 'expense' ? srcName(t.pay) : srcName(t.from));
+const txCat = (t) => (t.type === 'expense' ? catName(t.category) : t.type === 'income' ? (t.repayOf ? 'Paid back' : 'Income') : t.type === 'transfer' ? 'To ' + srcName(t.to) : srcName(t.card));
 function renderActivity() {
   const c = cycleAt(0), from = dk(c.start), to = dk(c.end);
   const spend = st.tx.filter((t) => t.type === 'expense' && !t.owedBy && t.date >= from && t.date < to);
@@ -1159,14 +1462,19 @@ function renderActivity() {
   const groups = {};
   spend.forEach((t) => { const k = topCat(t.category) ? topCat(t.category).name : 'Uncategorised'; groups[k] = (groups[k] || 0) + (+t.amount || 0); });
   const gl = Object.entries(groups).sort((a, b) => b[1] - a[1]);
-  let h = '<div class="lead"><div><p class="cap">Spent since payday on ' + dShort(c.start) + '</p><h2 class="big">' + bigMoney(total) + '</h2>' +
-    '<p class="sub">' + (income ? money(income) + ' came in this cycle.' : 'No income logged this cycle yet.') + (owedTot > 0.005 ? ' Not counting ' + money(owedTot) + ' you paid for others and haven’t collected yet.' : '') + '</p></div></div>' + owedCardsHtml();
+  let h = kpis([
+    { label: 'Spent since ' + dShort(c.start), value: bigMoney(total), cls: 'key', note: spend.length + (spend.length === 1 ? ' transaction' : ' transactions') },
+    { label: 'Came in', value: bigMoney(income), cls: income > 0 ? 'pos' : '' },
+    { label: 'Net this cycle', value: bigMoney(income - total), cls: income - total < 0 ? 'neg' : '' },
+    { label: 'Owed to you', value: bigMoney(owedTot), note: owedTot > 0.005 ? 'Not collected yet' : 'Nothing outstanding' }
+  ]) + owedCardsHtml();
   if (total > 0) {
-    h += '<div class="panel" style="margin-bottom:26px"><div class="bar" style="height:14px;border-radius:7px">' + gl.map((g, n) => '<i style="width:' + (g[1] / total * 100) + '%;background:' + PALETTE[n % PALETTE.length] + '"></i>').join('') + '</div>' +
-      '<div class="legend" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));column-gap:28px">' + gl.map((g, n) => '<div><i style="background:' + PALETTE[n % PALETTE.length] + '"></i><span>' + esc(g[0]) + '</span><span class="amt">' + money(g[1]) + '</span></div>').join('') + '</div></div>';
+    h += '<div class="mini">' + sheetHead('Spending by category') + '<table class="grid tight"><thead><tr><th>Category</th><th class="num">Amount</th><th class="num" style="width:40%">Share</th></tr></thead><tbody>' +
+      gl.map((g, n) => '<tr><td>' + swatch(PALETTE[n % PALETTE.length]) + esc(g[0]) + '</td><td class="num">' + money(g[1]) + '</td><td class="num"><span class="pct">' + Math.round(g[1] / total * 100) + '%</span>' + dataBar(g[1] / total, PALETTE[n % PALETTE.length]) + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>' + money(total) + '</b></td><td></td></tr></tfoot></table></div>';
   }
   const F = { all: 'All', expense: 'Spending', owed: 'Paid for others', income: 'Income', transfer: 'Transfers', cardpay: 'Card payments' };
-  h += '<div class="search"><input type="search" placeholder="Search notes, categories, accounts" value="' + esc(ui.actQuery) + '" data-act="q" aria-label="Search transactions"><div class="chips">' +
+  h += sheetHead('Transactions') + '<div class="search"><input type="search" placeholder="Search notes, categories, accounts" value="' + esc(ui.actQuery) + '" data-act="q" aria-label="Search transactions"><div class="chips">' +
     Object.keys(F).map((k) => '<button data-act="filter" data-v="' + k + '" aria-pressed="' + (ui.actFilter === k) + '">' + F[k] + '</button>').join('') + '</div></div>';
   h += '<div id="txList">' + txListHtml() + '</div>';
   $('#v-activity').innerHTML = h;
@@ -1177,17 +1485,24 @@ function txListHtml() {
   if (ui.actFilter === 'owed') txs = txs.filter((t) => t.owedBy || t.repayOf);
   else if (ui.actFilter !== 'all') txs = txs.filter((t) => t.type === ui.actFilter);
   if (q) txs = txs.filter((t) => (txLabel(t) + ' ' + txMeta(t) + ' ' + (t.note || '')).toLowerCase().indexOf(q) >= 0);
-  const shown = txs.slice(0, ui.actLimit);
+  const signed = (t) => (t.type === 'income' ? 1 : t.type === 'expense' ? -1 : 0) * (+t.amount || 0);
+  const cols = [
+    { k: 'date', label: 'Date', w: '96px', sort: (t) => t.date + (t.created || 0), html: (t) => { const d = pday(t.date); return '<span class="dt">' + DOW[d.getDay()] + ' <b>' + d.getDate() + ' ' + MON[d.getMonth()] + '</b></span>'; } },
+    { k: 'desc', label: 'Description', w: '28%', sort: (t) => txLabel(t).toLowerCase(), html: (t) => nameBtn('tx', 'data-id="' + esc(t.id) + '"', esc(txLabel(t)) + (t.owedBy ? (t.collected ? ' <span class="pill good">Paid back</span>' : ' <span class="pill today">' + esc(t.owedBy) + ' owes you</span>') : '')) },
+    { k: 'type', label: 'Type', sort: (t) => t.type, html: (t) => '<span class="muted">' + (TX_TYPE[t.type] || t.type) + '</span>' },
+    { k: 'cat', label: 'Category', sort: (t) => txCat(t).toLowerCase(), html: (t) => esc(txCat(t)) },
+    { k: 'acct', label: 'Account', sort: (t) => txAcct(t).toLowerCase(), html: (t) => '<span class="muted">' + esc(txAcct(t)) + '</span>' },
+    { k: 'amt', label: 'Amount', num: true, w: '120px', sort: signed, html: (t) => {
+      const sign = t.type === 'income' ? '+' : t.type === 'expense' ? '−' : '';
+      const amt = t.type === 'transfer' ? fmt(M.bank[t.from] ? M.bank[t.from].cur : 'GBP', t.amtFrom || t.orig) : fmt(t.cur, Math.abs(t.orig != null ? t.orig : t.amount));
+      return '<span class="' + (t.type === 'income' ? 'pos' : t.type === 'expense' ? '' : 'muted') + '">' + sign + amt.replace('−', '') + '</span>' + ((t.cur || 'GBP') !== 'GBP' && t.type !== 'transfer' ? '<small class="fx">≈ ' + money(t.amount) + '</small>' : ''); } }
+  ];
+  const s = SORT.tx; let list = txs;
+  if (s) { const c = cols.find((x) => x.k === s.k); list = txs.slice().sort((a, b) => { const x = c.sort(a), y = c.sort(b); return (x < y ? -1 : x > y ? 1 : 0) * s.dir; }); }
+  const shown = list.slice(0, ui.actLimit);
+  const net = txs.reduce((a, t) => a + signed(t), 0);
   if (!shown.length) return '<p class="empty">' + (q ? 'Nothing matches “' + esc(ui.actQuery) + '”.' : 'No transactions yet. Use Add to log one.') + '</p>';
-  let h = '<div class="panel" style="padding:4px 18px 10px">', day = '';
-  shown.forEach((t) => {
-    if (t.date !== day) { day = t.date; h += '<div class="day-h">' + dLong(pday(day)) + '</div>'; }
-    const sign = t.type === 'income' ? '+' : t.type === 'expense' ? '−' : '';
-    const amt = t.type === 'transfer' ? fmt(M.bank[t.from] ? M.bank[t.from].cur : 'GBP', t.amtFrom || t.orig) : fmt(t.cur, Math.abs(t.orig != null ? t.orig : t.amount));
-    h += '<button class="row" data-act="tx" data-id="' + esc(t.id) + '"><span class="nm">' + esc(txLabel(t)) + '</span><span class="mt">' + (t.owedBy ? (t.collected ? '<span class="pill good">Paid back</span> ' : '<span class="pill today">' + esc(t.owedBy) + ' owes you</span> ') : '') + esc(txMeta(t)) + '</span>' +
-      '<span class="rt amt' + (t.type === 'income' ? ' pos' : '') + '">' + sign + amt.replace('−', '') + ((t.cur || 'GBP') !== 'GBP' && t.type !== 'transfer' ? '<small>≈ ' + money(t.amount) + '</small>' : '') + '</span></button>';
-  });
-  h += '</div>';
+  let h = grid(cols, shown, { id: 'tx', sortable: true, foot: [fcell('<b>' + txs.length + (txs.length === 1 ? ' transaction' : ' transactions') + '</b>', false, 5), fcell('<b class="' + (net < 0 ? '' : 'pos') + '">' + (net < 0 ? '−' : '+') + money(Math.abs(net)) + '</b><small class="fx">in minus out</small>', true)] });
   if (txs.length > shown.length) h += '<p><button class="btn ghost" data-act="more">Show more (' + (txs.length - shown.length) + ' older)</button></p>';
   return h;
 }
@@ -1848,6 +2163,7 @@ document.addEventListener('click', (e) => {
     case 'export-sheets': exportSheets(); break;
     case 'fresh': freshSheet(); break;
     case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
+    case 'sort': { const t = el.dataset.t, k = el.dataset.k, cur = sortOf(t); SORT[t] = cur && cur.k === k ? (cur.dir === 1 ? { k, dir: -1 } : null) : { k, dir: 1 }; if (t === 'tx') $('#txList').innerHTML = txListHtml(); else render(); break; }
     case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
     case 'signin': closeSheet(); signIn(); break;
     case 'signout': if (confirm('Sign out? Your budget stays on this device.')) { closeSheet(); signOut(); } break;
