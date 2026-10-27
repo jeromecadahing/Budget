@@ -93,8 +93,8 @@ button { cursor: pointer; }
 .fab svg { width: 26px; height: 26px; }
 
 /* ---------- Shared pieces ---------- */
-.big { white-space: nowrap; font-weight: 650; font-variation-settings: "opsz" 96, "wdth" 78; letter-spacing: -0.035em; line-height: .92; margin: 0; }
-.big .p { font-size: .42em; letter-spacing: -0.01em; vertical-align: .9em; margin-left: .04em; font-weight: 550; }
+.big { white-space: nowrap; font-weight: 650; font-variation-settings: "opsz" 14, "wdth" 100; letter-spacing: -0.02em; line-height: 1; margin: 0; }
+.big .p { font-size: .5em; letter-spacing: 0; margin-left: .02em; font-weight: 600; }
 .cap { font-size: 15px; color: var(--muted); margin: 0 0 6px; }
 .sub { color: var(--muted); font-size: 15px; margin: 10px 0 0; max-width: 46ch; }
 .neg { color: var(--late); }
@@ -137,7 +137,7 @@ button.row:hover { background: var(--sunk); }
 .cycle-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 1fr); gap: 28px; align-items: start; }
 @media (max-width: 880px) { .cycle-grid { grid-template-columns: 1fr; gap: 22px; } }
 .hero { padding: 6px 2px 0; }
-.hero .big { font-size: clamp(64px, 15vw, 112px); }
+.hero .big { font-size: clamp(52px, 13vw, 92px); }
 
 .runway { position: relative; height: 54px; margin: 40px 6px 0; }
 .runway .line { position: absolute; left: 0; right: 0; top: 18px; height: 4px; border-radius: 2px; background: var(--line); }
@@ -176,7 +176,9 @@ button.row:hover { background: var(--sunk); }
 .stop:first-child::before { top: 50%; }
 .stop:last-child::before { bottom: 50%; }
 .stop .date { font-size: 13.5px; color: var(--muted); text-align: right; padding-right: 12px; line-height: 1.15; }
-.stop .date b { display: block; font-size: 18px; color: var(--ink); font-weight: 650; font-variation-settings: "opsz" 32, "wdth" 85; }
+.stop .date b { display: block; font-size: 18px; color: var(--ink); font-weight: 650; font-variation-settings: "opsz" 14, "wdth" 100; }
+.cat-chip { display: inline-flex; align-items: center; gap: 5px; flex: none; color: var(--ink); font-weight: 550; font-size: 12.5px; padding: 1px 8px 1px 6px; border-radius: 10px; }
+.cat-chip i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }
 .stop .node { position: relative; z-index: 1; justify-self: center; width: 13px; height: 13px; border-radius: 50%; background: var(--surface); border: 3px solid var(--route); }
 .stop.paid .node { background: var(--route); }
 .stop.late .node { border-color: var(--late); background: var(--late-soft); }
@@ -229,7 +231,7 @@ button.row:hover { background: var(--sunk); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
 @media (max-width: 880px) { .two { grid-template-columns: 1fr; } }
 .lead { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 22px; }
-.lead .big { font-size: clamp(54px, 12vw, 88px); }
+.lead .big { font-size: clamp(46px, 11vw, 76px); }
 .util { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
 .util .bar { grid-column: 1 / -1; height: 6px; }
 .stale { color: var(--amber); }
@@ -277,7 +279,7 @@ dialog.sheet::backdrop { background: rgba(10, 14, 26, .45); }
 @media (min-width: 721px) { .toast { bottom: 28px; } }
 
 .welcome { max-width: 560px; padding: 30px 4px; }
-.welcome .big { font-size: clamp(48px, 10vw, 76px); margin-bottom: 16px; }
+.welcome .big { font-size: clamp(40px, 9vw, 64px); margin-bottom: 16px; white-space: normal; }
 .welcome p { color: var(--muted); font-size: 17px; }
 .welcome .sheet-actions { margin-top: 26px; }
 
@@ -882,15 +884,26 @@ function stopHtml(i, t0, group) {
   const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '');
   const status = i.paid ? '' : late ? '<span class="pill late">Unpaid</span>' : isToday ? '<span class="pill today">Due today</span>' : '';
   const amount = i.unknown ? '<span class="faint">Set amount</span>' : (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
-  const cl = catLabel(i, group);
-  const meta = (cl ? cl + ', ' : '') + (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
-  return '<li class="' + cls + '"><div class="date"><b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()] + '</div><span class="node"></span>' +
-    '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '"><span class="nm">' + esc(i.name) + '</span><span class="mt">' + status + '<span>' + esc(meta) + '</span></span></button>' +
+  const cl = catLabel(i, group), col = CAT_COLORS[groupName(i)] || 'var(--faint)';
+  const chip = cl ? '<span class="cat-chip" style="background:color-mix(in srgb, ' + col + ' 15%, transparent)"><i style="background:' + col + '"></i>' + esc(cl) + '</span>' : '';
+  const meta = (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
+  return '<li class="' + cls + '"><div class="date"><b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()] + '</div><span class="node" style="border-color:' + col + (i.paid ? ';background:' + col : '') + '"></span>' +
+    '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '"><span class="nm">' + esc(i.name) + '</span><span class="mt">' + status + chip + '<span>' + esc(meta) + '</span></span></button>' +
     '<span class="amt">' + amount + '</span>' +
     '<button class="tick" data-act="tick" data-uid="' + esc(i.uid) + '" aria-label="' + (i.paid ? 'Mark ' + esc(i.name) + ' as not paid' : 'Mark ' + esc(i.name) + ' as paid') + '" aria-pressed="' + !!i.paid + '">' + ICON_CHECK + '</button></li>';
 }
+let CAT_COLORS = {};
+function setCatColors(P) {
+  const tot = {}, seen = [];
+  P.next.filter(open_).forEach((i) => { const k = groupName(i); tot[k] = (tot[k] || 0) + i.gbp; });
+  Object.entries(tot).sort((a, b) => b[1] - a[1]).forEach((g) => seen.push(g[0]));
+  P.next.concat(P.now).forEach((i) => { const k = groupName(i); if (seen.indexOf(k) < 0) seen.push(k); });
+  CAT_COLORS = {}; let n = 0;
+  seen.forEach((k) => { CAT_COLORS[k] = k === 'Other' ? 'var(--faint)' : PALETTE[n++ % PALETTE.length]; });
+}
 function renderCycle() {
   const P = cyclePicture(), t0 = today0();
+  setCatColors(P);
   const c = ui.cycleView ? P.c1 : P.c0, items = ui.cycleView ? P.next : P.now;
   const daysLeft = daysBetween(t0, P.c0.end);
   let h = '<div class="cycle-grid"><div>';
@@ -923,7 +936,7 @@ function renderCycle() {
     h += '<div>';
     if (!order.length) h += '<p class="empty">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday.' : 'Nothing due in this cycle.') + '</p>';
     order.forEach(([k, list, left, all]) => {
-      h += '<div class="cat-h"><span class="sw" style="background:' + (legendOrder[k] || 'var(--faint)') + '"></span><h3 class="h">' + esc(k) + '</h3><span class="muted" style="font-size:14px">' + list.length + (list.length > 1 ? ' bills' : ' bill') + '</span><span class="amt">' + money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + '</span></div>' +
+      h += '<div class="cat-h"><span class="sw" style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></span><h3 class="h">' + esc(k) + '</h3><span class="muted" style="font-size:14px">' + list.length + (list.length > 1 ? ' bills' : ' bill') + '</span><span class="amt">' + money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + '</span></div>' +
         '<ol class="route">' + list.map((i) => stopHtml(i, t0, k)).join('') + '</ol>';
     });
     h += '</div><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Manage bills (' + st.bills.length + ')</button></p></div>';
@@ -972,8 +985,8 @@ function renderCycle() {
   });
   const gl = Object.entries(groups).sort((a, b) => b[1] - a[1]), gt = gl.reduce((s, g) => s + g[1], 0);
   if (gt > 0) {
-    h += '<div class="flat"><h3 class="h">Where next cycle’s bills go</h3><div class="bar" style="height:14px;border-radius:7px">' + gl.map((g, n) => '<i style="width:' + (g[1] / gt * 100) + '%;background:' + PALETTE[n % PALETTE.length] + '"></i>').join('') + '</div>' +
-      '<div class="legend">' + gl.map((g, n) => '<div><i style="background:' + PALETTE[n % PALETTE.length] + '"></i><span>' + esc(g[0]) + '</span><span class="amt">' + money(g[1]) + '</span></div>').join('') + '</div></div>';
+    h += '<div class="flat"><h3 class="h">Where next cycle’s bills go</h3><div class="bar" style="height:14px;border-radius:7px">' + gl.map((g) => '<i style="width:' + (g[1] / gt * 100) + '%;background:' + (CAT_COLORS[g[0]] || 'var(--faint)') + '"></i>').join('') + '</div>' +
+      '<div class="legend">' + gl.map((g) => '<div><i style="background:' + (CAT_COLORS[g[0]] || 'var(--faint)') + '"></i><span>' + esc(g[0]) + '</span><span class="amt">' + money(g[1]) + '</span></div>').join('') + '</div></div>';
   }
   h += '</div></div>';
   $('#v-cycle').innerHTML = h;
