@@ -210,6 +210,16 @@ button.row:hover { background: var(--sunk); }
 .stop.marker .lbl { grid-column: 3 / span 3; font-weight: 650; padding-left: 8px; }
 .stop.marker .lbl span { font-weight: 400; color: var(--muted); margin-left: 6px; }
 .stop.pay .node { width: 24px; height: 24px; background: var(--route); border: 0; display: grid; place-items: center; color: var(--route-ink); font-size: 13px; font-weight: 700; }
+.stop.dayhead { min-height: 46px; }
+.stop.dayhead .node { width: 15px; height: 15px; border: 3px solid var(--ink); background: var(--surface); }
+.stop.dayhead .lbl { grid-column: 3; padding-left: 8px; font-weight: 650; display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.stop.dayhead .lbl span { font-weight: 400; color: var(--muted); font-size: 14px; }
+.stop.dayhead .amt { grid-column: 4; }
+.stop.dayhead .amt small { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted); }
+.stop.inday { min-height: 54px; }
+.stop.inday .node { width: 10px; height: 10px; border-width: 2px; }
+.stop.daystart:not(:first-child)::after { content: ""; position: absolute; left: 92px; right: 14px; top: 0; height: 1px; background: var(--line); }
+@media (max-width: 520px) { .stop.daystart:not(:first-child)::after { left: 68px; } }
 .stop.group { min-height: 40px; }
 .stop.group .lbl { grid-column: 3 / span 3; justify-content: flex-start; font-size: 14px; color: var(--late); font-weight: 600; padding-left: 8px; display: flex; align-items: center; gap: 10px; }
 .stop.group .node { width: 7px; height: 7px; border: 0; background: var(--route-soft); }
@@ -333,6 +343,7 @@ const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOWL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const dShort = (d) => d.getDate() + ' ' + MON[d.getMonth()];
 const dLong = (d) => DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()];
 const monYr = (d) => MON[d.getMonth()] + ' ' + d.getFullYear();
@@ -879,15 +890,15 @@ function catLabel(i, group) {
   const c = M.cat[i.cat]; if (!c) return '';
   return c.name === group ? '' : c.name;
 }
-function stopHtml(i, t0, group) {
+function stopHtml(i, t0, group, mode) {
   const late = open_(i) && i.date < t0, isToday = open_(i) && +i.date === +t0;
-  const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '');
+  const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '') + (mode === 'in' ? ' inday' : mode === 'start' ? ' daystart' : '');
   const status = i.paid ? '' : late ? '<span class="pill late">Unpaid</span>' : isToday ? '<span class="pill today">Due today</span>' : '';
   const amount = i.unknown ? '<span class="faint">Set amount</span>' : (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
   const cl = catLabel(i, group), col = CAT_COLORS[groupName(i)] || 'var(--faint)';
   const chip = cl ? '<span class="cat-chip" style="background:color-mix(in srgb, ' + col + ' 15%, transparent)"><i style="background:' + col + '"></i>' + esc(cl) + '</span>' : '';
   const meta = (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
-  return '<li class="' + cls + '"><div class="date"><b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()] + '</div><span class="node" style="border-color:' + col + (i.paid ? ';background:' + col : '') + '"></span>' +
+  return '<li class="' + cls + '"><div class="date">' + (mode === 'in' ? '' : '<b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()]) + '</div><span class="node" style="border-color:' + col + (i.paid ? ';background:' + col : '') + '"></span>' +
     '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '"><span class="nm">' + esc(i.name) + '</span><span class="mt">' + status + chip + '<span>' + esc(meta) + '</span></span></button>' +
     '<span class="amt">' + amount + '</span>' +
     '<button class="tick" data-act="tick" data-uid="' + esc(i.uid) + '" aria-label="' + (i.paid ? 'Mark ' + esc(i.name) + ' as not paid' : 'Mark ' + esc(i.name) + ' as paid') + '" aria-pressed="' + !!i.paid + '">' + ICON_CHECK + '</button></li>';
@@ -945,9 +956,18 @@ function renderCycle() {
   const lateItems = ui.cycleView ? [] : items.filter((i) => open_(i) && i.date < t0);
   if (!ui.cycleView && lateItems.length > 1) h += '<li class="stop group"><span></span><span class="node"></span><div class="lbl">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></div></li>';
   let markerDone = !!ui.cycleView;
-  items.forEach((i) => {
-    if (!markerDone && i.date >= t0) { h += todayMarker(t0); markerDone = true; }
-    h += stopHtml(i, t0);
+  // One block per day; within a day, bills of the same kind sit together
+  const corder = Object.keys(CAT_COLORS), days = [];
+  items.forEach((i) => { const k = dk(i.date); let d = days[days.length - 1]; if (!d || d.k !== k) { d = { k, date: i.date, list: [] }; days.push(d); } d.list.push(i); });
+  days.forEach((d) => {
+    d.list.sort((a, b) => corder.indexOf(groupName(a)) - corder.indexOf(groupName(b)) || a.name.localeCompare(b.name));
+    if (!markerDone && d.date >= t0) { h += todayMarker(t0); markerDone = true; }
+    if (d.list.length === 1) { h += stopHtml(d.list[0], t0, undefined, 'start'); return; }
+    const left = d.list.filter(open_).reduce((s, i) => s + i.gbp, 0), all = d.list.reduce((s, i) => s + i.gbp, 0);
+    h += '<li class="stop dayhead daystart"><div class="date"><b>' + d.date.getDate() + '</b>' + MON[d.date.getMonth()] + '</div><span class="node"></span>' +
+      '<div class="lbl">' + DOWL[d.date.getDay()] + '<span>' + d.list.length + ' bills</span></div>' +
+      '<span class="amt">' + (left > 0.005 ? money(left) + (left < all - 0.005 ? '<small>left of ' + money(all) + '</small>' : '') : '<span class="muted" style="font-weight:500">All paid</span>') + '</span><span></span></li>' +
+      d.list.map((i) => stopHtml(i, t0, undefined, 'in')).join('');
   });
   if (!markerDone) h += todayMarker(t0);
   if (!items.length) h += '<li class="stop marker"><span></span><span class="node"></span><div class="lbl">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday' : 'Nothing due in this cycle') + '</div></li>';
