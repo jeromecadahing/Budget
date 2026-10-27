@@ -350,6 +350,10 @@ h2.h { font-family: "IBM Plex Sans", system-ui, sans-serif; font-variation-setti
 .callout { border-radius: 8px; margin: 14px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--late) 30%, transparent); }
 .owed { border-radius: 8px; margin-top: 12px; padding: 10px 14px; }
 .owed .go { border-radius: 6px; }
+.owed.share { background: var(--good-soft); flex-wrap: wrap; }
+.owed.share.overdue { background: var(--amber-soft); }
+.owed.share > span:first-child { flex: 1 1 260px; min-width: 0; }
+.share-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .inline-select { border-radius: 8px; margin-top: 10px; }
 .stale { color: var(--amber); }
 .empty { padding: 18px 6px; }
@@ -778,8 +782,36 @@ function itemsIn(from, to) {
         out.push(withAssumed({ kind: 'in', uid: 'in|' + x.id + '|' + o.key, ref: x, key: o.key, date: o.date, name: x.name, cur, amt: r2(amt), est: false, unknown: !p && !(amt > 0), gbp: r2(toGbp(cur, amt)), pay: p ? (p.into || 'cash') : (x.into || 'cash'), cat: '__in', paid: p || null }));
       });
     });
+    // Someone else's share of a bill: expected back from them on the bill's due date
+    st.bills.forEach((b) => {
+      if (!(b.shareAmt > 0)) return;
+      let f2 = from; if (b.shareFrom) { const sf = pday(b.shareFrom); if (sf > f2) f2 = sf; }
+      if (f2 >= to) return;
+      const done = billDone(b), cur = b.cur || 'GBP', who = b.shareWho || 'Wife';
+      occurrences(b, f2, to).forEach((o) => {
+        const p = shareRecv(b, o.key);
+        if (!p && done && !occPayment(b, o.key)) return;
+        const amt = p ? inCur(cur, p) : +b.shareAmt;
+        out.push({ kind: 'in', share: true, who, uid: 'sh|' + b.id + '|' + o.key, ref: b, key: o.key, date: o.date, name: who + '’s share: ' + (b.planName || b.name), cur, amt: r2(amt), est: false, unknown: false, gbp: r2(toGbp(cur, amt)), pay: p ? (p.into || 'cash') : shareInto(b), cat: '__in', paid: p || null, assumed: false });
+      });
+    });
     return out.sort((a, b) => a.date - b.date || (a.paid ? 0 : 1) - (b.paid ? 0 : 1) || a.name.localeCompare(b.name));
   });
+}
+const shareRecv = (b, key) => st.tx.find((t) => t.type === 'income' && t.shareOf === b.id && t.shareOcc === key);
+const shareInto = (b) => b.shareInto || (isBank(b.pay) ? b.pay : st.payInto) || 'cash';
+// Every share that's due by a date and not received yet, oldest first
+function sharesOpen(upto) {
+  const starts = st.bills.filter((b) => b.shareAmt > 0).map((b) => (b.shareFrom ? pday(b.shareFrom) : today0()));
+  if (!starts.length) return [];
+  const from = new Date(Math.min(...starts));
+  return itemsIn(from, upto).filter((i) => i.share && !i.paid);
+}
+function shareTx(i, date, into) {
+  const r = { id: uid(), created: Date.now(), type: 'income', cur: i.cur, orig: r2(i.amt), rate: rateOf(i.cur), amount: r2(toGbp(i.cur, i.amt)), date: date || dk(today0()), into: into && into !== 'cash' ? into : undefined, category: null, note: i.who + ' paid share of ' + (i.ref.planName || i.ref.name), shareOf: i.ref.id, shareOcc: i.key, repayOf: [] };
+  const part = st.tx.find((t) => t.split && t.bill === i.ref.id && t.shareOcc === i.key);
+  if (part) r.repayOf.push(part.id);
+  return r;
 }
 
 // A bill dated on or before the day you last checked that account's balance has already come out of it
@@ -799,7 +831,7 @@ function cycleFor(d) {
 }
 function cycleAt(offset) { let c = cycleFor(today0()); for (let i = 0; i < offset; i++) c = cycleFor(c.end); return c; }
 // Money you paid for someone else, to collect back
-const owedOpen = () => st.tx.filter((t) => t.type === 'expense' && t.owedBy && !t.collected);
+const owedOpen = () => st.tx.filter((t) => t.type === 'expense' && t.owedBy && !t.collected && !t.shareOcc);
 function owedByPerson() { const m = {}; owedOpen().forEach((t) => { (m[t.owedBy] = m[t.owedBy] || []).push(t); }); return m; }
 function people() { const s = new Set(['Wife']); st.tx.forEach((t) => { if (t.owedBy) s.add(t.owedBy); }); return Array.from(s); }
 function relinkRepay(t, on) {
@@ -813,6 +845,63 @@ function owedCardsHtml() {
     const oldest = list.reduce((m, t) => (t.date < m ? t.date : m), list[0].date), days = daysBetween(pday(oldest), t0);
     return '<button class="owed" data-act="collect" data-who="' + esc(who) + '"><span><b>' + esc(who) + ' owes you ' + money(tot) + '</b><small>' + list.length + (list.length > 1 ? ' things you paid for' : ' thing you paid for') + ', the oldest ' + (days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago') + '</small></span><span class="go">Collect</span></button>';
   }).join('');
+}
+// ---------- Shares other people owe you back ----------
+function sharesByWho(list) { const m = {}; list.forEach((i) => { (m[i.who] = m[i.who] || []).push(i); }); return m; }
+function sharesHtml() {
+  const t0 = today0(), due = sharesByWho(sharesOpen(addDays(t0, 1))), soon = sharesByWho(sharesOpen(addDays(t0, 8)).filter((i) => i.date > t0));
+  return Array.from(new Set(Object.keys(due).concat(Object.keys(soon)))).map((who) => {
+    const d = due[who] || [], n = soon[who] || [], dTot = d.reduce((s, i) => s + i.gbp, 0), nTot = n.reduce((s, i) => s + i.gbp, 0);
+    const days = d.length ? daysBetween(d[0].date, t0) : 0;
+    const head = d.length ? esc(who) + ' owes you ' + money(dTot) : esc(who) + ' has ' + money(nTot) + ' due this week';
+    const sub = d.length ? d.length + (d.length > 1 ? ' shares' : ' share') + ' due, ' + (days <= 0 ? 'from today' : 'the oldest ' + (days === 1 ? 'yesterday' : days + ' days ago')) + (nTot > 0.005 ? '. ' + money(nTot) + ' more in the next week.' : '.')
+      : n.map((i) => esc(i.ref.planName || i.ref.name) + ' on ' + dShort(i.date)).join(', ');
+    return '<div class="owed share' + (days > 3 ? ' overdue' : '') + '"><span><b>' + head + '</b><small>' + sub + '</small></span><span class="share-acts"><button class="btn small" data-act="remind" data-who="' + esc(who) + '">Send reminder</button><button class="btn small primary" data-act="shares" data-who="' + esc(who) + '">Mark received</button></span></div>';
+  }).join('');
+}
+function reminderText(who) {
+  const t0 = today0(); let list = sharesOpen(addDays(t0, 1)).filter((i) => i.who === who), when = 'due';
+  if (!list.length) { list = sharesOpen(addDays(t0, 8)).filter((i) => i.who === who); when = 'coming up'; }
+  if (!list.length) return '';
+  const tot = list.reduce((s, i) => s + i.gbp, 0);
+  return 'Hi! Quick reminder about your share ' + (when === 'due' ? 'that’s due' : 'coming up') + ':\n' + list.map((i) => '• ' + (i.ref.planName || i.ref.name) + ': ' + fmt(i.cur, i.amt) + ' (' + dShort(i.date) + ')').join('\n') + '\nTotal ' + money(tot) + '. Thank you!';
+}
+async function sendReminder(who) {
+  const text = reminderText(who); if (!text) return toast('Nothing due from ' + who + '.');
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast('Reminder copied. Paste it into a message to ' + who + '.'); }
+  catch (e) { window.location.href = 'sms:?&body=' + encodeURIComponent(text); }
+}
+function sharesIcs(who) {
+  const t0 = today0(), list = itemsIn(t0, addDays(t0, 366)).filter((i) => i.share && !i.paid && i.who === who);
+  if (!list.length) return toast('No upcoming shares from ' + who + '.');
+  const d8 = (d) => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()), stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const ev = list.map((i) => ['BEGIN:VEVENT', 'UID:' + i.uid.replace(/\|/g, '-') + '@budget', 'DTSTAMP:' + stamp, 'DTSTART;VALUE=DATE:' + d8(i.date), 'DTEND;VALUE=DATE:' + d8(addDays(i.date, 1)),
+    'SUMMARY:' + who + ' owes ' + fmt(i.cur, i.amt).replace('−', '-') + ' for ' + (i.ref.planName || i.ref.name).replace(/[,;]/g, ' '), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Ask ' + who + ' for the share', 'TRIGGER:PT9H', 'END:VALARM', 'END:VEVENT'].join('\r\n'));
+  saveFile(who.replace(/\W+/g, '-').toLowerCase() + '-shares.ics', ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Budget//Shares//EN'].concat(ev, ['END:VCALENDAR']).join('\r\n'), 'text/calendar');
+  toast(list.length + ' reminders ready. Open the file to add them to your calendar.');
+}
+function sharesSheet(who) {
+  const t0 = today0(), list = sharesOpen(addDays(t0, 32)).filter((i) => i.who === who);
+  if (!list.length) return toast('Nothing due from ' + who + '.');
+  const rows = list.map((i, n) => '<label class="collect-row"><input type="checkbox" id="f_s_' + n + '"' + (i.date <= t0 ? ' checked' : '') + '><span>' + esc(i.ref.planName || i.ref.name) + '<small>' + (i.date < t0 ? 'Was due ' : i.date > t0 ? 'Due ' : 'Due today, ') + dLong(i.date) + '</small></span><b>' + fmt(i.cur, i.amt) + '</b></label>').join('');
+  const fields = [
+    { type: 'html', html: rows },
+    { k: 'into', label: 'Paid into', type: 'select', options: [['cash', 'Cash, or not tracked']].concat(bankOpts()), value: shareInto(list[0].ref) },
+    { k: 'date', label: 'Date', type: 'date', value: dk(t0) }
+  ];
+  formSheet({
+    title: 'Shares from ' + who, intro: '<p class="muted" style="margin:-6px 0 8px">Tick what ' + esc(who) + ' has given you. Ticked shares are crossed off on your pay cycle.</p>', fields, submit: 'Mark received',
+    extraBtn: '<button class="btn" data-act="remind" data-who="' + esc(who) + '">Send reminder</button><button class="btn ghost" data-act="share-ics" data-who="' + esc(who) + '">Add reminders to calendar</button>',
+    onSubmit: (v) => {
+      const chosen = list.filter((i, n) => { const el = document.getElementById('f_s_' + n); return el && el.checked; });
+      if (!chosen.length) return 'Tick at least one.';
+      const added = chosen.map((i) => shareTx(i, v.date, v.into));
+      st.tx.push(...added); added.forEach((t) => relinkRepay(t, true));
+      const tot = added.reduce((s, t) => s + t.amount, 0);
+      commit(who + ' paid ' + money(tot), () => { added.forEach((t) => relinkRepay(t, false)); st.tx = st.tx.filter((t) => added.indexOf(t) < 0); commit(); });
+    }
+  });
 }
 function collectSheet(who) {
   const list = owedOpen().filter((t) => t.owedBy === who).sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -1204,7 +1293,7 @@ function renderCycle() {
     h += '<div class="callout"><div>' + (P.shortNow.length === 1 ? '<b>' + esc(P.shortNow[0].b.name) + '</b> is ' + fmt(P.shortNow[0].b.cur, P.shortNow[0].short) + ' short for its bills before payday.' :
       'Not enough in ' + P.shortNow.length + ' accounts for bills before payday: ' + P.shortNow.map((a) => '<b>' + esc(a.b.name) + '</b> ' + fmt(a.b.cur, a.short)).join(', ') + '.') + '</div></div>';
   }
-  h += owedCardsHtml();
+  h += sharesHtml() + owedCardsHtml();
 
   const by = ui.groupBy === 'cat' || ui.groupBy === 'acct' ? ui.groupBy : 'date';
   const tools = '<div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !view + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!view + '">Next cycle</button></div>' +
@@ -1214,7 +1303,7 @@ function renderCycle() {
 
   const cols = [
     { k: 'date', label: 'Date', w: '86px', html: (i) => '<span class="dt">' + DOW[i.date.getDay()] + ' <b>' + i.date.getDate() + ' ' + MON[i.date.getMonth()] + '</b></span>' },
-    { k: 'name', label: 'Item', w: '30%', html: (i) => nameBtn('item', 'data-uid="' + esc(i.uid) + '"', esc(i.name) + (i.owner || shareOf(i.ref) ? '<small>' + [i.owner ? esc(i.owner) + ' plan' : '', shareOf(i.ref)].filter(Boolean).join(', ') + '</small>' : ''), tipText(i)) },
+    { k: 'name', label: 'Item', w: '30%', html: (i) => nameBtn('item', 'data-uid="' + esc(i.uid) + '"', esc(i.name) + (i.owner || (!i.share && shareOf(i.ref)) ? '<small>' + [i.owner ? esc(i.owner) + ' plan' : '', i.share ? '' : shareOf(i.ref)].filter(Boolean).join(', ') + '</small>' : ''), tipText(i)) },
     { k: 'cat', label: 'Category', html: (i) => '<span class="cat">' + swatch(catCol(groupName(i))) + esc(i.kind === 'in' ? 'Money in' : i.cat === '__cards' ? 'Card payment' : catName(i.cat)) + '</span>' },
     { k: 'pay', label: 'Account', html: (i) => '<span class="muted nw">' + esc(srcName(i.pay)) + '</span>' },
     { k: 'amt', label: 'Amount', num: true, w: '110px', html: amtCell },
@@ -1465,7 +1554,7 @@ const txCat = (t) => (t.type === 'expense' ? catName(t.category) : t.type === 'i
 function renderActivity() {
   const c = cycleAt(0), from = dk(c.start), to = dk(c.end);
   const spend = st.tx.filter((t) => t.type === 'expense' && !t.owedBy && t.date >= from && t.date < to);
-  const owedTot = owedOpen().reduce((s, t) => s + (+t.amount || 0), 0);
+  const owedTot = owedOpen().reduce((s, t) => s + (+t.amount || 0), 0) + sharesOpen(addDays(today0(), 1)).reduce((s, i) => s + i.gbp, 0);
   const income = st.tx.filter((t) => t.type === 'income' && !t.repayOf && t.date >= from && t.date < to).reduce((s, t) => s + (+t.amount || 0), 0);
   const total = spend.reduce((s, t) => s + (+t.amount || 0), 0);
   const groups = {};
@@ -1476,7 +1565,7 @@ function renderActivity() {
     { label: 'Came in', value: bigMoney(income), cls: income > 0 ? 'pos' : '' },
     { label: 'Net this cycle', value: bigMoney(income - total), cls: income - total < 0 ? 'neg' : '' },
     { label: 'Owed to you', value: bigMoney(owedTot), note: owedTot > 0.005 ? 'Not collected yet' : 'Nothing outstanding' }
-  ]) + owedCardsHtml();
+  ]) + sharesHtml() + owedCardsHtml();
   if (total > 0) {
     h += '<div class="mini">' + sheetHead('Spending by category') + '<table class="grid tight"><thead><tr><th>Category</th><th class="num">Amount</th><th class="num" style="width:40%">Share</th></tr></thead><tbody>' +
       gl.map((g, n) => '<tr><td>' + swatch(PALETTE[n % PALETTE.length]) + esc(g[0]) + '</td><td class="num">' + money(g[1]) + '</td><td class="num"><span class="pct">' + Math.round(g[1] / total * 100) + '%</span>' + dataBar(g[1] / total, PALETTE[n % PALETTE.length]) + '</td></tr>').join('') +
@@ -1680,6 +1769,7 @@ function payTx(i, amt, pay, date) {
   const t0 = today0();
   date = date || dk(i.date <= t0 ? i.date : t0);
   const cur = i.cur, base = { id: uid(), created: Date.now(), cur, orig: r2(amt), rate: rateOf(cur), amount: r2(toGbp(cur, amt)), date };
+  if (i.share) return shareTx(i, date, pay || i.pay);
   if (i.kind === 'in') return Object.assign(base, { type: 'income', recv: i.ref.id, recvOcc: i.key, into: (pay || i.pay) && (pay || i.pay) !== 'cash' ? (pay || i.pay) : undefined, category: null, note: i.ref.name });
   if (i.kind === 'card') return Object.assign(base, { type: 'cardpay', card: i.ref.id, cardMin: i.key, from: pay || i.pay, cardAmt: cur !== 'GBP' ? r2(amt) : undefined, category: null, note: i.ref.name + ' minimum payment' });
   return Object.assign(base, { type: 'expense', bill: i.ref.id, billOcc: i.key, billMonth: i.key.slice(0, 7), category: i.ref.category || null, pay: pay || i.pay || 'cash', note: i.ref.name });
@@ -1689,21 +1779,24 @@ function payTxs(i, amt, pay, date) {
   const b = i.kind === 'bill' ? i.ref : null, share = b && b.shareAmt > 0 ? Math.min(+b.shareAmt, amt) : 0;
   if (!share) return [payTx(i, amt, pay, date)];
   const who = b.shareWho || 'Wife', note = (b.planName || b.name) + ', ' + who + '’s share';
-  if (amt - share < 0.005) return [Object.assign(payTx(i, amt, pay, date), { owedBy: who, note })];
+  if (amt - share < 0.005) return [Object.assign(payTx(i, amt, pay, date), { owedBy: who, note, shareOcc: i.key })];
   const main = payTx(i, amt - share, pay, date), part = payTx(i, share, pay, date);
-  return [main, Object.assign(part, { split: main.id, owedBy: who, note })];
+  Object.assign(part, { split: main.id, owedBy: who, note, shareOcc: i.key });
+  const got = shareRecv(b, i.key);
+  if (got) { part.collected = got.date; part.collectedTx = got.id; got.repayOf = (got.repayOf || []).concat(part.id); }
+  return [main, part];
 }
-const removePaid = (p) => { const list = [p].concat(splitsOf(p)); st.tx = st.tx.filter((t) => list.indexOf(t) < 0); return list; };
+const removePaid = (p) => { if (p.shareOf) relinkRepay(p, false); const list = [p].concat(splitsOf(p)); st.tx = st.tx.filter((t) => list.indexOf(t) < 0); return list; };
 function tick(u) {
   const i = findItem(u); if (!i) return;
   if (i.paid) {
     const gone = removePaid(i.paid);
-    commit(i.name + (i.kind === 'in' ? ' marked not received' : ' marked not paid'), () => { st.tx.push(...gone); commit(); });
+    commit(i.name + (i.kind === 'in' ? ' marked not received' : ' marked not paid'), () => { st.tx.push(...gone); gone.forEach((t) => { if (t.shareOf) relinkRepay(t, true); }); commit(); });
     return;
   }
   if (!(i.amt > 0) || i.unknown) return itemSheet(i);
   const ts = payTxs(i, i.amt);
-  st.tx.push(...ts);
+  st.tx.push(...ts); ts.forEach((t) => { if (t.shareOf) relinkRepay(t, true); });
   commit(i.name + (i.kind === 'in' ? ' marked received' : ' marked paid') + (ts.length > 1 ? ', ' + ts[1].owedBy + ' owes you ' + fmt(i.cur, ts[1].orig) : ''), () => { st.tx = st.tx.filter((t) => ts.indexOf(t) < 0); commit(); });
 }
 function tickLate() {
@@ -1722,15 +1815,16 @@ function itemSheet(i) {
   const catTxt = catText(i);
   const meta = '<p class="muted" style="margin:-6px 0 16px">' + (i.owner ? esc(i.owner) + ' plan, due ' : 'Due ') + dLong(i.date) + (i.paid ? '.' : i.unknown ? '. Enter what you paid.' : i.est ? '. The amount is an estimate.' : '.') +
     '<br><span style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--ink)"><i style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + (CAT_COLORS[groupName(i)] || 'var(--faint)') + '"></i>' + esc(catTxt) + '</span>, ' + (i.kind === 'in' ? (i.paid ? 'received into ' : i.assumed ? 'already in ' : 'goes into ') : i.paid ? 'paid from ' : i.assumed ? 'already out of ' : 'comes out of ') + esc(i.kind === 'in' && !isBank(i.pay) ? 'an untracked account' : srcName(i.pay)) + '</p>';
-  const shareNote = i.kind === 'bill' && i.ref.shareAmt > 0 ? '<p class="muted" style="margin:-8px 0 14px">' + esc(i.ref.shareWho || 'Wife') + ' pays ' + fmt(i.cur, i.ref.shareAmt) + ' of this. When you mark it paid, that part is saved as money ' + esc(i.ref.shareWho || 'Wife') + ' owes you.</p>' : '';
-  const editBtn = '<button class="btn" data-act="' + (i.kind === 'card' ? 'card' : i.kind === 'in' ? 'income' : 'bill') + '" data-id="' + i.ref.id + '">' + (i.kind === 'card' ? 'Edit card' : i.kind === 'in' ? 'Edit' : 'Edit bill') + '</button>';
+  const shareNote = i.share ? '<p class="muted" style="margin:-8px 0 14px">' + esc(i.who) + '’s part of ' + esc(i.ref.planName || i.ref.name) + '. Mark it received once ' + esc(i.who) + ' has given it to you.</p>'
+    : i.kind === 'bill' && i.ref.shareAmt > 0 ? '<p class="muted" style="margin:-8px 0 14px">' + esc(i.ref.shareWho || 'Wife') + ' pays ' + fmt(i.cur, i.ref.shareAmt) + ' of this. It’s on your schedule as money coming back from ' + esc(i.ref.shareWho || 'Wife') + ' on the same day.</p>' : '';
+  const editBtn = '<button class="btn" data-act="' + (i.kind === 'card' ? 'card' : i.kind === 'in' && !i.share ? 'income' : 'bill') + '" data-id="' + i.ref.id + '">' + (i.kind === 'card' ? 'Edit card' : i.kind === 'in' && !i.share ? 'Edit' : 'Edit bill') + '</button>';
   formSheet({
     title: i.name, intro: meta + shareNote, fields, submit: i.paid ? 'Save' : i.kind === 'in' ? 'Mark received' : 'Mark paid', danger: i.paid ? (i.kind === 'in' ? 'Mark not received' : 'Mark not paid') : null, extraBtn: editBtn,
     onDanger: () => { closeSheet(); tick(i.uid); },
     onSubmit: (v) => {
       if (!(v.amt > 0)) return i.kind === 'in' ? 'Enter the amount received.' : 'Enter the amount paid.';
       if (i.paid) removePaid(i.paid);
-      st.tx.push(...payTxs(i, v.amt, v.pay, v.date));
+      const ts = payTxs(i, v.amt, v.pay, v.date); st.tx.push(...ts); ts.forEach((t) => { if (t.shareOf) relinkRepay(t, true); });
       commit(i.name + (i.paid ? ' updated' : i.kind === 'in' ? ' marked received' : ' marked paid'));
     }
   });
@@ -1818,7 +1912,9 @@ function billSheet(b) {
   fields.push(
     { k: 'pay', label: 'Paid from', type: 'select', options: payOpts(), value: d.pay || 'cash', full: isPlan },
     { k: 'shareAmt', label: 'Someone else pays', type: 'number', value: d.shareAmt || '', hint: 'Their part of each payment. Leave empty if it’s all yours.' },
-    { k: 'shareWho', label: 'Who', value: d.shareWho || 'Wife', placeholder: 'e.g. Wife' }
+    { k: 'shareWho', label: 'Who', value: d.shareWho || 'Wife', placeholder: 'e.g. Wife' },
+    { k: 'shareFrom', label: 'Expect it from', type: 'date', value: d.shareFrom || '', hint: 'Payments due from this date. Empty means from today.' },
+    { k: 'shareInto', label: 'They pay you into', type: 'select', options: [['', 'Same account as the bill']].concat(bankOpts()), value: d.shareInto || '' }
   );
   formSheet({
     title: isNew ? 'Add a bill' : isPlan ? 'Edit plan' : 'Edit bill', fields, submit: isNew ? 'Add bill' : 'Save', danger: isNew ? null : isPlan ? 'Delete plan' : 'Delete bill',
@@ -1853,7 +1949,8 @@ function billSheet(b) {
         if (ends) n.ends = ends; else delete n.ends;
       } else if (v.ends) n.ends = v.ends; else delete n.ends;
       n.category = v.category || null; n.pay = v.pay;
-      if (v.shareAmt > 0) { n.shareAmt = r2(v.shareAmt); n.shareWho = (v.shareWho || '').trim() || 'Wife'; } else { delete n.shareAmt; delete n.shareWho; }
+      if (v.shareAmt > 0) { if (!(n.shareAmt > 0) || !n.shareFrom) n.shareFrom = v.shareFrom || dk(today0()); else if (v.shareFrom) n.shareFrom = v.shareFrom; n.shareAmt = r2(v.shareAmt); n.shareWho = (v.shareWho || '').trim() || 'Wife'; n.shareInto = v.shareInto || undefined; }
+      else { delete n.shareAmt; delete n.shareWho; delete n.shareFrom; delete n.shareInto; }
       const l = loanForBill(n); if (l && !usesPlans(l) && n.amount > 0) { l.payment = n.amount; l.payMode = 'fixed'; }
       if (!b) st.bills.push(n);
       const total = isPlan ? fmt(n.cur, n.amount * n.planCount + (+n.planAdj || 0)) : '';
@@ -2224,6 +2321,9 @@ document.addEventListener('click', (e) => {
     case 'fresh': freshSheet(); break;
     case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
     case 'sort': { const t = el.dataset.t, k = el.dataset.k, cur = sortOf(t); SORT[t] = cur && cur.k === k ? (cur.dir === 1 ? { k, dir: -1 } : null) : { k, dir: 1 }; if (t === 'tx') $('#txList').innerHTML = txListHtml(); else render(); break; }
+    case 'remind': sendReminder(el.dataset.who); break;
+    case 'shares': closeSheet(); sharesSheet(el.dataset.who); break;
+    case 'share-ics': sharesIcs(el.dataset.who); break;
     case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
     case 'signin': closeSheet(); signIn(); break;
     case 'signout': if (confirm('Sign out? Your budget stays on this device.')) { closeSheet(); signOut(); } break;
