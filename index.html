@@ -526,6 +526,7 @@ function cardPaid(c, key) { return st.tx.find((t) => t.type === 'cardpay' && t.c
 // Every payment in a date range: bills, plan instalments and card minimums
 function itemsIn(from, to) {
   return memo('items' + dk(from) + dk(to), () => {
+    if (st.startDate) { const sd = pday(st.startDate); if (from < sd) from = sd; if (from >= to) return []; }
     const out = [];
     st.bills.forEach((b) => {
       const done = billDone(b);
@@ -834,8 +835,10 @@ function renderCycle() {
   const daysLeft = daysBetween(t0, P.c0.end);
   let h = '<div class="cycle-grid"><div>';
   // Hero
-  h += '<div class="hero"><p class="cap">' + (P.free < 0 ? 'Short before payday' : 'Free to spend before payday') + '</p><h2 class="big' + (P.free < 0 ? ' neg' : '') + '">' + bigMoney(P.free) + '</h2>' +
-    '<p class="sub">' + money(P.cash) + ' across your accounts, with ' + money(P.dueNow) + ' of bills still to go out before payday on ' + dLong(P.c0.end) + (daysLeft === 1 ? ', tomorrow.' : ', in ' + daysLeft + ' days.') + '</p>';
+  const waiting = st.startDate && pday(st.startDate) > t0;
+  h += '<div class="hero"><p class="cap">' + (waiting ? 'In your accounts now' : P.free < 0 ? 'Short before payday' : 'Free to spend before payday') + '</p><h2 class="big' + (P.free < 0 ? ' neg' : '') + '">' + bigMoney(P.free) + '</h2>' +
+    '<p class="sub">' + (waiting ? 'Your fresh start begins on ' + dLong(pday(st.startDate)) + '. That morning, update your balances on the Accounts tab.' :
+    money(P.cash) + ' across your accounts, with ' + money(P.dueNow) + ' of bills still to go out before payday on ' + dLong(P.c0.end) + (daysLeft === 1 ? ', tomorrow.' : ', in ' + daysLeft + ' days.')) + '</p>';
   // Runway
   const span = P.c0.end - P.c0.start, pos = (d) => Math.max(0, Math.min(100, ((d - P.c0.start) / span) * 100));
   h += '<div class="runway" aria-hidden="true"><div class="line"></div><div class="done" style="width:' + pos(t0) + '%"></div>' +
@@ -858,7 +861,7 @@ function renderCycle() {
     h += stopHtml(i, t0);
   });
   if (!markerDone) h += todayMarker(t0);
-  if (!items.length) h += '<li class="stop marker"><span></span><span class="node"></span><div class="lbl">Nothing due in this cycle</div></li>';
+  if (!items.length) h += '<li class="stop marker"><span></span><span class="node"></span><div class="lbl">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday' : 'Nothing due in this cycle') + '</div></li>';
   h += '<li class="stop marker pay"><div class="date"><b>' + c.end.getDate() + '</b>' + MON[c.end.getMonth()] + '</div><span class="node">£</span><div class="lbl">Payday' + (P.pay ? '<span>about ' + money(P.pay) + '</span>' : '') + '</div></li>';
   h += '</ol><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Manage bills (' + st.bills.length + ')</button></p></div>';
 
@@ -1434,7 +1437,7 @@ function settingsSheet() {
   const syncBtn = remote.on ? (remote.user ? '<button class="btn" data-act="signout">Sign out</button>' : '<button class="btn primary" data-act="signin">Sign in with Google</button>') : '';
   const profSel = profiles.list.length > 1 ? '<div class="fields" style="margin-top:12px"><label class="full">Budget profile<select data-act="profile">' + profiles.list.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === profiles.current ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') + '</select></label></div>' : '';
   const after = '<div class="rule"></div><h3 class="h">Your data</h3><p class="muted" style="font-size:14.5px;margin:0 0 12px">' + where + '</p>' +
-    '<div class="sheet-actions" style="margin-top:0">' + syncBtn + '</div>' + profSel + '<div class="sheet-actions"><button class="btn" data-act="export">Export a backup</button><button class="btn" data-act="import">Import a backup</button><span class="grow"></span><button class="btn danger" data-act="wipe">Clear everything</button></div>';
+    '<div class="sheet-actions" style="margin-top:0">' + syncBtn + '</div>' + profSel + '<div class="sheet-actions"><button class="btn" data-act="export">Export a backup</button><button class="btn" data-act="import">Import a backup</button><button class="btn" data-act="fresh">Start fresh</button><span class="grow"></span><button class="btn danger" data-act="wipe">Clear everything</button></div>';
   formSheet({
     title: 'Settings', fields, after,
     onSubmit: (v) => {
@@ -1449,6 +1452,43 @@ function settingsSheet() {
   });
 }
 function applyTheme() { let t = ''; try { t = localStorage.getItem('budget.v2.theme') || ''; } catch (e) {} if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
+
+// ---------- Start fresh ----------
+function freshSheet() {
+  const fields = [
+    { k: 'date', label: 'Start from', type: 'date', value: dk(cycleAt(1).start), full: true, hint: 'Usually your next payday' },
+    { k: 'backup', label: 'Save a backup of everything first', type: 'check', value: true, full: true }
+  ];
+  const intro = '<p class="muted" style="margin:-6px 0 14px">Your accounts, cards, loans, plans and bills all stay. Transactions before this date are removed, and what you owe on each card, loan and plan carries over as its starting amount. Bills before this date stop showing as unpaid.</p>';
+  const after = '<p class="muted" style="font-size:14px;margin:14px 0 0">On payday morning, open Accounts, tap Update balances and type in what each bank shows.</p>';
+  formSheet({
+    title: 'Start fresh', intro, fields, after, submit: 'Start fresh',
+    onSubmit: (v) => {
+      if (!v.date) return 'Choose a start date.';
+      if (v.backup) exportBackup();
+      startFresh(v.date);
+    }
+  });
+}
+function startFresh(startS) {
+  const before = st.tx.filter((t) => (t.date || '') < startS), kept = st.tx.filter((t) => (t.date || '') >= startS);
+  // Work out every balance from the transactions being removed, then keep the result as the starting amount
+  st.tx = before; idx();
+  const banks = st.banks.map((b) => [b, bankBal(b)]), cards = st.cards.map((c) => [c, cardBal(c)]);
+  const loans = st.loans.filter((l) => !usesPlans(l)).map((l) => [l, loanBal(l)]);
+  const plans = st.bills.filter((b) => b.planOf).map((b) => [b, planLeft(b)]);
+  banks.forEach(([b, v]) => { if (v != null) b.bal = v; });
+  cards.forEach(([c, v]) => { c.opening = v; });
+  loans.forEach(([l, v]) => { l.balance = v; delete l._balCache; });
+  plans.forEach(([b, left]) => {
+    const a = +b.amount || 0;
+    if (a > 0) { const n = Math.max(1, Math.ceil(left / a - 0.0001)); b.planCount = n; b.planAdj = r2(left - a * n); }
+    else b.planAdj = r2(left);
+  });
+  st.tx = kept; st.startDate = startS;
+  closeSheet();
+  commit('Fresh start from ' + dLong(pday(startS)) + '. ' + before.length + ' old transactions cleared.');
+}
 
 async function exportBackup() {
   const data = JSON.stringify(Object.assign({}, st, { lastBackup: Date.now() }), null, 2);
@@ -1512,6 +1552,7 @@ document.addEventListener('click', (e) => {
     case 'more': ui.actLimit += 100; $('#txList').innerHTML = txListHtml(); break;
     case 'tx': { const t = st.tx.find((x) => x.id === id); if (t) txSheet(t.type, t); break; }
     case 'export': exportBackup(); break;
+    case 'fresh': freshSheet(); break;
     case 'signin': closeSheet(); signIn(); break;
     case 'signout': if (confirm('Sign out? Your budget stays on this device.')) { closeSheet(); signOut(); } break;
     case 'import': $('#importFile').click(); break;
