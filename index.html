@@ -154,7 +154,7 @@ button.row:hover { background: var(--sunk); }
 .callout { display: flex; gap: 12px; align-items: flex-start; background: var(--late-soft); color: var(--ink); border-radius: 16px; padding: 14px 16px; margin-top: 22px; }
 .callout b { color: var(--late); }
 .callout .btn { margin-left: auto; flex: none; }
-.cat-h { display: flex; align-items: baseline; gap: 10px; margin: 24px 6px 10px; }
+.cat-h { display: flex; align-items: center; gap: 10px; margin: 24px 6px 10px; }
 .cat-h:first-child { margin-top: 0; }
 .cat-h .sw { width: 12px; height: 12px; border-radius: 4px; align-self: center; flex: none; }
 .cat-h h3 { margin: 0; }
@@ -171,7 +171,7 @@ button.row:hover { background: var(--sunk); }
 
 .route-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 34px 0 12px; }
 .route { list-style: none; margin: 0; padding: 6px 0; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); }
-.stop { position: relative; display: grid; grid-template-columns: 58px 26px minmax(0, 1fr) auto 48px; align-items: center; min-height: 60px; padding: 0 10px 0 6px; }
+.stop { position: relative; display: grid; grid-template-columns: 58px 26px minmax(0, 1fr) auto 48px; align-items: center; min-height: 52px; padding: 0 10px 0 6px; }
 .stop::before { content: ""; position: absolute; left: 76px; top: 0; bottom: 0; width: 3px; background: var(--route-soft); }
 .stop:first-child::before { top: 50%; }
 .stop:last-child::before { bottom: 50%; }
@@ -182,9 +182,17 @@ button.row:hover { background: var(--sunk); }
 .stop .node { position: relative; z-index: 1; justify-self: center; width: 13px; height: 13px; border-radius: 50%; background: var(--surface); border: 3px solid var(--route); }
 .stop.paid .node { background: var(--route); }
 .stop.late .node { border-color: var(--late); background: var(--late-soft); }
-.stop .body { min-width: 0; padding: 10px 10px 10px 8px; background: none; border: 0; text-align: left; border-radius: 12px; }
+.stop .body { min-width: 0; padding: 10px 10px 10px 8px; background: none; border: 0; text-align: left; border-radius: 12px; display: flex; align-items: center; gap: 8px; }
+.stop .body .pill { flex: none; font-size: 11.5px; padding: 1px 7px; }
+.stop .body { position: relative; }
+.stop .body[data-tip]::after { content: attr(data-tip); position: absolute; left: 8px; top: calc(100% - 2px); z-index: 30; min-width: 180px; max-width: 300px; padding: 9px 12px; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 450; line-height: 1.45; white-space: pre-line; box-shadow: var(--shadow); pointer-events: none; opacity: 0; transform: translateY(-4px); transition: opacity .12s ease, transform .12s ease; visibility: hidden; }
+@media (hover: hover) { .stop .body[data-tip]:hover::after { opacity: 1; transform: none; visibility: visible; transition-delay: .25s; } }
+.stop .body[data-tip]:focus-visible::after { opacity: 1; transform: none; visibility: visible; }
+.mini-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 6px 10px; font-size: 13px; color: var(--muted); }
+.mini-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mini-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .stop .body:hover { background: var(--sunk); }
-.stop .nm { font-weight: 560; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stop .nm { font-weight: 560; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }
 .stop .mt { font-size: 13.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; overflow: hidden; white-space: nowrap; }
 .stop .mt > span { overflow: hidden; text-overflow: ellipsis; }
 .stop .amt { padding-left: 8px; }
@@ -216,7 +224,7 @@ button.row:hover { background: var(--sunk); }
 .stop.dayhead .lbl span { font-weight: 400; color: var(--muted); font-size: 14px; }
 .stop.dayhead .amt { grid-column: 4; }
 .stop.dayhead .amt small { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted); }
-.stop.inday { min-height: 54px; }
+.stop.inday { min-height: 46px; }
 .stop.inday .node { width: 10px; height: 10px; border-width: 2px; }
 .stop.daystart:not(:first-child)::after { content: ""; position: absolute; left: 92px; right: 14px; top: 0; height: 1px; background: var(--line); }
 @media (max-width: 520px) { .stop.daystart:not(:first-child)::after { left: 68px; } }
@@ -884,6 +892,20 @@ function welcomeHtml() {
 }
 
 // ---------- Pay cycle ----------
+function catText(i) {
+  if (i.cat === '__cards') return 'Card payment';
+  const c = M.cat[i.cat]; if (!c) return 'Uncategorised';
+  const top = topCat(i.cat);
+  return top && top.id !== c.id ? top.name + ', ' + c.name : c.name;
+}
+function tipText(i) {
+  const lines = [catText(i)];
+  if (i.owner) lines.push(i.owner + ' plan');
+  lines.push(i.paid ? 'Paid from ' + srcName(i.pay) + ' on ' + dShort(pday(i.paid.date)) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : 'Comes out of ' + srcName(i.pay));
+  if (!i.paid && i.unknown) lines.push('Amount not set yet');
+  else if (!i.paid && i.est) lines.push('Amount is an estimate');
+  return lines.map(esc).join('&#10;');
+}
 const groupName = (i) => (i.cat === '__cards' ? 'Card payments' : topCat(i.cat) ? topCat(i.cat).name : 'Other');
 function catLabel(i, group) {
   if (i.cat === '__cards') return group === 'Card payments' ? '' : 'Card payment';
@@ -895,11 +917,9 @@ function stopHtml(i, t0, group, mode) {
   const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '') + (mode === 'in' ? ' inday' : mode === 'start' ? ' daystart' : '');
   const status = i.paid ? '' : late ? '<span class="pill late">Unpaid</span>' : isToday ? '<span class="pill today">Due today</span>' : '';
   const amount = i.unknown ? '<span class="faint">Set amount</span>' : (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
-  const cl = catLabel(i, group), col = CAT_COLORS[groupName(i)] || 'var(--faint)';
-  const chip = cl ? '<span class="cat-chip" style="background:color-mix(in srgb, ' + col + ' 15%, transparent)"><i style="background:' + col + '"></i>' + esc(cl) + '</span>' : '';
-  const meta = (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
-  return '<li class="' + cls + '"><div class="date">' + (mode === 'in' ? '' : '<b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()]) + '</div><span class="node" style="border-color:' + col + (i.paid ? ';background:' + col : '') + '"></span>' +
-    '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '"><span class="nm">' + esc(i.name) + '</span><span class="mt">' + status + chip + '<span>' + esc(meta) + '</span></span></button>' +
+  const col = CAT_COLORS[groupName(i)] || 'var(--faint)';
+  return '<li class="' + cls + '"><div class="date">' + (mode === 'in' ? '' : '<b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()]) + '</div><span class="node" style="border-color:' + col + ';background:' + (i.paid ? col : 'color-mix(in srgb, ' + col + ' 22%, var(--surface))') + '"></span>' +
+    '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '" data-tip="' + tipText(i) + '"><span class="nm">' + esc(i.name) + '</span>' + status + '</button>' +
     '<span class="amt">' + amount + '</span>' +
     '<button class="tick" data-act="tick" data-uid="' + esc(i.uid) + '" aria-label="' + (i.paid ? 'Mark ' + esc(i.name) + ' as not paid' : 'Mark ' + esc(i.name) + ' as paid') + '" aria-pressed="' + !!i.paid + '">' + ICON_CHECK + '</button></li>';
 }
@@ -936,23 +956,27 @@ function renderCycle() {
   h += owedCardsHtml();
   // Route
   h += '<div class="route-head"><div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !ui.cycleView + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!ui.cycleView + '">Next cycle</button></div>' +
-    '<div class="route-tools"><div class="seg" role="group" aria-label="Sort bills"><button data-act="groupby" data-v="date" aria-pressed="' + (ui.groupBy !== 'cat') + '">By date</button><button data-act="groupby" data-v="cat" aria-pressed="' + (ui.groupBy === 'cat') + '">By category</button></div>' +
+    '<div class="route-tools"><div class="seg" role="group" aria-label="Sort bills"><button data-act="groupby" data-v="date" aria-pressed="' + (ui.groupBy !== 'cat' && ui.groupBy !== 'acct') + '">By date</button><button data-act="groupby" data-v="cat" aria-pressed="' + (ui.groupBy === 'cat') + '">By category</button><button data-act="groupby" data-v="acct" aria-pressed="' + (ui.groupBy === 'acct') + '">By account</button></div>' +
     '<span class="muted" style="font-size:14px">' + dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)) + '</span></div></div>';
-  if (ui.groupBy === 'cat') {
-    const legendOrder = {}; const lt = {};
-    P.next.filter(open_).forEach((i) => { const k = groupName(i); lt[k] = (lt[k] || 0) + i.gbp; });
-    Object.entries(lt).sort((a, b) => b[1] - a[1]).forEach((g, n) => { legendOrder[g[0]] = PALETTE[n % PALETTE.length]; });
-    const gmap = {}; items.forEach((i) => { const k = groupName(i); (gmap[k] = gmap[k] || []).push(i); });
+  const legendHtml = () => { const ks = []; items.forEach((i) => { const k = groupName(i); if (ks.indexOf(k) < 0) ks.push(k); }); ks.sort((a, b) => Object.keys(CAT_COLORS).indexOf(a) - Object.keys(CAT_COLORS).indexOf(b)); return ks.length ? '<div class="mini-legend">' + ks.map((k) => '<span><i style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></i>' + esc(k) + '</span>').join('') + '</div>' : ''; };
+  if (ui.groupBy === 'cat' || ui.groupBy === 'acct') {
+    const byAcct = ui.groupBy === 'acct';
+    const keyOf = (i) => (byAcct ? (i.pay || 'cash') : groupName(i));
+    const gmap = {}; items.forEach((i) => { const k = keyOf(i); (gmap[k] = gmap[k] || []).push(i); });
     const order = Object.keys(gmap).map((k) => [k, gmap[k], gmap[k].filter(open_).reduce((s, i) => s + i.gbp, 0), gmap[k].reduce((s, i) => s + i.gbp, 0)]).sort((a, b) => b[3] - a[3]);
-    h += '<div>';
+    h += '<div>' + (byAcct ? legendHtml() : '');
     if (!order.length) h += '<p class="empty">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday.' : 'Nothing due in this cycle.') + '</p>';
     order.forEach(([k, list, left, all]) => {
-      h += '<div class="cat-h"><span class="sw" style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></span><h3 class="h">' + esc(k) + '</h3><span class="muted" style="font-size:14px">' + list.length + (list.length > 1 ? ' bills' : ' bill') + '</span><span class="amt">' + money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + '</span></div>' +
-        '<ol class="route">' + list.map((i) => stopHtml(i, t0, k)).join('') + '</ol>';
+      const bank = byAcct ? M.bank[k] : null;
+      const title = byAcct ? srcName(k) : k;
+      const sw = byAcct ? '' : '<span class="sw" style="background:' + (CAT_COLORS[k] || 'var(--faint)') + '"></span>';
+      const extra = bank && bankBal(bank) != null ? ', has ' + fmt(bank.cur, bankBal(bank)) + ' now' : '';
+      h += '<div class="cat-h">' + sw + '<div style="min-width:0"><h3 class="h">' + esc(title) + '</h3><span class="muted" style="font-size:13.5px">' + list.length + (list.length > 1 ? ' bills' : ' bill') + esc(extra) + '</span></div><span class="amt">' + money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + '</span></div>' +
+        '<ol class="route">' + list.slice().sort((a, b) => a.date - b.date || a.name.localeCompare(b.name)).map((i) => stopHtml(i, t0, k)).join('') + '</ol>';
     });
     h += '</div><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Manage bills (' + st.bills.length + ')</button></p></div>';
   } else {
-  h += '<ol class="route">';
+  h += legendHtml() + '<ol class="route">';
   const lateItems = ui.cycleView ? [] : items.filter((i) => open_(i) && i.date < t0);
   if (!ui.cycleView && lateItems.length > 1) h += '<li class="stop group"><span></span><span class="node"></span><div class="lbl">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></div></li>';
   let markerDone = !!ui.cycleView;
@@ -1340,7 +1364,9 @@ function itemSheet(i) {
     { k: 'pay', label: 'Paid from', type: 'select', options: i.kind === 'card' ? [['cash', 'Cash']].concat(bankOpts()) : payOpts(), value: i.pay || 'cash' },
     { k: 'date', label: i.paid ? 'Paid on' : 'Date paid', type: 'date', value: i.paid ? i.paid.date : dk(i.date <= today0() ? i.date : today0()) }
   ];
-  const meta = '<p class="muted" style="margin:-6px 0 16px">' + (i.owner ? i.owner + ' plan, due ' : 'Due ') + dLong(i.date) + (i.paid ? '.' : i.unknown ? '. Enter what you paid.' : i.est ? '. The amount is an estimate.' : '.') + '</p>';
+  const catTxt = catText(i);
+  const meta = '<p class="muted" style="margin:-6px 0 16px">' + (i.owner ? esc(i.owner) + ' plan, due ' : 'Due ') + dLong(i.date) + (i.paid ? '.' : i.unknown ? '. Enter what you paid.' : i.est ? '. The amount is an estimate.' : '.') +
+    '<br><span style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--ink)"><i style="width:10px;height:10px;border-radius:50%;display:inline-block;background:' + (CAT_COLORS[groupName(i)] || 'var(--faint)') + '"></i>' + esc(catTxt) + '</span>, ' + (i.paid ? 'paid from ' : i.assumed ? 'already out of ' : 'comes out of ') + esc(srcName(i.pay)) + '</p>';
   const editBtn = '<button class="btn" data-act="' + (i.kind === 'card' ? 'card' : 'bill') + '" data-id="' + i.ref.id + '">' + (i.kind === 'card' ? 'Edit card' : 'Edit bill') + '</button>';
   formSheet({
     title: i.name, intro: meta, fields, submit: i.paid ? 'Save' : 'Mark paid', danger: i.paid ? 'Mark not paid' : null, extraBtn: editBtn,
