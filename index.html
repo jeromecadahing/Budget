@@ -154,6 +154,13 @@ button.row:hover { background: var(--sunk); }
 .callout { display: flex; gap: 12px; align-items: flex-start; background: var(--late-soft); color: var(--ink); border-radius: 16px; padding: 14px 16px; margin-top: 22px; }
 .callout b { color: var(--late); }
 .callout .btn { margin-left: auto; flex: none; }
+.owed { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--route-soft); color: var(--ink); border: 0; border-radius: 16px; padding: 14px 16px; margin-top: 14px; }
+.owed b { display: block; font-weight: 650; }
+.owed small { display: block; font-size: 14px; color: var(--muted); }
+.owed .go { margin-left: auto; flex: none; background: var(--route); color: var(--route-ink); border-radius: 18px; padding: 7px 14px; font-weight: 600; font-size: 14px; }
+.collect-row { display: grid; grid-template-columns: 24px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); font-size: 15.5px; }
+.collect-row input { width: 22px; height: 22px; accent-color: var(--route); }
+.collect-row small { display: block; color: var(--muted); font-size: 13.5px; }
 
 .route-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 34px 0 12px; }
 .route { list-style: none; margin: 0; padding: 6px 0; background: var(--surface); border-radius: 22px; box-shadow: var(--shadow); }
@@ -571,9 +578,47 @@ function cycleFor(d) {
   return { start: s, end: new Date(ny, nm, Math.min(P, dim(ny, nm))) };
 }
 function cycleAt(offset) { let c = cycleFor(today0()); for (let i = 0; i < offset; i++) c = cycleFor(c.end); return c; }
+// Money you paid for someone else, to collect back
+const owedOpen = () => st.tx.filter((t) => t.type === 'expense' && t.owedBy && !t.collected);
+function owedByPerson() { const m = {}; owedOpen().forEach((t) => { (m[t.owedBy] = m[t.owedBy] || []).push(t); }); return m; }
+function people() { const s = new Set(['Wife']); st.tx.forEach((t) => { if (t.owedBy) s.add(t.owedBy); }); return Array.from(s); }
+function relinkRepay(t, on) {
+  if (!t.repayOf) return;
+  st.tx.forEach((x) => { if (t.repayOf.indexOf(x.id) >= 0) { if (on) { x.collected = t.date; x.collectedTx = t.id; } else { delete x.collected; delete x.collectedTx; } } });
+}
+function owedCardsHtml() {
+  const t0 = today0(), owed = owedByPerson();
+  return Object.keys(owed).map((who) => {
+    const list = owed[who], tot = list.reduce((s, t) => s + (+t.amount || 0), 0);
+    const oldest = list.reduce((m, t) => (t.date < m ? t.date : m), list[0].date), days = daysBetween(pday(oldest), t0);
+    return '<button class="owed" data-act="collect" data-who="' + esc(who) + '"><span><b>' + esc(who) + ' owes you ' + money(tot) + '</b><small>' + list.length + (list.length > 1 ? ' things you paid for' : ' thing you paid for') + ', the oldest ' + (days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago') + '</small></span><span class="go">Collect</span></button>';
+  }).join('');
+}
+function collectSheet(who) {
+  const list = owedOpen().filter((t) => t.owedBy === who).sort((a, b) => (a.date < b.date ? -1 : 1));
+  if (!list.length) return;
+  const rows = list.map((t) => '<label class="collect-row"><input type="checkbox" id="f_c_' + esc(t.id) + '" checked><span>' + esc(t.note || catName(t.category)) + '<small>' + dLong(pday(t.date)) + ', ' + esc(srcName(t.pay)) + '</small></span><b>' + fmt(t.cur, t.orig != null ? t.orig : t.amount) + '</b></label>').join('');
+  const fields = [
+    { type: 'html', html: rows },
+    { k: 'into', label: 'Paid back into', type: 'select', options: [['', 'Cash, or not tracked']].concat(bankOpts()), value: st.payInto || '' },
+    { k: 'date', label: 'Date', type: 'date', value: dk(today0()) }
+  ];
+  formSheet({
+    title: 'Collect from ' + who, intro: '<p class="muted" style="margin:-6px 0 8px">Tick what ' + esc(who) + ' has paid you back for.</p>', fields, submit: 'Mark as paid back',
+    onSubmit: (v) => {
+      const chosen = list.filter((t) => { const el = document.getElementById('f_c_' + t.id); return el && el.checked; });
+      if (!chosen.length) return 'Tick at least one.';
+      const total = r2(chosen.reduce((s, t) => s + (+t.amount || 0), 0));
+      const r = { id: uid(), created: Date.now(), type: 'income', cur: 'GBP', orig: total, rate: 1, amount: total, date: v.date || dk(today0()), into: v.into || undefined, category: null, note: who + ' paid you back', repayOf: chosen.map((t) => t.id) };
+      st.tx.push(r); relinkRepay(r, true);
+      commit(who + ' paid back ' + money(total), () => { relinkRepay(r, false); st.tx.splice(st.tx.indexOf(r), 1); commit(); });
+    }
+  });
+}
+
 function expectedPay() {
   if (st.expectedPay > 0) return +st.expectedPay;
-  const inc = st.tx.filter((t) => t.type === 'income').sort((a, b) => (b.date < a.date ? -1 : 1));
+  const inc = st.tx.filter((t) => t.type === 'income' && !t.repayOf).sort((a, b) => (b.date < a.date ? -1 : 1));
   return inc.length ? +inc[0].amount : 0;
 }
 
@@ -849,6 +894,7 @@ function renderCycle() {
     h += '<div class="callout"><div>' + (P.shortNow.length === 1 ? '<b>' + esc(P.shortNow[0].b.name) + '</b> is ' + fmt(P.shortNow[0].b.cur, P.shortNow[0].short) + ' short for its bills before payday.' :
       'Not enough in ' + P.shortNow.length + ' accounts for bills before payday: ' + P.shortNow.map((a) => '<b>' + esc(a.b.name) + '</b> ' + fmt(a.b.cur, a.short)).join(', ') + '.') + '</div></div>';
   }
+  h += owedCardsHtml();
   // Route
   h += '<div class="route-head"><div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !ui.cycleView + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!ui.cycleView + '">Next cycle</button></div>' +
     '<span class="muted" style="font-size:14px">' + dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)) + '</span></div>';
@@ -991,26 +1037,27 @@ function txLabel(t) {
   return t.note || catName(t.category);
 }
 function txMeta(t) {
-  if (t.type === 'income') return 'Income' + (t.into ? ', into ' + srcName(t.into) : '');
+  if (t.type === 'income') return (t.repayOf ? 'Paid back' : 'Income') + (t.into ? ', into ' + srcName(t.into) : '');
   if (t.type === 'transfer') return 'From ' + srcName(t.from);
   if (t.type === 'cardpay') return 'Card payment from ' + srcName(t.from);
   return catName(t.category) + ', ' + srcName(t.pay);
 }
 function renderActivity() {
   const c = cycleAt(0), from = dk(c.start), to = dk(c.end);
-  const spend = st.tx.filter((t) => t.type === 'expense' && t.date >= from && t.date < to);
-  const income = st.tx.filter((t) => t.type === 'income' && t.date >= from && t.date < to).reduce((s, t) => s + (+t.amount || 0), 0);
+  const spend = st.tx.filter((t) => t.type === 'expense' && !t.owedBy && t.date >= from && t.date < to);
+  const owedTot = owedOpen().reduce((s, t) => s + (+t.amount || 0), 0);
+  const income = st.tx.filter((t) => t.type === 'income' && !t.repayOf && t.date >= from && t.date < to).reduce((s, t) => s + (+t.amount || 0), 0);
   const total = spend.reduce((s, t) => s + (+t.amount || 0), 0);
   const groups = {};
   spend.forEach((t) => { const k = topCat(t.category) ? topCat(t.category).name : 'Uncategorised'; groups[k] = (groups[k] || 0) + (+t.amount || 0); });
   const gl = Object.entries(groups).sort((a, b) => b[1] - a[1]);
   let h = '<div class="lead"><div><p class="cap">Spent since payday on ' + dShort(c.start) + '</p><h2 class="big">' + bigMoney(total) + '</h2>' +
-    '<p class="sub">' + (income ? money(income) + ' came in this cycle.' : 'No income logged this cycle yet.') + '</p></div></div>';
+    '<p class="sub">' + (income ? money(income) + ' came in this cycle.' : 'No income logged this cycle yet.') + (owedTot > 0.005 ? ' Not counting ' + money(owedTot) + ' you paid for others and haven’t collected yet.' : '') + '</p></div></div>' + owedCardsHtml();
   if (total > 0) {
     h += '<div class="panel" style="margin-bottom:26px"><div class="bar" style="height:14px;border-radius:7px">' + gl.map((g, n) => '<i style="width:' + (g[1] / total * 100) + '%;background:' + PALETTE[n % PALETTE.length] + '"></i>').join('') + '</div>' +
       '<div class="legend" style="grid-template-columns:repeat(auto-fill,minmax(230px,1fr));column-gap:28px">' + gl.map((g, n) => '<div><i style="background:' + PALETTE[n % PALETTE.length] + '"></i><span>' + esc(g[0]) + '</span><span class="amt">' + money(g[1]) + '</span></div>').join('') + '</div></div>';
   }
-  const F = { all: 'All', expense: 'Spending', income: 'Income', transfer: 'Transfers', cardpay: 'Card payments' };
+  const F = { all: 'All', expense: 'Spending', owed: 'Paid for others', income: 'Income', transfer: 'Transfers', cardpay: 'Card payments' };
   h += '<div class="search"><input type="search" placeholder="Search notes, categories, accounts" value="' + esc(ui.actQuery) + '" data-act="q" aria-label="Search transactions"><div class="chips">' +
     Object.keys(F).map((k) => '<button data-act="filter" data-v="' + k + '" aria-pressed="' + (ui.actFilter === k) + '">' + F[k] + '</button>').join('') + '</div></div>';
   h += '<div id="txList">' + txListHtml() + '</div>';
@@ -1019,7 +1066,8 @@ function renderActivity() {
 function txListHtml() {
   const q = ui.actQuery.trim().toLowerCase();
   let txs = st.tx.slice().sort((a, b) => (a.date === b.date ? (b.created || 0) - (a.created || 0) : a.date < b.date ? 1 : -1));
-  if (ui.actFilter !== 'all') txs = txs.filter((t) => t.type === ui.actFilter);
+  if (ui.actFilter === 'owed') txs = txs.filter((t) => t.owedBy || t.repayOf);
+  else if (ui.actFilter !== 'all') txs = txs.filter((t) => t.type === ui.actFilter);
   if (q) txs = txs.filter((t) => (txLabel(t) + ' ' + txMeta(t) + ' ' + (t.note || '')).toLowerCase().indexOf(q) >= 0);
   const shown = txs.slice(0, ui.actLimit);
   if (!shown.length) return '<p class="empty">' + (q ? 'Nothing matches “' + esc(ui.actQuery) + '”.' : 'No transactions yet. Use Add to log one.') + '</p>';
@@ -1028,7 +1076,7 @@ function txListHtml() {
     if (t.date !== day) { day = t.date; h += '<div class="day-h">' + dLong(pday(day)) + '</div>'; }
     const sign = t.type === 'income' ? '+' : t.type === 'expense' ? '−' : '';
     const amt = t.type === 'transfer' ? fmt(M.bank[t.from] ? M.bank[t.from].cur : 'GBP', t.amtFrom || t.orig) : fmt(t.cur, Math.abs(t.orig != null ? t.orig : t.amount));
-    h += '<button class="row" data-act="tx" data-id="' + esc(t.id) + '"><span class="nm">' + esc(txLabel(t)) + '</span><span class="mt">' + esc(txMeta(t)) + '</span>' +
+    h += '<button class="row" data-act="tx" data-id="' + esc(t.id) + '"><span class="nm">' + esc(txLabel(t)) + '</span><span class="mt">' + (t.owedBy ? (t.collected ? '<span class="pill good">Paid back</span> ' : '<span class="pill today">' + esc(t.owedBy) + ' owes you</span> ') : '') + esc(txMeta(t)) + '</span>' +
       '<span class="rt amt' + (t.type === 'income' ? ' pos' : '') + '">' + sign + amt.replace('−', '') + ((t.cur || 'GBP') !== 'GBP' && t.type !== 'transfer' ? '<small>≈ ' + money(t.amount) + '</small>' : '') + '</span></button>';
   });
   h += '</div>';
@@ -1058,7 +1106,7 @@ function fieldsHtml(fields) {
     if (f.type === 'check') return '<label class="check' + full + '"><input type="checkbox" id="' + id + '"' + (f.value ? ' checked' : '') + '>' + esc(f.label) + '</label>';
     let input;
     if (f.type === 'select') input = '<select id="' + id + '">' + f.options.map((o) => '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(f.value == null ? '' : f.value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
-    else input = '<input id="' + id + '" type="' + (f.type || 'text') + '"' + (f.type === 'number' ? ' inputmode="decimal" step="' + (f.step || '0.01') + '"' : '') + (f.cls ? ' class="' + f.cls + '"' : '') + (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '') + ' value="' + esc(f.value == null ? '' : f.value) + '">';
+    else input = '<input id="' + id + '" type="' + (f.type || 'text') + '"' + (f.type === 'number' ? ' inputmode="decimal" step="' + (f.step || '0.01') + '"' : '') + (f.cls ? ' class="' + f.cls + '"' : '') + (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '') + (f.list ? ' list="' + f.list + '" autocomplete="off"' : '') + ' value="' + esc(f.value == null ? '' : f.value) + '">';
     return '<label class="' + full.trim() + '">' + esc(f.label) + input + (f.hint ? '<span class="hint">' + esc(f.hint) + '</span>' : '') + '</label>';
   }).join('') + '</div>';
 }
@@ -1139,13 +1187,16 @@ function txSheet(type, t) {
       { k: 'category', label: 'Category', type: 'select', options: sel(catOpts(), 'Uncategorised'), value: d.category || '' },
       { k: 'pay', label: 'Paid with', type: 'select', options: payOpts(), value: d.pay || (st.banks[0] || {}).id || 'cash' },
       { k: 'date', label: 'Date', type: 'date', value: date },
-      { k: 'bill', label: 'Is this a bill payment?', type: 'select', options: sel(st.bills.filter((b) => !billDone(b)).map((b) => [b.id, b.name]), 'No'), value: d.bill || '' }
+      { k: 'bill', label: 'Is this a bill payment?', type: 'select', options: sel(st.bills.filter((b) => !billDone(b)).map((b) => [b.id, b.name]), 'No'), value: d.bill || '' },
+      { k: 'owedBy', label: 'Paid for someone else? Who pays you back', value: d.owedBy || '', placeholder: 'Leave empty if it’s yours', list: 'peopleList', full: true, hint: d.collected ? 'Paid back on ' + dLong(pday(d.collected)) : 'It still comes out of your account, and you’ll be reminded to collect it' },
+      { type: 'html', html: '<datalist id="peopleList">' + people().map((p) => '<option value="' + esc(p) + '">').join('') + '</datalist>' }
     ];
   }
   formSheet({
     title: isNew ? 'Add' : 'Edit transaction', intro: seg, fields, submit: isNew ? 'Add' : 'Save',
     danger: isNew ? null : 'Delete',
-    onDanger: () => { const i = st.tx.indexOf(t); st.tx.splice(i, 1); closeSheet(); commit('Deleted', () => { st.tx.splice(i, 0, t); commit(); }); },
+    extraBtn: t && t.owedBy && !t.collected ? '<button class="btn" data-act="collect" data-who="' + esc(t.owedBy) + '">Collect</button>' : '',
+    onDanger: () => { const i = st.tx.indexOf(t); relinkRepay(t, false); st.tx.splice(i, 1); closeSheet(); commit('Deleted', () => { st.tx.splice(i, 0, t); relinkRepay(t, true); commit(); }); },
     onSubmit: (v) => {
       const n = t || { id: uid(), created: Date.now() };
       n.type = type; n.date = v.date || dk(today0());
@@ -1167,6 +1218,8 @@ function txSheet(type, t) {
         } else if (type === 'income') { n.into = v.into || undefined; n.category = null; }
         else {
           n.category = v.category || null; n.pay = v.pay;
+          const ob = (v.owedBy || '').trim();
+          if (ob) n.owedBy = ob; else { delete n.owedBy; delete n.collected; delete n.collectedTx; }
           if (v.bill) { n.bill = v.bill; const b = M.bill[v.bill]; const key = billKeyNear(b, pday(n.date)); n.billOcc = key; n.billMonth = key.slice(0, 7); if (!n.note) n.note = b.name; }
           else { delete n.bill; delete n.billOcc; delete n.billMonth; }
         }
@@ -1553,6 +1606,7 @@ document.addEventListener('click', (e) => {
     case 'tx': { const t = st.tx.find((x) => x.id === id); if (t) txSheet(t.type, t); break; }
     case 'export': exportBackup(); break;
     case 'fresh': freshSheet(); break;
+    case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
     case 'signin': closeSheet(); signIn(); break;
     case 'signout': if (confirm('Sign out? Your budget stays on this device.')) { closeSheet(); signOut(); } break;
     case 'import': $('#importFile').click(); break;
