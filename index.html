@@ -154,6 +154,13 @@ button.row:hover { background: var(--sunk); }
 .callout { display: flex; gap: 12px; align-items: flex-start; background: var(--late-soft); color: var(--ink); border-radius: 16px; padding: 14px 16px; margin-top: 22px; }
 .callout b { color: var(--late); }
 .callout .btn { margin-left: auto; flex: none; }
+.cat-h { display: flex; align-items: baseline; gap: 10px; margin: 24px 6px 10px; }
+.cat-h:first-child { margin-top: 0; }
+.cat-h .sw { width: 12px; height: 12px; border-radius: 4px; align-self: center; flex: none; }
+.cat-h h3 { margin: 0; }
+.cat-h .amt { margin-left: auto; font-size: 17px; }
+.cat-h .amt small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.route-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .owed { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--route-soft); color: var(--ink); border: 0; border-radius: 16px; padding: 14px 16px; margin-top: 14px; }
 .owed b { display: block; font-weight: 650; }
 .owed small { display: block; font-size: 14px; color: var(--muted); }
@@ -349,6 +356,7 @@ const DEF_RATE = 1 / 85;
 let st = norm(null);
 let ui = { tab: 'cycle', cycleView: 0, actFilter: 'all', actQuery: '', actLimit: 60 };
 try { const u = JSON.parse(localStorage.getItem('budget.v2.ui')); if (u && u.tab) ui.tab = u.tab; } catch (e) {}
+try { ui.groupBy = localStorage.getItem('budget.v2.group') || 'date'; } catch (e) { ui.groupBy = 'date'; }
 
 function norm(s) {
   s = s && typeof s === 'object' ? JSON.parse(JSON.stringify(s)) : {};
@@ -863,12 +871,19 @@ function welcomeHtml() {
 }
 
 // ---------- Pay cycle ----------
-function stopHtml(i, t0) {
+const groupName = (i) => (i.cat === '__cards' ? 'Card payments' : topCat(i.cat) ? topCat(i.cat).name : 'Other');
+function catLabel(i, group) {
+  if (i.cat === '__cards') return group === 'Card payments' ? '' : 'Card payment';
+  const c = M.cat[i.cat]; if (!c) return '';
+  return c.name === group ? '' : c.name;
+}
+function stopHtml(i, t0, group) {
   const late = open_(i) && i.date < t0, isToday = open_(i) && +i.date === +t0;
   const cls = 'stop' + (i.paid ? ' paid' : '') + (i.assumed ? ' assumed' : '') + (late ? ' late' : '');
   const status = i.paid ? '' : late ? '<span class="pill late">Unpaid</span>' : isToday ? '<span class="pill today">Due today</span>' : '';
   const amount = i.unknown ? '<span class="faint">Set amount</span>' : (i.est ? '≈ ' : '') + fmt(i.cur, i.amt);
-  const meta = (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
+  const cl = catLabel(i, group);
+  const meta = (cl ? cl + ', ' : '') + (i.owner ? i.owner + ' plan, ' : '') + (i.paid ? 'Paid from ' + srcName(i.pay) : i.assumed ? 'Already out of ' + srcName(i.pay) + ' by ' + dShort(i.assumedOn) : srcName(i.pay));
   return '<li class="' + cls + '"><div class="date"><b>' + i.date.getDate() + '</b>' + MON[i.date.getMonth()] + '</div><span class="node"></span>' +
     '<button class="body" data-act="item" data-uid="' + esc(i.uid) + '"><span class="nm">' + esc(i.name) + '</span><span class="mt">' + status + '<span>' + esc(meta) + '</span></span></button>' +
     '<span class="amt">' + amount + '</span>' +
@@ -897,7 +912,22 @@ function renderCycle() {
   h += owedCardsHtml();
   // Route
   h += '<div class="route-head"><div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !ui.cycleView + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!ui.cycleView + '">Next cycle</button></div>' +
-    '<span class="muted" style="font-size:14px">' + dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)) + '</span></div>';
+    '<div class="route-tools"><div class="seg" role="group" aria-label="Sort bills"><button data-act="groupby" data-v="date" aria-pressed="' + (ui.groupBy !== 'cat') + '">By date</button><button data-act="groupby" data-v="cat" aria-pressed="' + (ui.groupBy === 'cat') + '">By category</button></div>' +
+    '<span class="muted" style="font-size:14px">' + dShort(c.start) + ' to ' + dShort(addDays(c.end, -1)) + '</span></div></div>';
+  if (ui.groupBy === 'cat') {
+    const legendOrder = {}; const lt = {};
+    P.next.filter(open_).forEach((i) => { const k = groupName(i); lt[k] = (lt[k] || 0) + i.gbp; });
+    Object.entries(lt).sort((a, b) => b[1] - a[1]).forEach((g, n) => { legendOrder[g[0]] = PALETTE[n % PALETTE.length]; });
+    const gmap = {}; items.forEach((i) => { const k = groupName(i); (gmap[k] = gmap[k] || []).push(i); });
+    const order = Object.keys(gmap).map((k) => [k, gmap[k], gmap[k].filter(open_).reduce((s, i) => s + i.gbp, 0), gmap[k].reduce((s, i) => s + i.gbp, 0)]).sort((a, b) => b[3] - a[3]);
+    h += '<div>';
+    if (!order.length) h += '<p class="empty">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday.' : 'Nothing due in this cycle.') + '</p>';
+    order.forEach(([k, list, left, all]) => {
+      h += '<div class="cat-h"><span class="sw" style="background:' + (legendOrder[k] || 'var(--faint)') + '"></span><h3 class="h">' + esc(k) + '</h3><span class="muted" style="font-size:14px">' + list.length + (list.length > 1 ? ' bills' : ' bill') + '</span><span class="amt">' + money(all) + (left < all - 0.005 ? '<small>' + money(left) + ' still to pay</small>' : '') + '</span></div>' +
+        '<ol class="route">' + list.map((i) => stopHtml(i, t0, k)).join('') + '</ol>';
+    });
+    h += '</div><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Manage bills (' + st.bills.length + ')</button></p></div>';
+  } else {
   h += '<ol class="route">';
   const lateItems = ui.cycleView ? [] : items.filter((i) => open_(i) && i.date < t0);
   if (!ui.cycleView && lateItems.length > 1) h += '<li class="stop group"><span></span><span class="node"></span><div class="lbl">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></div></li>';
@@ -910,6 +940,7 @@ function renderCycle() {
   if (!items.length) h += '<li class="stop marker"><span></span><span class="node"></span><div class="lbl">' + (st.startDate && pday(st.startDate) > t0 && !ui.cycleView ? 'Your fresh start begins on payday' : 'Nothing due in this cycle') + '</div></li>';
   h += '<li class="stop marker pay"><div class="date"><b>' + c.end.getDate() + '</b>' + MON[c.end.getMonth()] + '</div><span class="node">£</span><div class="lbl">Payday' + (P.pay ? '<span>about ' + money(P.pay) + '</span>' : '') + '</div></li>';
   h += '</ol><p style="margin-top:14px"><button class="btn ghost" data-act="bills">Manage bills (' + st.bills.length + ')</button></p></div>';
+  }
 
   // Side: payday plan
   h += '<div class="side"><div class="panel plan"><h2 class="h">When you’re paid on ' + dLong(P.c1.start) + '</h2>';
@@ -1107,7 +1138,7 @@ function fieldsHtml(fields) {
     let input;
     if (f.type === 'select') input = '<select id="' + id + '">' + f.options.map((o) => '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(f.value == null ? '' : f.value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>').join('') + '</select>';
     else input = '<input id="' + id + '" type="' + (f.type || 'text') + '"' + (f.type === 'number' ? ' inputmode="decimal" step="' + (f.step || '0.01') + '"' : '') + (f.cls ? ' class="' + f.cls + '"' : '') + (f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '') + (f.list ? ' list="' + f.list + '" autocomplete="off"' : '') + ' value="' + esc(f.value == null ? '' : f.value) + '">';
-    return '<label class="' + full.trim() + '">' + esc(f.label) + input + (f.hint ? '<span class="hint">' + esc(f.hint) + '</span>' : '') + '</label>';
+    return '<label class="' + full.trim() + '"' + (f.hidden ? ' hidden' : '') + '>' + esc(f.label) + input + (f.hint ? '<span class="hint">' + esc(f.hint) + '</span>' : '') + '</label>';
   }).join('') + '</div>';
 }
 function readFields(fields) {
@@ -1188,7 +1219,8 @@ function txSheet(type, t) {
       { k: 'pay', label: 'Paid with', type: 'select', options: payOpts(), value: d.pay || (st.banks[0] || {}).id || 'cash' },
       { k: 'date', label: 'Date', type: 'date', value: date },
       { k: 'bill', label: 'Is this a bill payment?', type: 'select', options: sel(st.bills.filter((b) => !billDone(b)).map((b) => [b.id, b.name]), 'No'), value: d.bill || '' },
-      { k: 'owedBy', label: 'Paid for someone else? Who pays you back', value: d.owedBy || '', placeholder: 'Leave empty if it’s yours', list: 'peopleList', full: true, hint: d.collected ? 'Paid back on ' + dLong(pday(d.collected)) : 'It still comes out of your account, and you’ll be reminded to collect it' },
+      { k: 'owe', label: 'Someone will pay me back for this', type: 'check', value: !!d.owedBy, full: true },
+      { k: 'owedBy', label: 'Who pays you back', value: d.owedBy || 'Wife', list: 'peopleList', full: true, hidden: !d.owedBy, hint: d.collected ? 'Paid back on ' + dLong(pday(d.collected)) : 'It still comes out of your account. You’ll see a reminder until you mark it collected.' },
       { type: 'html', html: '<datalist id="peopleList">' + people().map((p) => '<option value="' + esc(p) + '">').join('') + '</datalist>' }
     ];
   }
@@ -1218,7 +1250,8 @@ function txSheet(type, t) {
         } else if (type === 'income') { n.into = v.into || undefined; n.category = null; }
         else {
           n.category = v.category || null; n.pay = v.pay;
-          const ob = (v.owedBy || '').trim();
+          const ob = v.owe ? (v.owedBy || '').trim() : '';
+          if (v.owe && !ob) return 'Say who will pay you back.';
           if (ob) n.owedBy = ob; else { delete n.owedBy; delete n.collected; delete n.collectedTx; }
           if (v.bill) { n.bill = v.bill; const b = M.bill[v.bill]; const key = billKeyNear(b, pday(n.date)); n.billOcc = key; n.billMonth = key.slice(0, 7); if (!n.note) n.note = b.name; }
           else { delete n.bill; delete n.billOcc; delete n.billMonth; }
@@ -1524,6 +1557,7 @@ function freshSheet() {
   });
 }
 function startFresh(startS) {
+  if (!(st.expectedPay > 0)) { const p = expectedPay(); if (p > 0) st.expectedPay = r2(p); }
   const before = st.tx.filter((t) => (t.date || '') < startS), kept = st.tx.filter((t) => (t.date || '') >= startS);
   // Work out every balance from the transactions being removed, then keep the result as the starting amount
   st.tx = before; idx();
@@ -1606,6 +1640,7 @@ document.addEventListener('click', (e) => {
     case 'tx': { const t = st.tx.find((x) => x.id === id); if (t) txSheet(t.type, t); break; }
     case 'export': exportBackup(); break;
     case 'fresh': freshSheet(); break;
+    case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
     case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
     case 'signin': closeSheet(); signIn(); break;
     case 'signout': if (confirm('Sign out? Your budget stays on this device.')) { closeSheet(); signOut(); } break;
@@ -1631,6 +1666,7 @@ document.addEventListener('change', (e) => {
   const a = e.target.dataset && e.target.dataset.act;
   if (a === 'extra') { st.dfPlan.extra = +e.target.value; commit(); }
   if (a === 'payinto') { st.payInto = e.target.value || undefined; commit(); }
+  if (e.target.id === 'f_owe') { const n = document.getElementById('f_owedBy'); if (n) { n.closest('label').hidden = !e.target.checked; if (e.target.checked && !n.value) n.value = 'Wife'; } }
   if (a === 'profile') { closeSheet(); switchProfile(e.target.value); }
 });
 sheet.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && sheetSubmit) { e.preventDefault(); sheetSubmit(); } });
