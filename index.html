@@ -1641,7 +1641,7 @@ function settingsSheet() {
   const syncBtn = remote.on ? (remote.user ? '<button class="btn" data-act="signout">Sign out</button>' : '<button class="btn primary" data-act="signin">Sign in with Google</button>') : '';
   const profSel = profiles.list.length > 1 ? '<div class="fields" style="margin-top:12px"><label class="full">Budget profile<select data-act="profile">' + profiles.list.map((p) => '<option value="' + esc(p.id) + '"' + (p.id === profiles.current ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') + '</select></label></div>' : '';
   const after = '<div class="rule"></div><h3 class="h">Your data</h3><p class="muted" style="font-size:14.5px;margin:0 0 12px">' + where + '</p>' +
-    '<div class="sheet-actions" style="margin-top:0">' + syncBtn + '</div>' + profSel + '<div class="sheet-actions"><button class="btn" data-act="export">Export a backup</button><button class="btn" data-act="import">Import a backup</button><button class="btn" data-act="fresh">Start fresh</button><span class="grow"></span><button class="btn danger" data-act="wipe">Clear everything</button></div>';
+    '<div class="sheet-actions" style="margin-top:0">' + syncBtn + '</div>' + profSel + '<div class="sheet-actions"><button class="btn" data-act="export">Export a backup</button><button class="btn" data-act="export-sheets">Export for Google Sheets</button><button class="btn" data-act="import">Import a backup</button><button class="btn" data-act="fresh">Start fresh</button><span class="grow"></span><button class="btn danger" data-act="wipe">Clear everything</button></div>';
   formSheet({
     title: 'Settings', fields, after,
     onSubmit: (v) => {
@@ -1702,6 +1702,92 @@ async function exportBackup() {
   a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
+// ---------- Spreadsheet export (opens in Google Sheets, Excel or Numbers) ----------
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+}
+async function saveFile(filename, data, mime) {
+  try {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) { await dl.save({ filename, data }); return; }
+  } catch (e) { if (e && e.code === 'declined') return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: mime })); a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function exportSheets() {
+  toast('Preparing your spreadsheet…');
+  try { await loadXlsx(); } catch (e) { toast('Couldn’t load the spreadsheet tool. Check your connection.'); return; }
+  const X = window.XLSX, wb = X.utils.book_new(), D = (s) => (s ? pday(s) : '');
+  const P = cyclePicture(); setCatColors(P);
+  const kindName = (i) => (i.kind === 'in' ? 'Money in' : i.kind === 'card' ? 'Card payment' : i.ref.planOf ? 'Pay-later plan' : 'Bill');
+  const status = (i) => (i.paid ? (i.kind === 'in' ? 'Received' : 'Paid') : i.assumed ? 'Already out' : i.date < today0() ? (i.kind === 'in' ? 'Not received' : 'Unpaid') : 'To pay');
+  const addSheet = (name, rows, widths, moneyCols) => {
+    const ws = X.utils.aoa_to_sheet(rows, { cellDates: true });
+    ws['!cols'] = widths.map((w) => ({ wch: w }));
+    const range = X.utils.decode_range(ws['!ref'] || 'A1');
+    for (let r = 1; r <= range.e.r; r++) (moneyCols || []).forEach((c) => { const cell = ws[X.utils.encode_cell({ r, c })]; if (cell && cell.t === 'n') cell.z = '#,##0.00'; });
+    for (let r = 1; r <= range.e.r; r++) for (let c = 0; c <= range.e.c; c++) { const cell = ws[X.utils.encode_cell({ r, c })]; if (cell && cell.t === 'd') cell.z = 'dd mmm yyyy'; }
+    if (rows.length > 1) ws['!autofilter'] = { ref: X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: range.e.c } }) };
+    X.utils.book_append_sheet(wb, ws, name);
+  };
+  // Summary
+  const sim = simulate(+st.dfPlan.extra || 0, st.dfPlan.strategy === 'avalanche' ? 'avalanche' : 'snowball');
+  const debtTot = debtList().reduce((s, d) => s + d.gbp, 0);
+  addSheet('Summary', [
+    ['Budget summary', dLong(today0()) + ' ' + today0().getFullYear()],
+    ['Cash across your accounts (£)', r2(P.cash)],
+    ['Bills still to go out before payday (£)', r2(P.dueNow)],
+    ['Still to come in before payday (£)', r2(P.inNow)],
+    ['Free to spend before payday (£)', r2(P.free)],
+    ['Next payday', P.c1.start],
+    ['Expected pay (£)', r2(P.pay)],
+    ['Coming in from others next cycle (£)', r2(P.inNext)],
+    ['Bills from your accounts next cycle (£)', r2(P.billsNext)],
+    ['Left for everything else (£)', r2(P.pay + P.inNext - P.billsNext)],
+    ['Total debt (£)', r2(debtTot)],
+    ['Debt-free by', sim.months == null ? 'Not at this rate' : monYr(monthsFromNow(sim.months))]
+  ], [42, 22], [1]);
+  // Pay cycles
+  const cyc = [['Cycle', 'Date', 'Name', 'Type', 'Category', 'Account', 'Amount (£)', 'Original amount', 'Currency', 'Status']];
+  [['This cycle', P.now], ['Next cycle', P.next]].forEach(([label, list]) => list.forEach((i) => cyc.push([label, i.date, i.name, kindName(i), catText(i), i.kind === 'in' && !isBank(i.pay) ? 'Not tracked' : srcName(i.pay), r2(i.kind === 'in' ? i.gbp : -i.gbp), r2(i.amt), i.cur, status(i)])));
+  addSheet('Pay cycles', cyc, [11, 13, 30, 15, 28, 18, 13, 15, 9, 12], [6, 7]);
+  // Transactions
+  const tx = [['Date', 'Type', 'Description', 'Category', 'Main category', 'Account', 'To account', 'Amount (£)', 'Original amount', 'Currency', 'Bill', 'Paid for someone', 'Paid back']];
+  const TYPES = { expense: 'Spending', income: 'Income', transfer: 'Transfer', cardpay: 'Card payment' };
+  st.tx.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.created || 0) - (a.created || 0))).forEach((t) => {
+    const top = topCat(t.category);
+    const acct = t.type === 'income' ? (t.into ? srcName(t.into) : '') : t.type === 'expense' ? srcName(t.pay) : srcName(t.from);
+    const to = t.type === 'transfer' ? srcName(t.to) : t.type === 'cardpay' ? srcName(t.card) : '';
+    const signed = t.type === 'income' ? +t.amount : t.type === 'expense' ? -t.amount : -(+t.amount || 0);
+    tx.push([D(t.date), t.repayOf ? 'Paid back' : t.recv ? 'Money in' : TYPES[t.type] || t.type, t.type === 'transfer' ? (t.note || 'Transfer') : txLabel(t), t.category ? catName(t.category) : '', top ? top.name : '', acct, to, r2(signed), r2(t.type === 'transfer' ? (t.amtFrom || t.orig) : (t.orig != null ? t.orig : t.amount)), t.cur || 'GBP', t.bill && M.bill[t.bill] ? (M.bill[t.bill].planName || M.bill[t.bill].name) : '', t.owedBy || '', t.owedBy ? (t.collected ? 'Yes, ' + dShort(pday(t.collected)) : 'Not yet') : '']);
+  });
+  addSheet('Transactions', tx, [13, 13, 32, 22, 20, 18, 18, 13, 15, 9, 22, 16, 14], [7, 8]);
+  // Accounts
+  const ac = [['Account', 'Currency', 'Balance', 'Balance (£)', 'Last checked']];
+  st.banks.forEach((b) => ac.push([b.name, b.cur || 'GBP', bankBal(b) == null ? '' : bankBal(b), r2(bankGbp(b)), D(b.balDate)]));
+  addSheet('Accounts', ac, [22, 10, 14, 14, 14], [2, 3]);
+  // Cards
+  const cd = [['Card', 'Currency', 'Owed', 'Limit', 'Used', 'APR %', 'Due day', 'Minimum payment', 'Paid from']];
+  st.cards.forEach((c) => { const bal = cardBal(c); cd.push([c.name, c.cur || 'GBP', bal, +c.limit || '', c.limit > 0 ? r2(bal / c.limit * 100) / 100 : '', +c.apr || '', c.dueDay || '', bal > 0.005 ? cardMin(c) : 0, c.payFrom ? srcName(c.payFrom) : '']); });
+  addSheet('Cards', cd, [18, 10, 13, 12, 9, 9, 9, 17, 18], [2, 3, 7]);
+  { const ws = wb.Sheets.Cards, rr = X.utils.decode_range(ws['!ref']); for (let r = 1; r <= rr.e.r; r++) { const cell = ws[X.utils.encode_cell({ r, c: 4 })]; if (cell && cell.t === 'n') cell.z = '0%'; } }
+  // Debts in payoff order
+  const dl = debtList().sort((a, b) => (sim.done[a.id] || 9999) - (sim.done[b.id] || 9999) || a.gbp - b.gbp);
+  const de = [['Debt', 'Type', 'Currency', 'Owed', 'Owed (£)', 'APR %', 'Monthly payment', 'Payment is an estimate', 'Clear by']];
+  dl.forEach((d) => de.push([d.name, d.kind === 'card' ? 'Card' : d.kind === 'bnpl' ? 'Pay later' : 'Loan', d.cur, r2(d.bal), r2(d.gbp), d.apr || 0, r2(d.pay), d.est ? 'Yes' : '', sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : 'Not yet']));
+  addSheet('Debts', de, [26, 11, 10, 13, 13, 8, 16, 20, 12], [3, 4, 6]);
+  // Bills and money in
+  const bl = [['Name', 'Type', 'Amount', 'Currency', 'How often', 'Day', 'Category', 'Account', 'Ends', 'Finished']];
+  st.bills.forEach((b) => { const a = billAmt(b); bl.push([b.planName || b.name, b.planOf ? 'Pay-later plan' : 'Bill', a.unknown ? '' : r2(a.amt), b.cur || 'GBP', FREQ_LABEL[freqOf(b)], freqOf(b) === 'monthly' ? (b.due || 1) : D(b.start || b.begins), catText({ cat: b.category }), srcName(b.pay), D(b.ends), billDone(b) ? 'Yes' : '']); });
+  st.incomes.forEach((x) => bl.push([x.name, 'Money in', +x.amount || 0, x.cur || 'GBP', FREQ_LABEL[freqOf(x)], freqOf(x) === 'monthly' ? (x.due || 1) : D(x.start), 'Money coming in', x.into ? srcName(x.into) : 'Not tracked', D(x.ends), x.ends && pday(x.ends) < today0() ? 'Yes' : '']));
+  addSheet('Bills and money in', bl, [28, 14, 12, 10, 16, 13, 28, 18, 13, 9], [2]);
+  const out = X.write(wb, { bookType: 'xlsx', type: 'array', cellDates: true });
+  await saveFile('budget-' + dk(today0()) + '.xlsx', out, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  toast('Spreadsheet saved. Upload it to Google Drive and open it with Google Sheets.');
+}
+
 $('#importFile').addEventListener('change', (e) => {
   const f = e.target.files[0]; if (!f) return;
   const r = new FileReader();
@@ -1759,6 +1845,7 @@ document.addEventListener('click', (e) => {
     case 'more': ui.actLimit += 100; $('#txList').innerHTML = txListHtml(); break;
     case 'tx': { const t = st.tx.find((x) => x.id === id); if (t) txSheet(t.type, t); break; }
     case 'export': exportBackup(); break;
+    case 'export-sheets': exportSheets(); break;
     case 'fresh': freshSheet(); break;
     case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
     case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
