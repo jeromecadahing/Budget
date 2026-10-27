@@ -350,6 +350,7 @@ h2.h { font-family: "IBM Plex Sans", system-ui, sans-serif; font-variation-setti
 .callout { border-radius: 8px; margin: 14px 0 0; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--late) 30%, transparent); }
 .owed { border-radius: 8px; margin-top: 12px; padding: 10px 14px; }
 .owed .go { border-radius: 6px; }
+.repeat-tip { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .owed.share { background: var(--good-soft); flex-wrap: wrap; }
 .owed.share.overdue { background: var(--amber-soft); }
 .owed.share > span:first-child { flex: 1 1 260px; min-width: 0; }
@@ -1721,7 +1722,7 @@ function txSheet(type, t) {
       { k: 'owe', label: 'Someone will pay me back for this', type: 'check', value: !!owedWho, full: true },
       { k: 'owedBy', label: 'Who pays you back', value: owedWho || 'Wife', list: 'peopleList', hidden: !owedWho, hint: (partner || d).collected ? 'Paid back on ' + dLong(pday((partner || d).collected)) : 'You’ll see a reminder until you collect it.' },
       { k: 'oweAmt', label: 'How much they pay', type: 'number', value: partner ? partner.orig : '', hidden: !owedWho, placeholder: 'All of it', hint: oweHint(partner ? +d.orig + +partner.orig : d.orig, partner ? partner.orig : null, d.cur) },
-      { type: 'html', html: '<datalist id="peopleList">' + people().map((p) => '<option value="' + esc(p) + '">').join('') + '</datalist>' }
+      { type: 'html', html: '<datalist id="peopleList">' + people().map((p) => '<option value="' + esc(p) + '">').join('') + '</datalist>' + (isNew ? '<p class="repeat-tip">Paying this every month, like over 12 months? <button class="btn ghost small" data-act="add-bill">Add it as a monthly bill instead</button></p>' : '') }
     ];
   }
   formSheet({
