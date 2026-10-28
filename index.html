@@ -352,7 +352,10 @@ h2.h { font-family: "IBM Plex Sans", system-ui, sans-serif; font-variation-setti
 .owed .go { border-radius: 6px; }
 .repeat-tip { margin: 4px 0 0; font-size: 13.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .owed.share { background: var(--good-soft); flex-wrap: wrap; }
-.owed.share.overdue { background: var(--amber-soft); }
+.owed.share.overdue, .owed.joint.overdue { background: var(--amber-soft); }
+.owed.joint { background: var(--route-soft); flex-wrap: wrap; }
+.owed.joint.ok { background: var(--sunk); }
+.owed.joint > span:first-child { flex: 1 1 260px; min-width: 0; }
 .owed.share > span:first-child { flex: 1 1 260px; min-width: 0; }
 .share-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .inline-select { border-radius: 8px; margin-top: 10px; }
@@ -437,6 +440,11 @@ table.grid tr.note-row td b { font-style: normal; color: var(--ink); }
 table.grid tr.note-row.late td { background: var(--late-soft); color: var(--late); font-style: normal; font-weight: 500; }
 table.grid tr.note-row.late .btn { margin-left: 10px; }
 table.grid tr.note-row.pay td { font-style: normal; color: var(--ink); background: color-mix(in srgb, var(--route-soft) 60%, var(--surface)); }
+table.grid tr.sub-row td { background: var(--head); border-top: 1px solid var(--line-2); border-bottom: 2px solid var(--line-2); font-weight: 600; }
+table.grid tr.sub-row td.num b { border-bottom: 1px solid var(--ink); }
+table.grid tr.sub-row.is-today td:not(.rn) { background: var(--amber-soft); color: var(--ink); }
+table.grid tr.sub-row.is-today td.rn { background: var(--amber); }
+.kpi.warn .v { color: var(--amber); }
 table.grid tr.empty-row td { color: var(--muted); padding: 18px 12px; }
 table.grid tr.faint-row td { color: var(--muted); }
 .nw { white-space: nowrap; }
@@ -847,6 +855,50 @@ function owedCardsHtml() {
     return '<button class="owed" data-act="collect" data-who="' + esc(who) + '"><span><b>' + esc(who) + ' owes you ' + money(tot) + '</b><small>' + list.length + (list.length > 1 ? ' things you paid for' : ' thing you paid for') + ', the oldest ' + (days <= 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago') + '</small></span><span class="go">Collect</span></button>';
   }).join('');
 }
+// ---------- Joint accounts: top up before bills come out ----------
+function jointNeed(b) {
+  const t0 = today0(), days = b.jointDays || 14, end = addDays(t0, days + 1);
+  const list = itemsIn(t0, end).filter((i) => open_(i) && i.pay === b.id);
+  let bal = bankBal(b) || 0, low = bal, by = null;
+  const bills = [];
+  list.forEach((i) => {
+    const v = fromGbp(b.cur || 'GBP', i.gbp) * (i.kind === 'in' ? 1 : -1);
+    bal += v; if (i.kind !== 'in') bills.push(i);
+    if (bal < low - 0.004) { low = bal; if (low < -0.004 && !by) by = i.date; }
+  });
+  const need = low < -0.004 ? r2(-low) : 0, pct = b.jointPct != null ? b.jointPct : 50;
+  // Split the whole top-up, counting what each of you has already put in recently
+  const since = dk(addDays(t0, -days)), cur = b.cur || 'GBP';
+  const ups = st.tx.filter((t) => t.topUp && t.date >= since && ((t.type === 'transfer' && t.to === b.id) || (t.type === 'income' && t.into === b.id)));
+  const mine = ups.filter((t) => t.type === 'transfer').reduce((s, t) => s + (+t.amtTo || 0), 0), theirsIn = ups.filter((t) => t.type === 'income').reduce((s, t) => s + inCur(cur, t), 0);
+  const gross = need > 0.004 ? need + mine + theirsIn : 0;
+  let theirs = Math.max(0, r2(gross * pct / 100 - theirsIn)), yours = Math.max(0, r2(gross - gross * pct / 100 - mine));
+  if (theirs + yours > need + 0.004) { if (yours < 0.005) theirs = need; else if (theirs < 0.005) yours = need; else yours = r2(need - theirs); }
+  if (theirs + yours < need - 0.004) { const gap = r2(need - theirs - yours); if (theirs > 0 || yours === 0) theirs = r2(theirs + gap); else yours = r2(yours + gap); }
+  return { b, need, by, bills, theirs, yours, mine: r2(mine), theirsIn: r2(theirsIn), has: bankBal(b) || 0, due: bills.reduce((s, i) => s + fromGbp(cur, i.gbp), 0) };
+}
+function jointHtml() {
+  return st.banks.filter((b) => b.jointWho).map(jointNeed).filter((j) => j.bills.length).map((j) => {
+    const cur = j.b.cur || 'GBP', who = j.b.jointWho;
+    if (!(j.need > 0.005)) {
+      const last = j.bills[j.bills.length - 1].date;
+      return '<div class="owed joint ok"><span><b>' + esc(j.b.name) + ' is covered</b><small>' + fmt(cur, j.due) + ' of bills due by ' + dLong(last) + ', and it has ' + fmt(cur, j.has) + '. Nothing to put in yet.</small></span></div>';
+    }
+    const days = daysBetween(today0(), j.by);
+    const when = days <= 0 ? 'today' : days === 1 ? 'tomorrow' : 'by ' + dLong(j.by);
+    return '<div class="owed joint' + (days <= 2 ? ' overdue' : '') + '"><span><b>Top up ' + esc(j.b.name) + ' with ' + fmt(cur, j.need) + ' ' + when + '</b><small>' + fmt(cur, j.due) + ' of bills due, it has ' + fmt(cur, j.has) + '. ' + (j.yours > 0.005 ? 'You put in ' + fmt(cur, j.yours) : 'Your part is in') + ', ' + (j.theirs > 0.005 ? esc(who) + ' puts in ' + fmt(cur, j.theirs) : esc(who) + '’s part is in') + '.</small></span>' +
+      '<span class="share-acts"><button class="btn small" data-act="joint-remind" data-id="' + j.b.id + '">Remind ' + esc(who) + '</button><button class="btn small" data-act="joint-in" data-id="' + j.b.id + '">' + esc(who) + ' paid in</button>' + (j.yours > 0.005 ? '<button class="btn small primary" data-act="joint-move" data-id="' + j.b.id + '">I’ve moved mine</button>' : '') + '</span></div>';
+  }).join('');
+}
+async function jointRemind(b) {
+  const j = jointNeed(b), cur = b.cur || 'GBP'; if (!(j.need > 0.005)) return toast(b.name + ' has enough for its bills.');
+  const text = 'Hi! The ' + b.name + ' account needs topping up by ' + dLong(j.by) + '. Bills coming out:\n' + j.bills.map((i) => '• ' + i.name + ': ' + fmt(i.cur, i.amt) + ' (' + dShort(i.date) + ')').join('\n') +
+    '\nIt has ' + fmt(cur, j.has) + ', so it’s ' + fmt(cur, j.need) + ' short. Your part is ' + fmt(cur, j.theirs) + (j.yours > 0.005 ? ', I’ll put in ' + fmt(cur, j.yours) : ', I’ve put mine in already') + '. Thanks!';
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast('Reminder copied. Paste it into a message to ' + b.jointWho + '.'); }
+  catch (e) { window.location.href = 'sms:?&body=' + encodeURIComponent(text); }
+}
+
 // ---------- Shares other people owe you back ----------
 function sharesByWho(list) { const m = {}; list.forEach((i) => { (m[i.who] = m[i.who] || []).push(i); }); return m; }
 function sharesHtml() {
@@ -928,7 +980,7 @@ function collectSheet(who) {
 
 function expectedPay() {
   if (st.expectedPay > 0) return +st.expectedPay;
-  const inc = st.tx.filter((t) => t.type === 'income' && !t.repayOf && !t.recv).sort((a, b) => (b.date < a.date ? -1 : 1));
+  const inc = st.tx.filter((t) => t.type === 'income' && !t.repayOf && !t.recv && !t.topUp).sort((a, b) => (b.date < a.date ? -1 : 1));
   return inc.length ? +inc[0].amount : 0;
 }
 
@@ -1219,7 +1271,7 @@ function grid(cols, rows, opts) {
     opts.groups.forEach((g) => { h += '<tr class="grp"><td class="rn"></td>' + g.head + '</tr>'; sorted(g.rows).forEach((r) => { h += rowHtml(r); }); });
   } else {
     if (opts.before) h += opts.before;
-    sorted(rows).forEach((r) => { h += rowHtml(r); });
+    sorted(rows).forEach((r, k, arr) => { h += rowHtml(r); if (opts.afterRow) h += opts.afterRow(r, arr[k + 1]) || ''; });
     if (opts.after) h += opts.after;
   }
   if (!n && !opts.before && !opts.after) h += '<tr class="empty-row"><td class="rn"></td><td colspan="' + cols.length + '">' + esc(opts.empty || 'Nothing here yet.') + '</td></tr>';
@@ -1285,6 +1337,11 @@ function renderCycle() {
   const leftNext = P.pay + P.inNext - P.billsNext;
   let h = kpis([
     { label: 'Cash in accounts', value: bigMoney(P.cash), cls: P.cash < 0 ? 'neg' : '', note: st.banks.length + ' accounts' },
+    (() => {
+      const td = itemsIn(t0, addDays(t0, 1)).filter((i) => i.kind !== 'in'), left = td.filter(open_), back = itemsIn(t0, addDays(t0, 1)).filter((i) => i.kind === 'in' && open_(i)).reduce((s, i) => s + i.gbp, 0);
+      const sum = left.reduce((s, i) => s + i.gbp, 0);
+      return { label: 'Due today', value: bigMoney(sum), cls: sum > 0.005 ? 'warn' : '', note: !td.length ? 'Nothing due today' : !left.length ? 'All paid' : left.length + (left.length > 1 ? ' bills' : ' bill') + ' unpaid' + (back > 0.005 ? ', +' + money(back) + ' back' : '') };
+    })(),
     { label: 'Bills before payday', value: bigMoney(P.dueNow), note: waiting ? 'Fresh start on ' + dShort(pday(st.startDate)) : P.now.filter((i) => open_(i) && i.kind !== 'in').length + ' unpaid' },
     { label: waiting ? 'In your accounts now' : 'Free before payday', value: bigMoney(P.free), cls: 'key' + (P.free < 0 ? ' neg' : ''), note: 'Payday ' + dLong(P.c0.end) + (daysLeft === 1 ? ', tomorrow' : ', in ' + daysLeft + ' days') },
     { label: 'Pay', value: P.pay ? bigMoney(P.pay) : '<button class="btn small" data-act="settings">Set your pay</button>', note: 'Expected ' + dShort(P.c1.start) },
@@ -1294,7 +1351,7 @@ function renderCycle() {
     h += '<div class="callout"><div>' + (P.shortNow.length === 1 ? '<b>' + esc(P.shortNow[0].b.name) + '</b> is ' + fmt(P.shortNow[0].b.cur, P.shortNow[0].short) + ' short for its bills before payday.' :
       'Not enough in ' + P.shortNow.length + ' accounts for bills before payday: ' + P.shortNow.map((a) => '<b>' + esc(a.b.name) + '</b> ' + fmt(a.b.cur, a.short)).join(', ') + '.') + '</div></div>';
   }
-  h += sharesHtml() + owedCardsHtml();
+  h += jointHtml() + sharesHtml() + owedCardsHtml();
 
   const by = ui.groupBy === 'cat' || ui.groupBy === 'acct' ? ui.groupBy : 'date';
   const tools = '<div class="seg" role="group" aria-label="Which pay cycle"><button data-act="cview" data-v="0" aria-pressed="' + !view + '">Until payday</button><button data-act="cview" data-v="1" aria-pressed="' + !!view + '">Next cycle</button></div>' +
@@ -1327,8 +1384,19 @@ function renderCycle() {
     if (lateItems.length > 1) before += '<tr class="note-row late"><td class="rn"></td><td colspan="' + N + '">' + lateItems.length + ' past bills not marked paid <button class="btn small" data-act="tick-late">Mark all paid</button></td></tr>';
     const after = '<tr class="note-row pay"><td class="rn"></td><td><span class="dt">' + DOW[c.end.getDay()] + ' <b>' + c.end.getDate() + ' ' + MON[c.end.getMonth()] + '</b></span></td><td colspan="' + (N - 1) + '"><b>Payday</b>' + (P.pay ? ' <span class="muted">about ' + money(P.pay) + '</span>' : '') + '</td></tr>';
     const list = items.slice();
+    // A subtotal under each day that has more than one row
+    const afterRow = (i, nxt) => {
+      if (nxt && +nxt.date === +i.date) return '';
+      const day = list.filter((x) => +x.date === +i.date); if (day.length < 2) return '';
+      const outs = day.filter((x) => x.kind !== 'in'), ins = day.filter((x) => x.kind === 'in');
+      const out = outs.reduce((s, x) => s + x.gbp, 0), left = outs.filter(open_).reduce((s, x) => s + x.gbp, 0), inn = ins.reduce((s, x) => s + x.gbp, 0);
+      const isT = +i.date === +t0;
+      const label = (isT ? 'Due today' : 'Total for ' + DOW[i.date.getDay()] + ' ' + dShort(i.date)) + '<span class="muted"> ' + [outs.length ? outs.length + (outs.length > 1 ? ' bills' : ' bill') : '', ins.length ? ins.length + ' coming in' : ''].filter(Boolean).join(', ') + '</span>';
+      const amt = '<b>' + money(out) + '</b>' + (left > 0.005 && left < out - 0.005 ? '<small class="fx">' + money(left) + ' unpaid</small>' : outs.length && left <= 0.005 ? '<small class="fx">all paid</small>' : '') + (inn > 0.005 ? '<small class="fx pos">+' + money(inn) + ' in</small>' : '');
+      return '<tr class="sub-row' + (isT ? ' is-today' : '') + '"><td class="rn"></td><td colspan="4">' + label + '</td><td class="num">' + amt + '</td><td class="num"><b class="' + (run < 0 ? 'neg' : '') + '">' + money(run) + '</b></td><td></td></tr>';
+    };
     if (!list.length) h += grid(cols, [], { before: before + '<tr class="empty-row"><td class="rn"></td><td colspan="' + N + '">' + esc(emptyMsg) + '</td></tr>', after, rowCls });
-    else h += grid(cols, list, { before, after, rowCls, foot });
+    else h += grid(cols, list, { before, after, rowCls, foot, afterRow: showRun ? afterRow : null });
   } else {
     const byAcct = by === 'acct';
     const keyOf = (i) => (byAcct ? (i.pay || 'cash') : groupName(i));
@@ -1392,10 +1460,10 @@ function renderAccounts() {
     { label: 'Card limits', value: bigMoney(lim), note: money(Math.max(0, lim - owed)) + ' available' },
     { label: 'Cards used', value: lim > 0 ? Math.round(owed / lim * 100) + '%' : '—', cls: lim > 0 && owed / lim > 0.75 ? 'neg' : '', note: lim > 0 ? dataBar(owed / lim, owed / lim > 0.75 ? 'var(--late)' : 'var(--route)') : '' },
     { label: 'Cash minus cards', value: bigMoney(cash - owed), cls: cash - owed < 0 ? 'neg' : '' }
-  ]);
+  ]) + jointHtml();
   // Banks
   const bankCols = [
-    { k: 'name', label: 'Account', w: '34%', sort: (b) => b.name.toLowerCase(), html: (b) => nameBtn('bank', 'data-id="' + b.id + '"', esc(b.name)) },
+    { k: 'name', label: 'Account', w: '34%', sort: (b) => b.name.toLowerCase(), html: (b) => nameBtn('bank', 'data-id="' + b.id + '"', esc(b.name) + (b.jointWho ? '<small>Joint with ' + esc(b.jointWho) + '</small>' : '')) },
     { k: 'no', label: 'Number', sort: (b) => b.acct4 || '', html: (b) => (b.acct4 ? '<span class="muted">••' + esc(b.acct4) + '</span>' : '') },
     { k: 'bal', label: 'Balance', num: true, sort: (b) => bankGbp(b), html: (b) => { const v = bankBal(b); return v == null ? '<span class="faint">Not set</span>' : '<span class="' + (v < 0 ? 'neg' : '') + '">' + fmt(b.cur, v) + '</span>' + gbpNote(b.cur, v); } },
     { k: 'chk', label: 'Checked', sort: (b) => b.balDate || '', html: (b) => { const d = b.balDate ? daysBetween(pday(b.balDate), t0) : null; return '<span class="' + (d == null || d > 7 ? 'stale' : 'muted') + '">' + (d == null ? 'Never' : d === 0 ? 'Today' : d === 1 ? 'Yesterday' : d + ' days ago') + '</span>'; } }
@@ -1556,7 +1624,7 @@ function renderActivity() {
   const c = cycleAt(0), from = dk(c.start), to = dk(c.end);
   const spend = st.tx.filter((t) => t.type === 'expense' && !t.owedBy && t.date >= from && t.date < to);
   const owedTot = owedOpen().reduce((s, t) => s + (+t.amount || 0), 0) + sharesOpen(addDays(today0(), 1)).reduce((s, i) => s + i.gbp, 0);
-  const income = st.tx.filter((t) => t.type === 'income' && !t.repayOf && t.date >= from && t.date < to).reduce((s, t) => s + (+t.amount || 0), 0);
+  const income = st.tx.filter((t) => t.type === 'income' && !t.repayOf && !t.topUp && t.date >= from && t.date < to).reduce((s, t) => s + (+t.amount || 0), 0);
   const total = spend.reduce((s, t) => s + (+t.amount || 0), 0);
   const groups = {};
   spend.forEach((t) => { const k = topCat(t.category) ? topCat(t.category).name : 'Uncategorised'; groups[k] = (groups[k] || 0) + (+t.amount || 0); });
@@ -1674,9 +1742,9 @@ function oweHint(total, owe, cur) {
   if (owe == null || owe >= total) return 'They pay all ' + fmt(cur, total) + '. Enter less to split it.';
   return 'You pay ' + fmt(cur, total - owe) + ', they pay ' + fmt(cur, owe) + '.';
 }
-function txSheet(type, t) {
+function txSheet(type, t, pre) {
   type = t ? t.type : type || 'expense';
-  const isNew = !t, d = t || {};
+  const isNew = !t, d = t || pre || {};
   // A split: this transaction is your part, and a linked one is the part someone pays back
   const partner = t && t.type === 'expense' ? st.tx.find((x) => x.split === t.id && x.owedBy) : null;
   const owedWho = partner ? partner.owedBy : d.owedBy;
@@ -1745,6 +1813,7 @@ function txSheet(type, t) {
         n.from = v.from; n.to = v.to; n.amtFrom = r2(v.amtFrom);
         n.amtTo = r2(v.amtTo > 0 ? v.amtTo : fc === tc ? v.amtFrom : fromGbp(tc, toGbp(fc, v.amtFrom)));
         n.cur = fc; n.orig = n.amtFrom; n.rate = rateOf(fc); n.amount = r2(toGbp(fc, n.amtFrom)); n.note = v.note || '';
+        if (pre && pre.topUp) n.topUp = 'me';
       } else {
         if (!(v.orig > 0)) return 'Enter an amount.';
         n.cur = v.cur || 'GBP'; n.orig = r2(v.orig); n.rate = rateOf(n.cur); n.amount = r2(toGbp(n.cur, n.orig)); n.note = v.note || '';
@@ -1752,7 +1821,7 @@ function txSheet(type, t) {
           if (!v.card) return 'Choose a card.';
           n.card = v.card; n.from = v.from; n.category = null;
           const c = M.card[v.card]; if (c && (c.cur || 'GBP') !== 'GBP') n.cardAmt = n.cur === c.cur ? n.orig : r2(fromGbp(c.cur, n.amount)); else delete n.cardAmt;
-        } else if (type === 'income') { n.into = v.into || undefined; n.category = null; }
+        } else if (type === 'income') { n.into = v.into || undefined; n.category = null; if (pre && pre.topUp) n.topUp = pre.topUp; }
         else {
           n.category = v.category || null; n.pay = v.pay;
           const ob = v.owe ? (v.owedBy || '').trim() : '';
@@ -1993,7 +2062,11 @@ function bankSheet(b) {
     { k: 'name', label: 'Name', value: d.name, full: true },
     { k: 'bal', label: 'Balance now', type: 'number', value: isNew ? '' : bankBal(b) },
     { k: 'cur', label: 'Currency', type: 'select', options: curOpts, value: d.cur || 'GBP' },
-    { k: 'acct4', label: 'Last 4 of account number', value: d.acct4 || '', hint: 'Optional, helps tell accounts apart' }
+    { k: 'acct4', label: 'Last 4 of account number', value: d.acct4 || '', hint: 'Optional, helps tell accounts apart' },
+    { k: 'joint', label: 'Joint account, shared with someone', type: 'check', value: !!d.jointWho, full: true },
+    { k: 'jointWho', label: 'Shared with', value: d.jointWho || 'Wife', hidden: !d.jointWho, placeholder: 'e.g. Wife' },
+    { k: 'jointPct', label: 'Their share of top-ups', type: 'number', step: '1', value: d.jointPct != null ? d.jointPct : 50, hidden: !d.jointWho, hint: 'In %. 50 means you split it evenly.' },
+    { k: 'jointDays', label: 'Remind me this many days ahead', type: 'number', step: '1', value: d.jointDays || 14, hidden: !d.jointWho, hint: 'Bills due in this window are counted.' }
   ];
   formSheet({
     title: isNew ? 'Add an account' : b.name, fields, submit: isNew ? 'Add account' : 'Save', danger: isNew ? null : 'Remove account',
@@ -2002,6 +2075,8 @@ function bankSheet(b) {
       if (!v.name.trim()) return 'Give the account a name.';
       const n = b || { id: uid() };
       n.name = v.name.trim(); n.cur = v.cur; n.acct4 = v.acct4.trim() || undefined;
+      if (v.joint) { n.jointWho = (v.jointWho || '').trim() || 'Wife'; n.jointPct = Math.max(0, Math.min(100, v.jointPct != null ? v.jointPct : 50)); n.jointDays = Math.max(1, Math.min(62, Math.round(v.jointDays || 14))); }
+      else { delete n.jointWho; delete n.jointPct; delete n.jointDays; }
       if (v.bal != null && (isNew || r2(v.bal) !== bankBal(b))) setBankBal(n, v.bal);
       if (!b) st.banks.push(n);
       commit(isNew ? 'Account added' : 'Saved');
@@ -2349,6 +2424,9 @@ document.addEventListener('click', (e) => {
     case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
     case 'sort': { const t = el.dataset.t, k = el.dataset.k, cur = sortOf(t); SORT[t] = cur && cur.k === k ? (cur.dir === 1 ? { k, dir: -1 } : null) : { k, dir: 1 }; if (t === 'tx') $('#txList').innerHTML = txListHtml(); else render(); break; }
     case 'remind': sendReminder(el.dataset.who); break;
+    case 'joint-remind': if (M.bank[id]) jointRemind(M.bank[id]); break;
+    case 'joint-move': { const b = M.bank[id]; if (!b) break; const j = jointNeed(b); const from = st.payInto && st.payInto !== b.id ? st.payInto : (st.banks.find((x) => x.id !== b.id && !x.jointWho) || {}).id; txSheet('transfer', null, { from, to: b.id, amtFrom: j.yours || '', note: 'Top-up', topUp: 'me' }); break; }
+    case 'joint-in': { const b = M.bank[id]; if (!b) break; const j = jointNeed(b); txSheet('income', null, { into: b.id, orig: j.theirs || '', cur: b.cur || 'GBP', note: b.jointWho + ' top-up', topUp: b.jointWho }); break; }
     case 'shares': closeSheet(); sharesSheet(el.dataset.who); break;
     case 'share-ics': sharesIcs(el.dataset.who); break;
     case 'collect': closeSheet(); collectSheet(el.dataset.who); break;
@@ -2380,6 +2458,7 @@ document.addEventListener('change', (e) => {
   const a = e.target.dataset && e.target.dataset.act;
   if (a === 'extra') { st.dfPlan.extra = +e.target.value; commit(); }
   if (a === 'payinto') { st.payInto = e.target.value || undefined; commit(); }
+  if (e.target.id === 'f_joint') ['f_jointWho', 'f_jointPct', 'f_jointDays'].forEach((k) => { const x = document.getElementById(k); if (x) x.closest('label').hidden = !e.target.checked; });
   if (e.target.id === 'f_owe') { const n = document.getElementById('f_owedBy'), a2 = document.getElementById('f_oweAmt'); if (n) { n.closest('label').hidden = !e.target.checked; if (e.target.checked && !n.value) n.value = 'Wife'; } if (a2) a2.closest('label').hidden = !e.target.checked; }
   if (a === 'profile') { closeSheet(); switchProfile(e.target.value); }
 });
