@@ -444,7 +444,15 @@ table.grid tr.sub-row td { background: var(--head); border-top: 1px solid var(--
 table.grid tr.sub-row td.num b { border-bottom: 1px solid var(--ink); }
 table.grid tr.sub-row.is-today td:not(.rn) { background: var(--amber-soft); color: var(--ink); }
 table.grid tr.sub-row.is-today td.rn { background: var(--amber); }
+.kpi.click { cursor: pointer; }
+.kpi.click:hover { background: var(--row-hover); }
+.kpi.click small { color: var(--route); }
 .kpi.warn .v { color: var(--amber); }
+table.grid tr.grp.fold td { cursor: pointer; }
+table.grid tr.grp.fold:hover td:not(.rn) { background: var(--row-hover); }
+.fold-btn { border: 0; background: none; padding: 2px 0; font: inherit; color: var(--ink); display: inline-flex; align-items: center; gap: 6px; }
+.chev { display: inline-block; width: 14px; color: var(--route); font-size: 12px; transition: transform .15s ease; }
+.fold-btn[aria-expanded="true"] .chev { transform: rotate(90deg); }
 table.grid tr.empty-row td { color: var(--muted); padding: 18px 12px; }
 table.grid tr.faint-row td { color: var(--muted); }
 .nw { white-space: nowrap; }
@@ -1236,7 +1244,7 @@ const sortOf = (id) => (id in SORT ? SORT[id] : SORT_DEF[id] || null);
 const ordinal = (n) => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
 const swatch = (col) => '<i class="sw" style="background:' + col + '"></i>';
 function kpis(cells) {
-  return '<div class="kpis">' + cells.map((c) => '<div class="kpi' + (c.cls ? ' ' + c.cls : '') + '"><span class="k">' + esc(c.label) + '</span><b class="v">' + c.value + '</b>' + (c.note ? '<small>' + c.note + '</small>' : '') + '</div>').join('') + '</div>';
+  return '<div class="kpis">' + cells.map((c) => '<div class="kpi' + (c.cls ? ' ' + c.cls : '') + (c.attrs ? ' click' : '') + '"' + (c.attrs ? ' ' + c.attrs + ' role="button" tabindex="0"' : '') + '><span class="k">' + esc(c.label) + '</span><b class="v">' + c.value + '</b>' + (c.note ? '<small>' + c.note + '</small>' : '') + '</div>').join('') + '</div>';
 }
 function dataBar(frac, col) {
   const p = Math.max(0, Math.min(1, frac || 0)) * 100;
@@ -1268,7 +1276,7 @@ function grid(cols, rows, opts) {
       cols.map((c) => '<td class="' + (c.num ? 'num' : '') + (c.cls ? ' ' + c.cls(r) : '') + '">' + c.html(r) + '</td>').join('') + '</tr>';
   };
   if (opts.groups) {
-    opts.groups.forEach((g) => { h += '<tr class="grp"><td class="rn"></td>' + g.head + '</tr>'; sorted(g.rows).forEach((r) => { h += rowHtml(r); }); });
+    opts.groups.forEach((g) => { h += '<tr class="grp' + (g.toggle ? ' fold' + (g.open ? ' open' : '') : '') + '"' + (g.toggle ? ' data-act="' + g.toggle + '" data-v="' + g.key + '"' : '') + '><td class="rn"></td>' + g.head + '</tr>'; if (g.open !== false) sorted(g.rows).forEach((r) => { h += rowHtml(r); }); });
   } else {
     if (opts.before) h += opts.before;
     sorted(rows).forEach((r, k, arr) => { h += rowHtml(r); if (opts.afterRow) h += opts.afterRow(r, arr[k + 1]) || ''; });
@@ -1562,9 +1570,9 @@ function renderDebt() {
   const cardsT = list.filter((d) => d.kind === 'card').reduce((s, d) => s + d.gbp, 0), loansT = list.filter((d) => d.kind === 'loan').reduce((s, d) => s + d.gbp, 0), bnplT = list.filter((d) => d.kind === 'bnpl').reduce((s, d) => s + d.gbp, 0);
   let h = kpis([
     { label: 'Total owed', value: bigMoney(total), cls: 'key', note: list.length + ' debts' },
-    { label: 'Cards', value: bigMoney(cardsT) },
-    { label: 'Loans', value: bigMoney(loansT) },
-    { label: 'Pay later', value: bigMoney(bnplT) },
+    { label: 'Cards', value: bigMoney(cardsT), note: (ui.debtOpen && ui.debtOpen.card ? 'Hide' : 'Show') + ' each card', attrs: 'data-act="debtjump" data-v="card"' },
+    { label: 'Loans', value: bigMoney(loansT), note: (ui.debtOpen && ui.debtOpen.loan ? 'Hide' : 'Show') + ' each loan', attrs: 'data-act="debtjump" data-v="loan"' },
+    { label: 'Pay later', value: bigMoney(bnplT), note: (ui.debtOpen && ui.debtOpen.bnpl ? 'Hide' : 'Show') + ' each plan', attrs: 'data-act="debtjump" data-v="bnpl"' },
     { label: 'Paying each month', value: bigMoney(sim.budget), note: extra ? 'incl. ' + money(extra, true) + ' extra' : 'Minimum and fixed' },
     { label: 'Debt-free by', value: sim.months == null ? 'Not at this rate' : monYr(monthsFromNow(sim.months)), cls: sim.months == null ? 'neg' : '', note: sim.months == null ? 'Add extra to see a date' : sim.interest > 1 ? '≈ ' + money(sim.interest, true) + ' interest' : 'Almost no interest' }
   ]);
@@ -1586,8 +1594,29 @@ function renderDebt() {
     { k: 'pay', label: 'Monthly', num: true, sort: (d) => d.payGbp, html: (d) => (d.est ? '≈ ' : '') + fmt(d.cur, d.pay) },
     { k: 'when', label: 'Clear by', sort: (d) => ord[d.id], html: (d) => { const pe = planEnd(d); return pe ? monYr(pe) + '<small class="fx">last plan payment</small>' : sim.done[d.id] ? monYr(monthsFromNow(sim.done[d.id])) : '<span class="neg">Not yet</span>'; } }
   ];
-  h += sheetHead('Debts, in the order you’ll clear them', '<button class="btn small ghost" data-act="add-loan">Add a loan</button>') +
-    grid(cols, ordered, { id: 'debt', empty: 'No debts. That’s the goal.', foot: [fcell('<b>Total</b>', false, 2), fcell('<b>' + money(total) + '</b>', true), fcell('100%', true), fcell(''), fcell('<b>' + money(monthly) + '</b>', true), fcell('')] });
+  const byType = ui.debtView !== 'order';
+  const allOpen = ['card', 'loan', 'bnpl'].every((k) => ui.debtOpen && ui.debtOpen[k]);
+  const viewSeg = (ui.debtView !== 'order' ? '<button class="btn small ghost" data-act="debtall">' + (allOpen ? 'Collapse all' : 'Expand all') + '</button>' : '') + '<div class="seg" role="group" aria-label="Arrange debts"><button data-act="debtview" data-v="type" aria-pressed="' + byType + '">By type</button><button data-act="debtview" data-v="order" aria-pressed="' + !byType + '">Payoff order</button></div>';
+  let groups = null;
+  if (byType) {
+    const TYPE_ORDER = [['card', 'Credit cards'], ['loan', 'Loans'], ['bnpl', 'Pay later']];
+    groups = TYPE_ORDER.map(([k, label]) => {
+      const rows = ordered.filter((d) => d.kind === k); if (!rows.length) return null;
+      const bal = rows.reduce((s, d) => s + d.gbp, 0), pay = rows.reduce((s, d) => s + d.payGbp, 0);
+      const wApr = bal > 0 ? rows.reduce((s, d) => s + d.apr * d.gbp, 0) / bal : 0;
+      let extra = '';
+      if (k === 'card') {
+        const lim = rows.reduce((s, d) => s + toGbp(d.cur, d.limit || 0), 0);
+        if (lim > 0) extra = ' <span class="muted">' + Math.round(bal / lim * 100) + '% of ' + money(lim, true) + ' limits used</span>';
+      }
+      const open = !!(ui.debtOpen && ui.debtOpen[k]);
+      const head = '<td colspan="2"><button class="fold-btn" data-act="debtgroup" data-v="' + k + '" aria-expanded="' + open + '"><span class="chev" aria-hidden="true">▸</span><b>' + label + '</b> <span class="faint">' + rows.length + '</span></button>' + extra + '</td><td class="num"><b>' + money(bal) + '</b></td><td class="num"><span class="pct">' + Math.round(bal / (total || 1) * 100) + '%</span>' + dataBar(bal / (total || 1), 'var(--late)') + '</td>' +
+        '<td class="num">' + (wApr > 0.05 ? '<span title="Average, weighted by balance">≈ ' + (Math.round(wApr * 10) / 10) + '%</span>' : '<span class="faint">0%</span>') + '</td><td class="num"><b>' + money(pay) + '</b></td><td></td>';
+      return { head, rows, open, toggle: 'debtgroup', key: k };
+    }).filter(Boolean);
+  }
+  h += sheetHead(byType ? 'Debts by type' : 'Debts, in the order you’ll clear them', viewSeg + '<button class="btn small ghost" data-act="add-loan">Add a loan</button>') +
+    grid(cols, byType ? [] : ordered, { id: 'debt', groups, empty: 'No debts. That’s the goal.', foot: [fcell('<b>Total</b>', false, 2), fcell('<b>' + money(total) + '</b>', true), fcell('100%', true), fcell(''), fcell('<b>' + money(monthly) + '</b>', true), fcell('')] });
   $('#v-debt').innerHTML = h;
 }
 function debtChart(sim, base) {
@@ -2423,6 +2452,10 @@ document.addEventListener('click', (e) => {
     case 'fresh': freshSheet(); break;
     case 'groupby': ui.groupBy = el.dataset.v; try { localStorage.setItem('budget.v2.group', ui.groupBy); } catch (er) {} render(); break;
     case 'sort': { const t = el.dataset.t, k = el.dataset.k, cur = sortOf(t); SORT[t] = cur && cur.k === k ? (cur.dir === 1 ? { k, dir: -1 } : null) : { k, dir: 1 }; if (t === 'tx') $('#txList').innerHTML = txListHtml(); else render(); break; }
+    case 'debtview': ui.debtView = el.dataset.v; render(); break;
+    case 'debtall': { const all = ['card', 'loan', 'bnpl'].every((k) => ui.debtOpen && ui.debtOpen[k]); ui.debtOpen = { card: !all, loan: !all, bnpl: !all }; render(); break; }
+    case 'debtjump': { ui.debtView = 'type'; ui.debtOpen = ui.debtOpen || {}; const k = el.dataset.v; ui.debtOpen[k] = !ui.debtOpen[k]; render(); if (ui.debtOpen[k]) { const r = document.querySelector('#v-debt tr.fold[data-v="' + k + '"]'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); } break; }
+    case 'debtgroup': { ui.debtOpen = ui.debtOpen || {}; ui.debtOpen[el.dataset.v] = !ui.debtOpen[el.dataset.v]; render(); break; }
     case 'remind': sendReminder(el.dataset.who); break;
     case 'joint-remind': if (M.bank[id]) jointRemind(M.bank[id]); break;
     case 'joint-move': { const b = M.bank[id]; if (!b) break; const j = jointNeed(b); const from = st.payInto && st.payInto !== b.id ? st.payInto : (st.banks.find((x) => x.id !== b.id && !x.jointWho) || {}).id; txSheet('transfer', null, { from, to: b.id, amtFrom: j.yours || '', note: 'Top-up', topUp: 'me' }); break; }
@@ -2462,6 +2495,7 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'f_owe') { const n = document.getElementById('f_owedBy'), a2 = document.getElementById('f_oweAmt'); if (n) { n.closest('label').hidden = !e.target.checked; if (e.target.checked && !n.value) n.value = 'Wife'; } if (a2) a2.closest('label').hidden = !e.target.checked; }
   if (a === 'profile') { closeSheet(); switchProfile(e.target.value); }
 });
+document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('kpi') && e.target.dataset.act) { e.preventDefault(); e.target.click(); } });
 sheet.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && sheetSubmit) { e.preventDefault(); sheetSubmit(); } });
 
 // =============== Start ===============
